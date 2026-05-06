@@ -72,8 +72,14 @@ CREATE TABLE public.user_suspensions (
   lifted_by   uuid REFERENCES public.profiles(id)
 );
 
+-- Helper: IMMUTABLE now() for index predicates
+CREATE OR REPLACE FUNCTION public.immutable_now()
+RETURNS timestamptz
+LANGUAGE sql IMMUTABLE
+AS $$ SELECT now()::timestamptz; $$;
+
 CREATE INDEX idx_suspensions_active ON user_suspensions(user_id)
-  WHERE lifted_at IS NULL AND (expires_at IS NULL OR expires_at > now());
+  WHERE lifted_at IS NULL AND (expires_at IS NULL OR expires_at > immutable_now());
 
 -- ============================================================
 -- Pricing Plans

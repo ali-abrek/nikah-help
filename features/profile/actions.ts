@@ -1,0 +1,249 @@
+'use server'
+
+import { createServerSupabase } from '@/lib/supabase/server'
+import { AppError } from '@/lib/errors/app-error'
+import { validationError } from '@/lib/errors/validation'
+import { handleActionError } from '@/lib/errors/action'
+import {
+  onboardingStep1Schema,
+  onboardingStep2MaleSchema,
+  onboardingStep2FemaleSchema,
+  reorderPhotosSchema,
+} from './schemas'
+import { saveBasicData } from './server/save-basic-data'
+import { saveExtendedData } from './server/save-extended-data'
+import { generateBio } from './server/generate-bio'
+import { completeOnboarding } from './server/complete-onboarding'
+import { replacePhoto } from './server/replace-photo'
+import { deletePhoto } from './server/delete-photo'
+import { reorderPhotos } from './server/reorder-photos'
+
+function unauthorized() {
+  return { success: false as const, error: new AppError('AUTH_UNAUTHORIZED').toResponse() }
+}
+
+export async function saveOnboardingStep1(formData: FormData) {
+  const supabase = await createServerSupabase()
+  const { data: claims, error } = await supabase.auth.getClaims()
+
+  if (error || !claims) return unauthorized()
+
+  const userId = (claims as Record<string, unknown>).sub as string
+
+  const raw = {
+    name: formData.get('name'),
+    birth_date: formData.get('birth_date'),
+    gender: formData.get('gender'),
+    country: formData.get('country'),
+    city: formData.get('city'),
+    nationality: formData.get('nationality'),
+    height: formData.get('height') ? Number(formData.get('height')) : undefined,
+    weight: formData.get('weight') ? Number(formData.get('weight')) : undefined,
+    allow_geolocation: formData.get('allow_geolocation') === 'true',
+  }
+
+  const parsed = onboardingStep1Schema.safeParse(raw)
+
+  if (!parsed.success) {
+    const err = validationError(parsed.error)
+    return { success: false as const, error: err.toResponse() }
+  }
+
+  try {
+    await saveBasicData(userId, parsed.data)
+    return { success: true as const, message: 'Сохранено' }
+  } catch (e) {
+    return handleActionError(e)
+  }
+}
+
+export async function saveOnboardingStep2(formData: FormData) {
+  const supabase = await createServerSupabase()
+  const { data: claims, error } = await supabase.auth.getClaims()
+
+  if (error || !claims) return unauthorized()
+
+  const userId = (claims as Record<string, unknown>).sub as string
+  const gender = formData.get('gender') as string
+
+  if (gender !== 'male' && gender !== 'female') {
+    return {
+      success: false as const,
+      error: new AppError('VALIDATION_INVALID_INPUT', {
+        message: 'Некорректный пол',
+      }).toResponse(),
+    }
+  }
+
+  const base = {
+    marital_status: formData.get('marital_status'),
+    children_count: formData.get('children_count')
+      ? Number(formData.get('children_count'))
+      : undefined,
+    education: formData.get('education'),
+    about_self: formData.get('about_self'),
+  }
+
+  if (gender === 'male') {
+    const raw = {
+      ...base,
+      income_level: formData.get('income_level'),
+      housing: formData.get('housing'),
+    }
+
+    const parsed = onboardingStep2MaleSchema.safeParse(raw)
+
+    if (!parsed.success) {
+      const err = validationError(parsed.error)
+      return { success: false as const, error: err.toResponse() }
+    }
+
+    try {
+      await saveExtendedData(userId, { ...parsed.data, gender })
+      return { success: true as const, message: 'Сохранено' }
+    } catch (e) {
+      return handleActionError(e)
+    }
+  }
+
+  const rawFemale = {
+    ...base,
+    willing_to_relocate: formData.get('willing_to_relocate') === 'true',
+    polygyny_attitude: formData.get('polygyny_attitude'),
+    hijab_attitude: formData.get('hijab_attitude'),
+  }
+
+  const parsed = onboardingStep2FemaleSchema.safeParse(rawFemale)
+
+  if (!parsed.success) {
+    const err = validationError(parsed.error)
+    return { success: false as const, error: err.toResponse() }
+  }
+
+  try {
+    await saveExtendedData(userId, { ...parsed.data, gender })
+    return { success: true as const, message: 'Сохранено' }
+  } catch (e) {
+    return handleActionError(e)
+  }
+}
+
+export async function markPhotoUploaded(
+  storagePath: string,
+  position: number,
+) {
+  const supabase = await createServerSupabase()
+  const { data: claims, error } = await supabase.auth.getClaims()
+
+  if (error || !claims) return unauthorized()
+
+  const userId = (claims as Record<string, unknown>).sub as string
+
+  if (position < 1 || position > 6) {
+    return {
+      success: false as const,
+      error: new AppError('VALIDATION_INVALID_INPUT', {
+        message: 'Некорректная позиция',
+      }).toResponse(),
+    }
+  }
+
+  try {
+    const { error: upsertError } = await supabase
+      .from('photos')
+      .upsert(
+        {
+          profile_id: userId,
+          storage_path: storagePath,
+          position,
+          status: 'pending',
+        },
+        { onConflict: 'profile_id, position' },
+      )
+
+    if (upsertError) throw upsertError
+    return { success: true as const, message: 'Фото сохранено' }
+  } catch (e) {
+    return handleActionError(e)
+  }
+}
+
+export async function completeOnboardingAction() {
+  const supabase = await createServerSupabase()
+  const { data: claims, error } = await supabase.auth.getClaims()
+
+  if (error || !claims) return unauthorized()
+
+  const userId = (claims as Record<string, unknown>).sub as string
+
+  try {
+    const bio = await generateBio(userId)
+    await completeOnboarding(userId)
+    return { success: true as const, message: 'Онбординг завершён', bio }
+  } catch (e) {
+    return handleActionError(e)
+  }
+}
+
+export async function replacePhotoAction(position: number) {
+  const supabase = await createServerSupabase()
+  const { data: claims, error } = await supabase.auth.getClaims()
+
+  if (error || !claims) return unauthorized()
+
+  const userId = (claims as Record<string, unknown>).sub as string
+
+  if (position < 1 || position > 6) {
+    return {
+      success: false as const,
+      error: new AppError('VALIDATION_INVALID_INPUT', {
+        message: 'Некорректная позиция',
+      }).toResponse(),
+    }
+  }
+
+  try {
+    const result = await replacePhoto(userId, position)
+    return { success: true as const, ...result }
+  } catch (e) {
+    return handleActionError(e)
+  }
+}
+
+export async function deletePhotoAction(photoId: string) {
+  const supabase = await createServerSupabase()
+  const { data: claims, error } = await supabase.auth.getClaims()
+
+  if (error || !claims) return unauthorized()
+
+  const userId = (claims as Record<string, unknown>).sub as string
+
+  try {
+    await deletePhoto(userId, photoId)
+    return { success: true as const, message: 'Фото удалено' }
+  } catch (e) {
+    return handleActionError(e)
+  }
+}
+
+export async function reorderPhotosAction(orderedPhotoIds: string[]) {
+  const supabase = await createServerSupabase()
+  const { data: claims, error } = await supabase.auth.getClaims()
+
+  if (error || !claims) return unauthorized()
+
+  const userId = (claims as Record<string, unknown>).sub as string
+
+  const parsed = reorderPhotosSchema.safeParse({ orderedPhotoIds })
+  if (!parsed.success) {
+    const err = validationError(parsed.error)
+    return { success: false as const, error: err.toResponse() }
+  }
+
+  try {
+    await reorderPhotos(userId, orderedPhotoIds)
+    return { success: true as const, message: 'Порядок сохранён' }
+  } catch (e) {
+    return handleActionError(e)
+  }
+}

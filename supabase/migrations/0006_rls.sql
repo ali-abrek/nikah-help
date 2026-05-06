@@ -67,7 +67,7 @@ $$ LANGUAGE sql STABLE SECURITY DEFINER;
 -- Email hash helper (pepper-based)
 CREATE OR REPLACE FUNCTION public.email_hash(p_email text, p_pepper text)
 RETURNS bytea AS $$
-  SELECT digest(p_pepper || lower(p_email), 'sha256');
+  SELECT extensions.digest(p_pepper || lower(p_email), 'sha256');
 $$ LANGUAGE sql IMMUTABLE;
 
 -- ============================================================

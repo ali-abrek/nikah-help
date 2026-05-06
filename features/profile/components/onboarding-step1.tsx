@@ -1,0 +1,175 @@
+'use client'
+
+import { useForm, Controller } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { onboardingStep1Schema, type OnboardingStep1Data } from '../schemas'
+
+const GENDERS = [
+  { value: 'male', label: 'Мужчина', icon: '♂' },
+  { value: 'female', label: 'Женщина', icon: '♀' },
+] as const
+
+export function OnboardingStep1({
+  onSubmit,
+  defaultValues,
+  isPending,
+}: {
+  onSubmit: (data: FormData) => void
+  defaultValues?: Partial<OnboardingStep1Data>
+  isPending?: boolean
+}) {
+  const {
+    register,
+    handleSubmit,
+    control,
+    formState: { errors },
+  } = useForm<OnboardingStep1Data>({
+    resolver: zodResolver(onboardingStep1Schema),
+    defaultValues: defaultValues ?? {
+      gender: undefined,
+      allow_geolocation: false,
+    },
+  })
+
+  const onFormSubmit = (data: OnboardingStep1Data) => {
+    const fd = new FormData()
+    Object.entries(data).forEach(([key, value]) => {
+      fd.append(key, String(value))
+    })
+    onSubmit(fd)
+  }
+
+  const inputClass = 'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-foreground placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-zinc-700 dark:bg-zinc-900'
+
+  return (
+    <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-5">
+      {/* Name */}
+      <div>
+        <label htmlFor="name" className="mb-1 block text-sm font-medium text-foreground">
+          Имя
+        </label>
+        <input {...register('name')} className={inputClass} placeholder="Ваше имя" />
+        {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name.message}</p>}
+      </div>
+
+      {/* Birth date */}
+      <div>
+        <label htmlFor="birth_date" className="mb-1 block text-sm font-medium text-foreground">
+          Дата рождения
+        </label>
+        <input
+          type="date"
+          {...register('birth_date')}
+          className={inputClass}
+          max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+        />
+        {errors.birth_date && <p className="mt-1 text-xs text-red-600">{errors.birth_date.message}</p>}
+      </div>
+
+      {/* Gender */}
+      <div>
+        <label className="mb-2 block text-sm font-medium text-foreground">Пол</label>
+        <Controller
+          control={control}
+          name="gender"
+          render={({ field }) => (
+            <div className="grid grid-cols-2 gap-3">
+              {GENDERS.map((g) => (
+                <button
+                  key={g.value}
+                  type="button"
+                  onClick={() => field.onChange(g.value)}
+                  className={`flex flex-col items-center gap-1 rounded-xl border-2 p-4 transition-colors ${
+                    field.value === g.value
+                      ? 'border-emerald-500 bg-emerald-50 dark:border-emerald-400 dark:bg-emerald-950'
+                      : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-700 dark:hover:border-zinc-600'
+                  }`}
+                >
+                  <span className="text-2xl">{g.icon}</span>
+                  <span className="text-sm font-medium text-foreground">{g.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+        />
+        {errors.gender && <p className="mt-1 text-xs text-red-600">{errors.gender.message}</p>}
+      </div>
+
+      {/* Country */}
+      <div>
+        <label htmlFor="country" className="mb-1 block text-sm font-medium text-foreground">
+          Страна
+        </label>
+        <input {...register('country')} className={inputClass} placeholder="Например, Россия" />
+        {errors.country && <p className="mt-1 text-xs text-red-600">{errors.country.message}</p>}
+      </div>
+
+      {/* City */}
+      <div>
+        <label htmlFor="city" className="mb-1 block text-sm font-medium text-foreground">
+          Город
+        </label>
+        <input {...register('city')} className={inputClass} placeholder="Например, Москва" />
+        {errors.city && <p className="mt-1 text-xs text-red-600">{errors.city.message}</p>}
+      </div>
+
+      {/* Nationality */}
+      <div>
+        <label htmlFor="nationality" className="mb-1 block text-sm font-medium text-foreground">
+          Национальность
+        </label>
+        <input {...register('nationality')} className={inputClass} placeholder="Например, татарин" />
+        {errors.nationality && <p className="mt-1 text-xs text-red-600">{errors.nationality.message}</p>}
+      </div>
+
+      {/* Height & Weight */}
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label htmlFor="height" className="mb-1 block text-sm font-medium text-foreground">
+            Рост (см)
+          </label>
+          <input
+            type="number"
+            {...register('height', { valueAsNumber: true })}
+            className={inputClass}
+            placeholder="175"
+          />
+          {errors.height && <p className="mt-1 text-xs text-red-600">{errors.height.message}</p>}
+        </div>
+        <div>
+          <label htmlFor="weight" className="mb-1 block text-sm font-medium text-foreground">
+            Вес (кг)
+          </label>
+          <input
+            type="number"
+            {...register('weight', { valueAsNumber: true })}
+            className={inputClass}
+            placeholder="70"
+          />
+          {errors.weight && <p className="mt-1 text-xs text-red-600">{errors.weight.message}</p>}
+        </div>
+      </div>
+
+      {/* Geolocation */}
+      <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          {...register('allow_geolocation')}
+          id="allow_geolocation"
+          className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
+        />
+        <label htmlFor="allow_geolocation" className="text-sm text-zinc-600 dark:text-zinc-400">
+          Разрешить геолокацию для поиска поблизости
+        </label>
+      </div>
+
+      <button
+        type="submit"
+        disabled={isPending}
+        className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
+      >
+        {isPending ? 'Сохранение...' : 'Продолжить'}
+      </button>
+    </form>
+  )
+}
