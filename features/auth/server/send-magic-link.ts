@@ -7,7 +7,14 @@ import { getRatelimit } from '@/lib/ratelimit/client'
 import { extractIp, hashIp } from '@/lib/utils/ip'
 import type { ServerActionResult } from '@/lib/errors/action'
 
-const authRatelimit = getRatelimit(3, 60) // 3 attempts per 60s
+// Lazy: instantiating the limiter requires UPSTASH_REDIS_REST_URL/TOKEN, and
+// resolving those at module load would fail the import and surface as an
+// opaque server-action 500 instead of the structured response below.
+let _authRatelimit: ReturnType<typeof getRatelimit> | null = null
+function getAuthRatelimit() {
+  if (!_authRatelimit) _authRatelimit = getRatelimit(3, 60) // 3 attempts per 60s
+  return _authRatelimit
+}
 
 export async function requestMagicLink(
   email: string,
@@ -26,6 +33,27 @@ export async function requestMagicLink(
     `nikah-help:auth:magic-link:ip:${ip}`,
     `nikah-help:auth:magic-link:email:${parsed.data.email.toLowerCase()}`,
   ]
+
+  let authRatelimit: ReturnType<typeof getRatelimit>
+  try {
+    authRatelimit = getAuthRatelimit()
+  } catch (err) {
+    console.error(JSON.stringify({
+      level: 'error',
+      message: 'auth_ratelimit_unavailable',
+      error: err instanceof Error ? err.message : String(err),
+    }))
+    return {
+      success: false,
+      error: {
+        code: 'SYSTEM_INTERNAL_ERROR',
+        message:
+          'Сервис временно недоступен. Попробуйте позже или свяжитесь с поддержкой.',
+        trace_id: crypto.randomUUID(),
+        status: 503,
+      },
+    }
+  }
 
   for (const key of keys) {
     const { success } = await authRatelimit.limit(key, { rate: 1 })

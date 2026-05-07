@@ -35,7 +35,7 @@ export function LoginForm() {
           required
           autoComplete="email"
           placeholder="you@example.com"
-          className="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-zinc-700 dark:bg-zinc-900"
+          className="w-full rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm text-foreground placeholder:text-zinc-400 outline-none transition-colors focus:border-primary focus:ring-2 focus:ring-primary/20 dark:border-zinc-700 dark:bg-zinc-900 dark:placeholder:text-zinc-500"
         />
         {state?.error?.details?.email && (
           <p className="mt-1 text-xs text-red-500">{state.error.details.email}</p>
