@@ -56,8 +56,32 @@ export async function requestMagicLink(
   }
 
   for (const key of keys) {
-    const { success } = await authRatelimit.limit(key, { rate: 1 })
-    if (!success) {
+    let result: { success: boolean }
+    try {
+      result = await authRatelimit.limit(key, { rate: 1 })
+    } catch (err) {
+      console.error(JSON.stringify({
+        level: 'error',
+        message: 'auth_ratelimit_call_failed',
+        key,
+        error: err instanceof Error ? err.message : String(err),
+        stack: err instanceof Error ? err.stack : undefined,
+        upstash_url_set: Boolean(process.env.UPSTASH_REDIS_REST_URL),
+        upstash_token_set: Boolean(process.env.UPSTASH_REDIS_REST_TOKEN),
+        upstash_url_host: process.env.UPSTASH_REDIS_REST_URL?.slice(0, 24),
+      }))
+      return {
+        success: false,
+        error: {
+          code: 'SYSTEM_INTERNAL_ERROR',
+          message:
+            'Сервис временно недоступен. Попробуйте позже или свяжитесь с поддержкой.',
+          trace_id: crypto.randomUUID(),
+          status: 503,
+        },
+      }
+    }
+    if (!result.success) {
       return {
         success: false,
         error: {
@@ -70,16 +94,37 @@ export async function requestMagicLink(
     }
   }
 
-  const supabase = await createServerSupabase()
+  let supabase: Awaited<ReturnType<typeof createServerSupabase>>
+  let otpError: Awaited<ReturnType<typeof supabase.auth.signInWithOtp>>['error']
+  try {
+    supabase = await createServerSupabase()
+    const result = await supabase.auth.signInWithOtp({
+      email: parsed.data.email,
+      options: {
+        emailRedirectTo: `${getSiteUrl()}/api/auth/callback`,
+      },
+    })
+    otpError = result.error
+  } catch (err) {
+    console.error(JSON.stringify({
+      level: 'error',
+      message: 'auth_signinwithotp_threw',
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    }))
+    return {
+      success: false,
+      error: {
+        code: 'SYSTEM_INTERNAL_ERROR',
+        message: 'Сервис временно недоступен. Попробуйте позже.',
+        trace_id: crypto.randomUUID(),
+        status: 503,
+      },
+    }
+  }
 
-  const { error } = await supabase.auth.signInWithOtp({
-    email: parsed.data.email,
-    options: {
-      emailRedirectTo: `${getSiteUrl()}/api/auth/callback`,
-    },
-  })
-
-  if (error) {
+  if (otpError) {
+    const error = otpError
     if (error.code === 'BAN01') {
       return {
         success: false,

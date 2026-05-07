@@ -7,6 +7,14 @@
   --font-sans: "Inter", sans-serif;
 }
 
+/* `inline` keeps the resolution at use-site so utilities like
+   `text-foreground` / `bg-background` follow the .dark override below
+   instead of freezing the light-mode value at build time. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+}
+
 @layer base {
   :root {
     --background: #FFFFFF;
