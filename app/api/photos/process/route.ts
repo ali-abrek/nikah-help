@@ -1,23 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { z } from 'zod'
 import { processImage } from '@/lib/image-processing/pipeline'
-import { PROCESSING, STORAGE } from '@/lib/image-processing/photo-variants'
+import { STORAGE } from '@/lib/image-processing/photo-variants'
 import { validateUpload } from '@/lib/image-processing/validate-upload'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { handleRouteError } from '@/lib/errors/handler'
 import { AppError } from '@/lib/errors/app-error'
+import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
+import { PHOTO_UPLOAD } from '@/lib/ratelimit/presets'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
 
-export async function POST(request: NextRequest) {
+const bodySchema = z.object({
+  photoId: z.uuid(),
+})
+
+export const POST = withRateLimit(async (request: NextRequest) => {
   try {
-    const { photoId, userId } = await request.json()
+    const userId = request.headers.get('x-user-id')
+    if (!userId) throw new AppError('AUTH_UNAUTHORIZED')
+
+    const parsed = bodySchema.safeParse(await request.json().catch(() => ({})))
+    if (!parsed.success) {
+      throw new AppError('VALIDATION_INVALID_INPUT', {
+        details: { photoId: 'Required (uuid)' },
+      })
+    }
+    const { photoId } = parsed.data
+
     const supabase = createAdminClient()
 
-    // 1. Fetch photo row to get storage_path
     const { data: photo, error: fetchError } = await supabase
       .from('photos')
-      .select('id, storage_path, status')
+      .select('id, profile_id, storage_path, status, variants')
       .eq('id', photoId)
       .single()
 
@@ -28,6 +44,17 @@ export async function POST(request: NextRequest) {
       })
     }
 
+    if (photo.profile_id !== userId) {
+      throw new AppError('PHOTO_NOT_OWNER', { logContext: { photoId, userId } })
+    }
+
+    // Idempotency: a successful prior run already populated variants and
+    // dropped the original. Replay the same response so callers (Inngest
+    // retries, network glitches, manual reposts) can't corrupt state.
+    if (photo.status === 'processed') {
+      return NextResponse.json({ success: true, photoId, alreadyProcessed: true })
+    }
+
     if (!photo.storage_path) {
       throw new AppError('VALIDATION_INVALID_INPUT', {
         message: 'Photo has no original file path',
@@ -35,7 +62,29 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // 2. Download original from Storage
+    // Atomic claim: only one runner may move {pending,uploaded} → processing.
+    // Concurrent runners see 0 affected rows and bail out without re-uploading.
+    const { data: claimed, error: claimErr } = await supabase
+      .from('photos')
+      .update({ status: 'processing', updated_at: new Date().toISOString() })
+      .eq('id', photoId)
+      .in('status', ['pending', 'uploaded'])
+      .select('id')
+      .maybeSingle()
+
+    if (claimErr) {
+      throw new AppError('SYSTEM_DATABASE_ERROR', {
+        cause: claimErr,
+        logContext: { photoId },
+      })
+    }
+    if (!claimed) {
+      // Another runner already owns this photo. Treat as success-in-progress
+      // rather than failing the caller.
+      return NextResponse.json({ success: true, photoId, inProgress: true })
+    }
+
+    // Step: download original
     const { data: file, error: downloadError } = await supabase
       .storage
       .from(STORAGE.bucket)
@@ -50,25 +99,22 @@ export async function POST(request: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer())
 
-    // 3. Validate
+    // Step: validate
     await validateUpload(buffer)
 
-    // 4. Mark as processing
-    await supabase
-      .from('photos')
-      .update({ status: 'processing', updated_at: new Date().toISOString() })
-      .eq('id', photoId)
-
-    // 5. Generate all variants
+    // Step: generate variants (pure, retryable)
     const result = await processImage(buffer, userId, photoId)
 
-    // 6. Upload all variant files
+    // Step: upload variants — pass each variant's intended Cache-Control so
+    // any direct Storage delivery (signed URLs etc.) honours it. Stream
+    // handler still sets its own headers when proxying.
     for (const f of result.files) {
       const { error: uploadError } = await supabase
         .storage
         .from(STORAGE.bucket)
         .upload(f.path, f.buffer, {
           contentType: f.contentType,
+          cacheControl: f.cacheControl,
           upsert: true,
         })
 
@@ -80,14 +126,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 7. Delete original from Storage
+    // Step: delete original (separate from upload step so an interrupted
+    // run that already uploaded variants still converges on the next call —
+    // status stays at 'processing' and the next attempt re-claims it.)
     await supabase
       .storage
       .from(STORAGE.bucket)
       .remove([photo.storage_path])
 
-    // 8. Update photos row
-    await supabase
+    // Step: finalize photos row
+    const { error: finalErr } = await supabase
       .from('photos')
       .update({
         status: 'processed',
@@ -97,9 +145,15 @@ export async function POST(request: NextRequest) {
       })
       .eq('id', photoId)
 
-    return NextResponse.json({ success: true, photoId })
+    if (finalErr) {
+      throw new AppError('SYSTEM_DATABASE_ERROR', {
+        cause: finalErr,
+        logContext: { photoId },
+      })
+    }
 
+    return NextResponse.json({ success: true, photoId })
   } catch (error) {
     return handleRouteError(error)
   }
-}
+}, PHOTO_UPLOAD)

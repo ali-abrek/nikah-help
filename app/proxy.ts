@@ -1,12 +1,12 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { requireEnv } from '@/lib/env'
+import { requireEnv, validateEnv } from '@/lib/env'
 
-// Validate env on first request (idempotent — runs once).
-// Must be imported dynamically so it doesn't throw at build time on non-Vercel.
-import('@/lib/env').then((m) => m.validateEnv()).catch((err) => {
-  console.error('[proxy] Env validation failed:', err)
-})
+// Validate at module load. Idempotent (validated flag inside validateEnv).
+// In production, missing vars throw and the module fails to load — preferable
+// to silently serving requests that will crash deeper down. In dev/CI we log
+// only, since validateEnv() itself only throws when NODE_ENV === 'production'.
+validateEnv()
 
 const PROTECTED_PATHS = ['/dashboard', '/onboarding', '/feed']
 
@@ -23,6 +23,9 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
+          // Mirror refreshed Supabase cookies onto the outgoing response.
+          // If the response is later replaced (to inject x-user-id headers),
+          // we copy these forward so the auth refresh is not lost.
           cookiesToSet.forEach(({ name, value, options }) =>
             supabaseResponse.cookies.set(name, value, options),
           )
@@ -35,7 +38,6 @@ export async function proxy(request: NextRequest) {
     const { data, error } = await supabase.auth.getClaims()
 
     if (error || !data?.claims) {
-      // No valid session
       if (PROTECTED_PATHS.some((p) => url.pathname.startsWith(p))) {
         url.pathname = '/auth'
         url.searchParams.set('error', 'AUTH_UNAUTHORIZED')
@@ -47,12 +49,10 @@ export async function proxy(request: NextRequest) {
     const claims = data.claims as Record<string, unknown>
     const userId = claims.sub as string
 
-    // Set headers for downstream handlers
     const requestHeaders = new Headers(request.headers)
     requestHeaders.set('x-user-id', userId)
     requestHeaders.set('x-user-role', (claims.role as string) ?? 'user')
 
-    // Check suspension
     const { data: suspended } = await supabase.rpc('is_user_suspended', {
       p_user: userId,
     })
@@ -63,12 +63,17 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // Forward with headers and refreshed cookies
-    return NextResponse.next({
+    // Build the forwarded response with injected headers, then carry
+    // over any cookies Supabase wrote on `supabaseResponse` (refreshed
+    // session tokens). Skipping this step silently drops cookie refreshes.
+    const forwarded = NextResponse.next({
       request: { headers: requestHeaders },
     })
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      forwarded.cookies.set(cookie.name, cookie.value, cookie)
+    })
+    return forwarded
   } catch {
-    // Unexpected proxy error — let through for public paths, redirect for protected
     if (PROTECTED_PATHS.some((p) => url.pathname.startsWith(p))) {
       url.pathname = '/auth'
       url.searchParams.set('error', 'AUTH_UNAUTHORIZED')

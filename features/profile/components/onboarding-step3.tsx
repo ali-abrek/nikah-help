@@ -8,6 +8,7 @@ const MAX_PHOTOS = 6
 type PhotoSlot = {
   position: number
   preview: string | null
+  photoId: string | null
   path: string | null
   uploading: boolean
 }
@@ -16,6 +17,7 @@ function createSlots(): PhotoSlot[] {
   return Array.from({ length: MAX_PHOTOS }, (_, i) => ({
     position: i + 1,
     preview: null,
+    photoId: null,
     path: null,
     uploading: false,
   }))
@@ -24,11 +26,11 @@ function createSlots(): PhotoSlot[] {
 async function uploadFile(
   file: File,
   position: number,
-): Promise<{ path: string } | { error: string }> {
+): Promise<{ photoId: string; path: string } | { error: string }> {
   const res = await fetch('/api/photos/upload-url', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ filename: file.name, position }),
+    body: JSON.stringify({ mimeType: file.type, filename: file.name, position }),
   })
 
   if (!res.ok) {
@@ -36,7 +38,8 @@ async function uploadFile(
     return { error: body.message ?? 'Ошибка загрузки' }
   }
 
-  const { signedUrl, path } = (await res.json()) as {
+  const { photoId, signedUrl, path } = (await res.json()) as {
+    photoId: string
     signedUrl: string
     path: string
   }
@@ -51,13 +54,22 @@ async function uploadFile(
     return { error: 'Не удалось загрузить файл' }
   }
 
-  const result = await markPhotoUploaded(path, position)
+  const result = await markPhotoUploaded(photoId)
 
   if (!result.success) {
     return { error: result.error?.message ?? 'Ошибка сохранения' }
   }
 
-  return { path }
+  // Trigger server-side processing (sharp variants + moderation pipeline).
+  await fetch('/api/photos/process', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ photoId }),
+  }).catch(() => {
+    // Non-fatal — photo-abandon-cleanup will reap if processing never starts.
+  })
+
+  return { photoId, path }
 }
 
 export function OnboardingStep3({
@@ -108,7 +120,7 @@ export function OnboardingStep3({
       setSlots((prev) =>
         prev.map((s) =>
           s.position === activeSlot
-            ? { ...s, uploading: false, preview: null, path: null }
+            ? { ...s, uploading: false, preview: null, photoId: null, path: null }
             : s,
         ),
       )
@@ -117,7 +129,7 @@ export function OnboardingStep3({
       setSlots((prev) =>
         prev.map((s) =>
           s.position === activeSlot
-            ? { ...s, uploading: false, preview, path: result.path }
+            ? { ...s, uploading: false, preview, photoId: result.photoId, path: result.path }
             : s,
         ),
       )
@@ -131,7 +143,7 @@ export function OnboardingStep3({
     setSlots((prev) =>
       prev.map((s) =>
         s.position === position
-          ? { ...s, preview: null, path: null }
+          ? { ...s, preview: null, photoId: null, path: null }
           : s,
       ),
     )

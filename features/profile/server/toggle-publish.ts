@@ -1,22 +1,23 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
+import type { ErrorCode } from '@/lib/errors/registry'
 
 export interface TogglePublishResult {
   success: boolean
   is_published: boolean
-  error?: string
+  errorCode?: ErrorCode
+  errorMessage?: string
 }
 
 /**
  * Toggles the profile publish state.
- * On publish: checks that the profile has at least one approved photo.
- * On unpublish: always allowed (warn about feed visibility at the UI level).
+ * On publish: requires at least one approved photo.
+ * On unpublish: always allowed.
  */
 export async function togglePublish(
   supabase: SupabaseClient<Database>,
   userId: string,
 ): Promise<TogglePublishResult> {
-  // Get current state
   const { data: profile, error: profileErr } = await supabase
     .from('profiles')
     .select('is_published')
@@ -24,13 +25,17 @@ export async function togglePublish(
     .single()
 
   if (profileErr || !profile) {
-    return { success: false, is_published: false, error: 'Профиль не найден' }
+    return {
+      success: false,
+      is_published: false,
+      errorCode: 'NOT_FOUND',
+      errorMessage: 'Профиль не найден',
+    }
   }
 
   const willBePublished = !profile.is_published
 
   if (willBePublished) {
-    // Must have at least one approved photo to publish
     const { count, error: countErr } = await supabase
       .from('photos')
       .select('id', { count: 'exact', head: true })
@@ -43,7 +48,7 @@ export async function togglePublish(
       return {
         success: false,
         is_published: false,
-        error: 'Для публикации необходимо хотя бы одно одобренное фото',
+        errorCode: 'PROFILE_NO_APPROVED_PHOTO',
       }
     }
   }

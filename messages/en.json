@@ -31,6 +31,8 @@
     "PHOTO_STILL_PROCESSING": "Photo is still being processed",
     "PROFILE_NOT_PUBLISHED": "Publish your profile first to send a like",
     "PROFILE_GENDER_IMMUTABLE": "Gender cannot be changed after registration",
+    "PROFILE_ONBOARDING_INCOMPLETE": "Complete onboarding to continue",
+    "PROFILE_NO_APPROVED_PHOTO": "You need at least one approved photo to publish",
     "BLOCK_ALREADY_EXISTS": "User is already blocked",
     "BLOCK_SELF": "You cannot block yourself",
     "BIO_RATE_LIMITED": "You can regenerate your description up to 3 times per day. Try again later.",

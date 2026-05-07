@@ -129,11 +129,57 @@ export async function queryFeed({
   const profiles = (data ?? []) as FeedProfileRaw[]
   const hasMore = profiles.length > limit
   const page = hasMore ? profiles.slice(0, limit) : profiles
+  const ids = page.map((p) => p.id)
+
+  // Annotate each card with the viewer's interaction state in two batched
+  // queries (one for likes-out, one for matches involving the viewer). This
+  // avoids the N+1 the client would otherwise do when rendering the feed.
+  const [likedIds, matchedIds] = await Promise.all([
+    fetchLikedIds(supabase, viewerId, ids),
+    fetchMatchedIds(supabase, viewerId, ids),
+  ])
 
   return {
-    profiles: page.map((p) => toFeedProfile(p)),
+    profiles: page.map((p) =>
+      toFeedProfile(p, likedIds.has(p.id), matchedIds.has(p.id)),
+    ),
     nextCursor: hasMore ? (page[page.length - 1]?.created_at ?? null) : null,
   }
+}
+
+async function fetchLikedIds(
+  supabase: SupabaseClient<Database>,
+  viewerId: string,
+  ids: string[],
+): Promise<Set<string>> {
+  if (ids.length === 0) return new Set()
+  const { data } = await supabase
+    .from('likes')
+    .select('to_user_id')
+    .eq('from_user_id', viewerId)
+    .in('to_user_id', ids)
+  return new Set((data ?? []).map((row) => row.to_user_id))
+}
+
+async function fetchMatchedIds(
+  supabase: SupabaseClient<Database>,
+  viewerId: string,
+  ids: string[],
+): Promise<Set<string>> {
+  if (ids.length === 0) return new Set()
+  // matches(user_a, user_b) is canonicalised by LEAST/GREATEST, so the viewer
+  // can sit on either side. Filter to rows where the viewer participates and
+  // the partner is in our page slice; fold the partner id into a Set.
+  const { data } = await supabase
+    .from('matches')
+    .select('user_a, user_b')
+    .or(`user_a.eq.${viewerId},user_b.eq.${viewerId}`)
+  const matched = new Set<string>()
+  for (const row of data ?? []) {
+    const partner = row.user_a === viewerId ? row.user_b : row.user_a
+    if (ids.includes(partner)) matched.add(partner)
+  }
+  return matched
 }
 
 // ── Raw DB row ─────────────────────────────────────────────────────
@@ -157,7 +203,11 @@ interface FeedProfileRaw {
   }[]
 }
 
-function toFeedProfile(raw: FeedProfileRaw): FeedProfile {
+function toFeedProfile(
+  raw: FeedProfileRaw,
+  viewerHasLiked: boolean,
+  isMatched: boolean,
+): FeedProfile {
   const photo = raw.photos?.[0]
   const variants = photo?.variants as Record<string, { avif: string; webp: string }> | null
   const coverPath = variants?.cover?.webp ?? variants?.cover_blurred?.webp ?? null
@@ -174,5 +224,7 @@ function toFeedProfile(raw: FeedProfileRaw): FeedProfile {
     children_count: raw.children_count,
     cover_photo_url: coverPath,
     created_at: raw.created_at ?? '',
+    viewer_has_liked: viewerHasLiked,
+    is_matched: isMatched,
   }
 }

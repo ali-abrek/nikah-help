@@ -1,6 +1,7 @@
 import { createServerSupabase } from '@/lib/supabase/server'
 import type { Database } from '@/types/database.types'
 import type { OnboardingStep1Data } from '../schemas'
+import { maybeRegenerateBio } from './maybe-regenerate-bio'
 
 export async function saveBasicData(userId: string, data: OnboardingStep1Data) {
   const supabase = await createServerSupabase()
@@ -16,9 +17,6 @@ export async function saveBasicData(userId: string, data: OnboardingStep1Data) {
     weight: data.weight,
   }
 
-  // When geo is disabled, explicitly clear any previous location.
-  // When enabled, leave the column unchanged — actual coords are resolved
-  // and stored separately via client-side geolocation.
   if (!data.allow_geolocation) {
     updateData.location = null
   }
@@ -29,4 +27,8 @@ export async function saveBasicData(userId: string, data: OnboardingStep1Data) {
     .eq('id', userId)
 
   if (error) throw error
+
+  // Bio regen is a no-op until onboarding is completed; safe to call from
+  // both the wizard's step-1 save and post-onboarding edits.
+  await maybeRegenerateBio(supabase, userId)
 }

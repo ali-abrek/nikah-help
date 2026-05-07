@@ -106,6 +106,8 @@ export interface FeedProfile {
   children_count: number | null
   cover_photo_url: string | null
   created_at: string
+  viewer_has_liked: boolean
+  is_matched: boolean
 }
 
 export interface FeedPage {

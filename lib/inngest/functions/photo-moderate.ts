@@ -14,12 +14,19 @@ interface ModerationScores {
   reason: string
 }
 
-async function downloadCover(photoId: string): Promise<{ buffer: Buffer; contentType: string }> {
+async function loadPhotoContext(photoId: string): Promise<{
+  buffer: Buffer
+  contentType: string
+  profileGender: 'male' | 'female' | null
+}> {
   const supabase = createAdminClient()
 
+  // Pull the profile gender alongside the cover so we can enforce mismatch
+  // in the same step (spec docs/06-image-processing.md:609 — gender mismatch
+  // is a reject criterion). Joining via the FK avoids a second roundtrip.
   const { data: photo, error: fetchError } = await supabase
     .from('photos')
-    .select('profile_id, variants')
+    .select('profile_id, variants, profiles!inner(gender)')
     .eq('id', photoId)
     .single()
 
@@ -44,22 +51,61 @@ async function downloadCover(photoId: string): Promise<{ buffer: Buffer; content
   }
 
   const buffer = Buffer.from(await file.arrayBuffer())
-  return { buffer, contentType: 'image/webp' }
+
+  // Supabase returns the joined relation as either an object or array depending
+  // on the FK cardinality interpretation; normalise.
+  const joined = (photo as unknown as { profiles: { gender: string } | { gender: string }[] })
+    .profiles
+  const profileGender = (Array.isArray(joined) ? joined[0]?.gender : joined?.gender) as
+    | 'male'
+    | 'female'
+    | undefined
+
+  return { buffer, contentType: 'image/webp', profileGender: profileGender ?? null }
 }
 
-function evaluateModeration(scores: ModerationScores): 'approved' | 'rejected' | 'manual_review' {
-  if (scores.explicit_nudity_score >= 90) return 'rejected'
-  if (scores.suggestive_score >= 85) return 'rejected'
-  if (scores.violence_score >= 90) return 'rejected'
-  if (scores.hate_symbols_score >= 95) return 'rejected'
-  if (scores.face_count !== 1) return 'rejected'
+interface ModerationDecision {
+  status: 'approved' | 'rejected' | 'manual_review'
+  reason?: string
+}
 
-  return 'approved'
+function evaluateModeration(
+  scores: ModerationScores,
+  profileGender: 'male' | 'female' | null,
+): ModerationDecision {
+  if (scores.explicit_nudity_score >= 90) {
+    return { status: 'rejected', reason: 'explicit_nudity' }
+  }
+  if (scores.suggestive_score >= 85) {
+    return { status: 'rejected', reason: 'suggestive_content' }
+  }
+  if (scores.violence_score >= 90) {
+    return { status: 'rejected', reason: 'violence' }
+  }
+  if (scores.hate_symbols_score >= 95) {
+    return { status: 'rejected', reason: 'hate_symbols' }
+  }
+  if (scores.face_count !== 1) {
+    return { status: 'rejected', reason: 'face_count_invalid' }
+  }
+  // Gender mismatch — the depicted person must match the profile's declared
+  // gender. 'uncertain' falls through to manual_review rather than auto-reject.
+  if (profileGender && scores.detected_gender === 'male' && profileGender !== 'male') {
+    return { status: 'rejected', reason: 'gender_mismatch' }
+  }
+  if (profileGender && scores.detected_gender === 'female' && profileGender !== 'female') {
+    return { status: 'rejected', reason: 'gender_mismatch' }
+  }
+  if (profileGender && scores.detected_gender === 'uncertain') {
+    return { status: 'manual_review', reason: 'gender_uncertain' }
+  }
+
+  return { status: 'approved' }
 }
 
 async function updateModerationStatus(
   photoId: string,
-  status: 'approved' | 'rejected' | 'manual_review',
+  decision: ModerationDecision,
   result: ModerationScores,
 ) {
   const supabase = createAdminClient()
@@ -67,9 +113,12 @@ async function updateModerationStatus(
   const { error } = await supabase
     .from('photos')
     .update({
-      moderation_status: status,
+      moderation_status: decision.status,
       moderation_result: result as never,
-      moderation_reason: status === 'rejected' ? result.reason : null,
+      moderation_reason:
+        decision.status === 'approved'
+          ? null
+          : (decision.reason ?? result.reason ?? null),
       updated_at: new Date().toISOString(),
     })
     .eq('id', photoId)
@@ -86,7 +135,8 @@ export const photoModerateFn = inngest.createFunction(
   async ({ event, step }) => {
     const { photoId } = event.data as { photoId: string }
 
-    const { buffer } = await step.run('download-cover', () => downloadCover(photoId))
+    const ctx = await step.run('load-photo-context', () => loadPhotoContext(photoId))
+    const { buffer, profileGender } = ctx
 
     const result = await step.run('moderate', async () => {
       const buf = buffer as unknown as Buffer
@@ -136,7 +186,7 @@ Be strict with nudity and suggestive content — the application requires modest
       return JSON.parse(content) as ModerationScores
     })
 
-    const decision = evaluateModeration(result)
+    const decision = evaluateModeration(result, profileGender)
 
     await step.run('update-status', () => updateModerationStatus(photoId, decision, result))
 

@@ -2,18 +2,14 @@ import { inngest } from '@/lib/inngest/client'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getOpenAI, AI_BIO_PROMPT } from '@/lib/openai/client'
 import { NonRetriableError } from 'inngest'
-
-const PROFILE_FIELDS =
-  'name, gender, birth_date, country, city, nationality, education, ' +
-  'marital_status, children_count, income_level, housing, ' +
-  'willing_to_relocate, polygyny_attitude, hijab_attitude, about_self'
+import { BIO_FIELDS_SQL } from '@/lib/profile/bio-fields'
 
 async function loadProfile(userId: string) {
   const supabase = await createServerSupabase()
 
   const { data, error } = await supabase
     .from('profiles')
-    .select(PROFILE_FIELDS)
+    .select(BIO_FIELDS_SQL)
     .eq('id', userId)
     .single<Record<string, unknown>>()
 

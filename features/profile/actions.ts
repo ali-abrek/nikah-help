@@ -128,10 +128,7 @@ export async function saveOnboardingStep2(formData: FormData) {
   }
 }
 
-export async function markPhotoUploaded(
-  storagePath: string,
-  position: number,
-) {
+export async function markPhotoUploaded(photoId: string) {
   const supabase = await createServerSupabase()
   const { data: claims, error } = await supabase.auth.getClaims()
 
@@ -139,29 +136,29 @@ export async function markPhotoUploaded(
 
   const userId = (claims as Record<string, unknown>).sub as string
 
-  if (position < 1 || position > 6) {
-    return {
-      success: false as const,
-      error: new AppError('VALIDATION_INVALID_INPUT', {
-        message: 'Некорректная позиция',
-      }).toResponse(),
-    }
-  }
-
   try {
-    const { error: upsertError } = await supabase
+    // Atomic transition: only flip a pending row owned by this user. If the
+    // row is missing, owned by someone else, or already past pending, the
+    // update affects 0 rows and we return NOT_FOUND so the client retries
+    // the upload-url step instead of silently moving on.
+    const { data, error: updateErr } = await supabase
       .from('photos')
-      .upsert(
-        {
-          profile_id: userId,
-          storage_path: storagePath,
-          position,
-          status: 'pending',
-        },
-        { onConflict: 'profile_id, position' },
-      )
+      .update({ status: 'uploaded', updated_at: new Date().toISOString() })
+      .eq('id', photoId)
+      .eq('profile_id', userId)
+      .eq('status', 'pending')
+      .select('id')
+      .maybeSingle()
 
-    if (upsertError) throw upsertError
+    if (updateErr) throw updateErr
+    if (!data) {
+      return {
+        success: false as const,
+        error: new AppError('NOT_FOUND', {
+          message: 'Photo not found or already processed',
+        }).toResponse(),
+      }
+    }
     return { success: true as const, message: 'Фото сохранено' }
   } catch (e) {
     return handleActionError(e)

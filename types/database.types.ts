@@ -32,7 +32,8 @@ export interface Database {
           hijab_attitude: string | null
           about_self: string | null
           ai_bio: string | null
-          ai_bio_status: 'ready' | 'regenerating' | 'rate_limited' | null
+          ai_bio_status: 'ready' | 'regenerating' | 'rate_limited' | 'pending' | null
+          ai_bio_input_hash: string | null
           is_published: boolean | null
           private_mode: boolean | null
           onboarding_completed: boolean | null
@@ -66,7 +67,8 @@ export interface Database {
           hijab_attitude?: string | null
           about_self?: string | null
           ai_bio?: string | null
-          ai_bio_status?: 'ready' | 'regenerating' | 'rate_limited' | null
+          ai_bio_status?: 'ready' | 'regenerating' | 'rate_limited' | 'pending' | null
+          ai_bio_input_hash?: string | null
           is_published?: boolean | null
           private_mode?: boolean | null
           onboarding_completed?: boolean | null
@@ -100,7 +102,8 @@ export interface Database {
           hijab_attitude?: string | null
           about_self?: string | null
           ai_bio?: string | null
-          ai_bio_status?: 'ready' | 'regenerating' | 'rate_limited' | null
+          ai_bio_status?: 'ready' | 'regenerating' | 'rate_limited' | 'pending' | null
+          ai_bio_input_hash?: string | null
           is_published?: boolean | null
           private_mode?: boolean | null
           onboarding_completed?: boolean | null
@@ -428,7 +431,7 @@ export interface Database {
     Enums: {
       user_role: 'user' | 'moderator' | 'admin'
       gender_type: 'male' | 'female'
-      ai_bio_status: 'ready' | 'regenerating' | 'rate_limited'
+      ai_bio_status: 'ready' | 'regenerating' | 'rate_limited' | 'pending'
       photo_status: 'pending' | 'uploaded' | 'processing' | 'processed'
       moderation_status: 'queued' | 'approved' | 'rejected' | 'manual_review'
       message_type: 'text' | 'image' | 'voice'

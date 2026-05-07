@@ -91,7 +91,7 @@ describe('togglePublish', () => {
     )
     expect(result.success).toBe(false)
     expect(result.is_published).toBe(false)
-    expect(result.error).toContain('одобренное фото')
+    expect(result.errorCode).toBe('PROFILE_NO_APPROVED_PHOTO')
   })
 
   it('unpublishes a published profile', async () => {
@@ -139,6 +139,6 @@ describe('togglePublish', () => {
       'user-123',
     )
     expect(result.success).toBe(false)
-    expect(result.error).toContain('не найден')
+    expect(result.errorCode).toBe('NOT_FOUND')
   })
 })

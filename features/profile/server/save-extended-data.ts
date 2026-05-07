@@ -1,5 +1,6 @@
 import { createServerSupabase } from '@/lib/supabase/server'
 import type { OnboardingStep2MaleData, OnboardingStep2FemaleData } from '../schemas'
+import { maybeRegenerateBio } from './maybe-regenerate-bio'
 
 type Step2Data = (OnboardingStep2MaleData | OnboardingStep2FemaleData) & {
   gender: 'male' | 'female'
@@ -33,4 +34,6 @@ export async function saveExtendedData(userId: string, data: Step2Data) {
     .eq('id', userId)
 
   if (error) throw error
+
+  await maybeRegenerateBio(supabase, userId)
 }

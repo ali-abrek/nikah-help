@@ -13,6 +13,7 @@ export interface GeneratedFile {
   path: string
   buffer: Buffer
   contentType: string
+  cacheControl: string
 }
 
 export interface PipelineResult {
@@ -50,6 +51,7 @@ export async function processImage(
           path: buildStoragePath(userId, photoId, config, format),
           buffer: outputBuffer,
           contentType: `image/${format}`,
+          cacheControl: config.cacheControl,
         })
       } catch (error) {
         throw new AppError('PHOTO_PROCESSING_FAILED', {
