@@ -11,6 +11,14 @@ validateEnv()
 const PROTECTED_PATHS = ['/dashboard', '/onboarding', '/feed']
 
 export async function proxy(request: NextRequest) {
+  console.error(JSON.stringify({
+    level: 'info',
+    message: 'proxy_entered',
+    method: request.method,
+    pathname: request.nextUrl.pathname,
+    has_next_action: Boolean(request.headers.get('next-action')),
+  }))
+
   const supabaseResponse = NextResponse.next({ request })
   const url = request.nextUrl
 
@@ -73,7 +81,14 @@ export async function proxy(request: NextRequest) {
       forwarded.cookies.set(cookie.name, cookie.value, cookie)
     })
     return forwarded
-  } catch {
+  } catch (err) {
+    console.error(JSON.stringify({
+      level: 'error',
+      message: 'proxy_caught',
+      pathname: url.pathname,
+      error: err instanceof Error ? err.message : String(err),
+      stack: err instanceof Error ? err.stack : undefined,
+    }))
     if (PROTECTED_PATHS.some((p) => url.pathname.startsWith(p))) {
       url.pathname = '/auth'
       url.searchParams.set('error', 'AUTH_UNAUTHORIZED')
