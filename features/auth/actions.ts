@@ -28,8 +28,8 @@ export async function sendMagicLink(
   }))
 
   try {
-    const email = formData.get('email')
-    if (typeof email !== 'string') {
+    const emailRaw = formData.get('email')
+    if (typeof emailRaw !== 'string') {
       return {
         success: false,
         error: {
@@ -41,14 +41,15 @@ export async function sendMagicLink(
         },
       }
     }
-    return await requestMagicLink(email)
-  } catch (err) {
+    return await requestMagicLink(emailRaw as string)
+  } catch (err: unknown) {
+    const e = err as Error
     console.error(JSON.stringify({
       level: 'error',
       message: 'send_magic_link_action_threw',
-      error: err instanceof Error ? err.message : String(err),
-      stack: err instanceof Error ? err.stack : undefined,
-      name: err instanceof Error ? err.name : undefined,
+      error: e?.message ?? String(err),
+      stack: e?.stack,
+      name: e?.name,
     }))
     return {
       success: false,
