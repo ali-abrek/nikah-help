@@ -24,6 +24,15 @@
     --background: #4E598C;
     --foreground: #F5F5F5;
   }
+  /* Tailwind v4's `dark:` variant compiles to `@media (prefers-color-scheme: dark)`,
+     so when there's no explicit `.dark` toggle (current setup), --foreground must
+     also follow the OS preference — otherwise text-foreground stays dark on dark. */
+  @media (prefers-color-scheme: dark) {
+    :root:not(.light) {
+      --background: #4E598C;
+      --foreground: #F5F5F5;
+    }
+  }
 }
 
 body {
