@@ -7,8 +7,32 @@ export async function sendMagicLink(
   _prev: ServerActionResult<{ message: string }> | null,
   formData: FormData,
 ): Promise<ServerActionResult<{ message: string }>> {
-  console.error('[debug] sendMagicLink action v5 entered')
+  console.error(JSON.stringify({
+    level: 'info',
+    message: 'send_magic_link_v6_entered',
+    prev_type: typeof _prev,
+    prev_value: _prev,
+    formData_type: typeof formData,
+    formData_is_null: formData === null,
+    formData_is_undefined: formData === undefined,
+    formData_constructor: formData?.constructor?.name,
+    formData_keys: formData && typeof (formData as FormData).keys === 'function'
+      ? Array.from((formData as FormData).keys())
+      : null,
+  }))
   try {
+    if (!formData || typeof (formData as FormData).get !== 'function') {
+      return {
+        success: false,
+        error: {
+          code: 'VALIDATION_INVALID_INPUT',
+          message: 'Email обязателен',
+          trace_id: crypto.randomUUID(),
+          status: 422,
+          details: { email: 'Email обязателен' },
+        },
+      }
+    }
     const emailRaw = formData.get('email')
     if (typeof emailRaw !== 'string') {
       return {
