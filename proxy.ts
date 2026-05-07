@@ -2,23 +2,12 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { requireEnv, validateEnv } from '@/lib/env'
 
-// Validate at module load. Idempotent (validated flag inside validateEnv).
-// In production, missing vars throw and the module fails to load — preferable
-// to silently serving requests that will crash deeper down. In dev/CI we log
-// only, since validateEnv() itself only throws when NODE_ENV === 'production'.
+// Validated at module load (logs missing vars; does not throw — see env.ts).
 validateEnv()
 
 const PROTECTED_PATHS = ['/dashboard', '/onboarding', '/feed']
 
 export async function proxy(request: NextRequest) {
-  console.error(JSON.stringify({
-    level: 'info',
-    message: 'proxy_entered',
-    method: request.method,
-    pathname: request.nextUrl.pathname,
-    has_next_action: Boolean(request.headers.get('next-action')),
-  }))
-
   const supabaseResponse = NextResponse.next({ request })
   const url = request.nextUrl
 
@@ -81,14 +70,7 @@ export async function proxy(request: NextRequest) {
       forwarded.cookies.set(cookie.name, cookie.value, cookie)
     })
     return forwarded
-  } catch (err) {
-    console.error(JSON.stringify({
-      level: 'error',
-      message: 'proxy_caught',
-      pathname: url.pathname,
-      error: err instanceof Error ? err.message : String(err),
-      stack: err instanceof Error ? err.stack : undefined,
-    }))
+  } catch {
     if (PROTECTED_PATHS.some((p) => url.pathname.startsWith(p))) {
       url.pathname = '/auth'
       url.searchParams.set('error', 'AUTH_UNAUTHORIZED')
