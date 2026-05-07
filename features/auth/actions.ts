@@ -7,6 +7,14 @@ export async function sendMagicLink(
   _prev: ServerActionResult<{ message: string }> | null,
   formData: FormData,
 ): Promise<ServerActionResult<{ message: string }>> {
+  // TEMPORARY: unconditional early-return to confirm whether the action
+  // body executes at all. Will be removed once diagnosed.
+  console.error('[debug] sendMagicLink action body entered v2')
+  return {
+    success: true,
+    data: { message: 'DEBUG v2: action body executed' },
+  }
+
   console.error(JSON.stringify({
     level: 'info',
     message: 'send_magic_link_action_start',
