@@ -3,7 +3,14 @@ import { createHash } from 'node:crypto'
 type HeaderLike = { get(name: string): string | null }
 
 export function extractIp(source: HeaderLike | { headers: HeaderLike }): string {
-  const h: HeaderLike = 'headers' in source ? source.headers : source
+  // ReadonlyHeaders (next/headers) and Headers both have .get directly. The
+  // `{ headers: ... }` shape is for NextRequest. Probe `.get` first so we
+  // don't accidentally pick up an internal `headers` property on wrappers
+  // that also expose a public .get (e.g. ReadonlyHeaders in Next 16).
+  const h: HeaderLike =
+    typeof (source as HeaderLike).get === 'function'
+      ? (source as HeaderLike)
+      : (source as { headers: HeaderLike }).headers
 
   const cf = h.get('cf-connecting-ip')
   if (cf) return cf
