@@ -129,18 +129,25 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
           <Field label="Рост (см)" value={height} onChange={setHeight} type="number" />
           <Field label="Вес (кг)" value={weight} onChange={setWeight} type="number" />
         </div>
-        <div className="mt-4">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={allowGeolocation}
-              onChange={(e) => setAllowGeolocation(e.target.checked)}
-              className="rounded border-zinc-300 accent-primary"
+        <div className="mt-4 flex items-center justify-between">
+          <span className="text-sm text-zinc-600 dark:text-zinc-400">
+            Разрешить геолокацию для поиска поблизости
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={allowGeolocation}
+            onClick={() => setAllowGeolocation((v) => !v)}
+            className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+              allowGeolocation ? 'bg-emerald-600' : 'bg-zinc-300 dark:bg-zinc-600'
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                allowGeolocation ? 'translate-x-6' : 'translate-x-1'
+              }`}
             />
-            <span className="text-sm text-zinc-600 dark:text-zinc-400">
-              Разрешить поиск по геолокации
-            </span>
-          </label>
+          </button>
         </div>
       </section>
 

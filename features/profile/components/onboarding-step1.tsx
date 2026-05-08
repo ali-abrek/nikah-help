@@ -3,6 +3,8 @@
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { onboardingStep1Schema, type OnboardingStep1Data } from '../schemas'
+import { CountrySelect } from '@/features/geo/components/country-select'
+import { CityAutocomplete } from '@/features/geo/components/city-autocomplete'
 
 const GENDERS = [
   { value: 'male', label: 'Мужчина', icon: '♂' },
@@ -22,14 +24,17 @@ export function OnboardingStep1({
     register,
     handleSubmit,
     control,
+    watch,
     formState: { errors },
   } = useForm<OnboardingStep1Data>({
     resolver: zodResolver(onboardingStep1Schema),
     defaultValues: defaultValues ?? {
       gender: undefined,
-      allow_geolocation: false,
+      allow_geolocation: true,
     },
   })
+
+  const selectedCountry = watch('country')
 
   const onFormSubmit = (data: OnboardingStep1Data) => {
     const fd = new FormData()
@@ -39,7 +44,8 @@ export function OnboardingStep1({
     onSubmit(fd)
   }
 
-  const inputClass = 'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-foreground placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-zinc-700 dark:bg-zinc-900'
+  const inputClass =
+    'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-foreground placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-zinc-700 dark:bg-zinc-900'
 
   return (
     <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-5">
@@ -61,9 +67,15 @@ export function OnboardingStep1({
           type="date"
           {...register('birth_date')}
           className={inputClass}
-          max={new Date(new Date().setFullYear(new Date().getFullYear() - 18)).toISOString().split('T')[0]}
+          max={
+            new Date(new Date().setFullYear(new Date().getFullYear() - 18))
+              .toISOString()
+              .split('T')[0]
+          }
         />
-        {errors.birth_date && <p className="mt-1 text-xs text-red-600">{errors.birth_date.message}</p>}
+        {errors.birth_date && (
+          <p className="mt-1 text-xs text-red-600">{errors.birth_date.message}</p>
+        )}
       </div>
 
       {/* Gender */}
@@ -97,19 +109,31 @@ export function OnboardingStep1({
 
       {/* Country */}
       <div>
-        <label htmlFor="country" className="mb-1 block text-sm font-medium text-foreground">
-          Страна
-        </label>
-        <input {...register('country')} className={inputClass} placeholder="Например, Россия" />
+        <label className="mb-1 block text-sm font-medium text-foreground">Страна</label>
+        <Controller
+          control={control}
+          name="country"
+          render={({ field }) => (
+            <CountrySelect value={field.value ?? ''} onChange={field.onChange} />
+          )}
+        />
         {errors.country && <p className="mt-1 text-xs text-red-600">{errors.country.message}</p>}
       </div>
 
       {/* City */}
       <div>
-        <label htmlFor="city" className="mb-1 block text-sm font-medium text-foreground">
-          Город
-        </label>
-        <input {...register('city')} className={inputClass} placeholder="Например, Москва" />
+        <label className="mb-1 block text-sm font-medium text-foreground">Город</label>
+        <Controller
+          control={control}
+          name="city"
+          render={({ field }) => (
+            <CityAutocomplete
+              value={field.value ?? ''}
+              onChange={field.onChange}
+              countryCode={selectedCountry ?? ''}
+            />
+          )}
+        />
         {errors.city && <p className="mt-1 text-xs text-red-600">{errors.city.message}</p>}
       </div>
 
@@ -118,8 +142,14 @@ export function OnboardingStep1({
         <label htmlFor="nationality" className="mb-1 block text-sm font-medium text-foreground">
           Национальность
         </label>
-        <input {...register('nationality')} className={inputClass} placeholder="Например, татарин" />
-        {errors.nationality && <p className="mt-1 text-xs text-red-600">{errors.nationality.message}</p>}
+        <input
+          {...register('nationality')}
+          className={inputClass}
+          placeholder="Например, татарин"
+        />
+        {errors.nationality && (
+          <p className="mt-1 text-xs text-red-600">{errors.nationality.message}</p>
+        )}
       </div>
 
       {/* Height & Weight */}
@@ -134,7 +164,9 @@ export function OnboardingStep1({
             className={inputClass}
             placeholder="175"
           />
-          {errors.height && <p className="mt-1 text-xs text-red-600">{errors.height.message}</p>}
+          {errors.height && (
+            <p className="mt-1 text-xs text-red-600">{errors.height.message}</p>
+          )}
         </div>
         <div>
           <label htmlFor="weight" className="mb-1 block text-sm font-medium text-foreground">
@@ -146,21 +178,42 @@ export function OnboardingStep1({
             className={inputClass}
             placeholder="70"
           />
-          {errors.weight && <p className="mt-1 text-xs text-red-600">{errors.weight.message}</p>}
+          {errors.weight && (
+            <p className="mt-1 text-xs text-red-600">{errors.weight.message}</p>
+          )}
         </div>
       </div>
 
-      {/* Geolocation */}
-      <div className="flex items-start gap-3">
-        <input
-          type="checkbox"
-          {...register('allow_geolocation')}
-          id="allow_geolocation"
-          className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
-        />
-        <label htmlFor="allow_geolocation" className="text-sm text-zinc-600 dark:text-zinc-400">
+      {/* Geolocation toggle */}
+      <div className="flex items-center justify-between">
+        <label
+          htmlFor="allow_geolocation"
+          className="text-sm text-zinc-600 dark:text-zinc-400"
+        >
           Разрешить геолокацию для поиска поблизости
         </label>
+        <Controller
+          control={control}
+          name="allow_geolocation"
+          render={({ field }) => (
+            <button
+              type="button"
+              id="allow_geolocation"
+              role="switch"
+              aria-checked={field.value === true}
+              onClick={() => field.onChange(!field.value)}
+              className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                field.value === true ? 'bg-emerald-600' : 'bg-zinc-300 dark:bg-zinc-600'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 rounded-full bg-white transition-transform ${
+                  field.value === true ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          )}
+        />
       </div>
 
       <button
