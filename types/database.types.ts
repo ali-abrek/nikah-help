@@ -321,6 +321,73 @@ export interface Database {
           { foreignKeyName: 'notifications_user_id_fkey'; columns: ['user_id']; referencedRelation: 'profiles'; referencedColumns: ['id'] }
         ]
       }
+      notification_preferences: {
+        Row: {
+          id: string
+          user_id: string
+          type: string
+          enabled: boolean | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          type: string
+          enabled?: boolean | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          type?: string
+          enabled?: boolean | null
+        }
+        Relationships: [
+          { foreignKeyName: 'notification_preferences_user_id_fkey'; columns: ['user_id']; referencedRelation: 'profiles'; referencedColumns: ['id'] }
+        ]
+      }
+      push_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          kind: 'web' | 'apns' | 'fcm' | null
+          endpoint: string | null
+          auth: string | null
+          p256dh: string | null
+          device_token: string | null
+          device_id: string | null
+          locale: string | null
+          last_seen_at: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          kind?: 'web' | 'apns' | 'fcm' | null
+          endpoint?: string | null
+          auth?: string | null
+          p256dh?: string | null
+          device_token?: string | null
+          device_id?: string | null
+          locale?: string | null
+          last_seen_at?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          kind?: 'web' | 'apns' | 'fcm' | null
+          endpoint?: string | null
+          auth?: string | null
+          p256dh?: string | null
+          device_token?: string | null
+          device_id?: string | null
+          locale?: string | null
+          last_seen_at?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: 'push_subscriptions_user_id_fkey'; columns: ['user_id']; referencedRelation: 'profiles'; referencedColumns: ['id'] }
+        ]
+      }
       subscriptions: {
         Row: {
           id: string

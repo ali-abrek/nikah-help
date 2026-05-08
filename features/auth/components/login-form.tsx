@@ -6,7 +6,13 @@ import type { ServerActionResult } from '@/lib/errors/action'
 
 const initialState: ServerActionResult<{ message: string }> | null = null
 
-export function LoginForm() {
+const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
+  auth_callback_failed:
+    'Не удалось подтвердить ссылку. Возможно, срок её действия истёк. Запросите новую ссылку ниже.',
+  AUTH_UNAUTHORIZED: 'Войдите, чтобы продолжить.',
+}
+
+export function LoginForm({ callbackError }: { callbackError?: string }) {
   const [state, formAction, pending] = useActionState(sendMagicLink, initialState)
 
   if (state?.success) {
@@ -24,6 +30,13 @@ export function LoginForm() {
 
   return (
     <form action={formAction} className="flex flex-col gap-4">
+      {callbackError && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          {CALLBACK_ERROR_MESSAGES[callbackError] ??
+            'Произошла ошибка аутентификации. Попробуйте снова.'}
+        </div>
+      )}
+
       <div>
         <label htmlFor="email" className="mb-1 block text-sm font-medium text-foreground">
           Email

@@ -67,5 +67,51 @@
     "IDEMPOTENCY_KEY_MISSING": "Требуется заголовок Idempotency-Key",
     "IDEMPOTENCY_KEY_INVALID": "Idempotency-Key должен быть в формате UUID v4",
     "IDEMPOTENCY_CONFLICT": "Запрос уже выполняется. Попробуйте снова с новым ключом."
+  },
+  "notifications": {
+    "like_received": {
+      "title": "Новый лайк",
+      "body": "{actorName} поставил(а) вам лайк"
+    },
+    "like_revoked": {
+      "title": "Лайк отозван",
+      "body": "{actorName} отозвал(а) лайк"
+    },
+    "match_created": {
+      "title": "Взаимная симпатия!",
+      "body": "У вас взаимная симпатия с {actorName}"
+    },
+    "message_new": {
+      "title": "Новое сообщение",
+      "body": "{actorName} отправил(а) вам сообщение"
+    },
+    "photo_approved": {
+      "title": "Фото одобрено",
+      "body": "Ваше фото прошло модерацию"
+    },
+    "photo_rejected": {
+      "title": "Фото отклонено",
+      "body": "Ваше фото отклонено: {reason}"
+    },
+    "photo_removed_by_moderator": {
+      "title": "Фото удалено",
+      "body": "Модератор удалил ваше фото: {reason}"
+    },
+    "account_blocked": {
+      "title": "Аккаунт заблокирован",
+      "body": "Ваш аккаунт заблокирован: {reason}"
+    },
+    "account_reinstated": {
+      "title": "Аккаунт восстановлен",
+      "body": "Ваш аккаунт восстановлен. Добро пожаловать!"
+    },
+    "account_suspension_expired": {
+      "title": "Блокировка снята",
+      "body": "Срок блокировки вашего аккаунта истёк"
+    },
+    "inactivity_warning": {
+      "title": "Мы скучаем!",
+      "body": "Заходите — вас ждут новые знакомства!"
+    }
   }
 }

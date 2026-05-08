@@ -17,6 +17,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <Link href="/likes" className="text-zinc-600 hover:text-foreground">
                 Лайки
               </Link>
+              <Link href="/chats" className="text-zinc-600 hover:text-foreground">
+                Чаты
+              </Link>
+              <Link href="/notifications" className="text-zinc-600 hover:text-foreground">
+                Уведомления
+              </Link>
               <Link href="/dashboard" className="text-zinc-600 hover:text-foreground">
                 Профиль
               </Link>

@@ -1,9 +1,11 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { requireEnv, validateEnv } from '@/lib/env'
+import { validateSiteUrl } from '@/lib/utils/site-url'
 
 // Validated at module load (logs missing vars; does not throw — see env.ts).
 validateEnv()
+validateSiteUrl()
 
 const PROTECTED_PATHS = ['/dashboard', '/onboarding', '/feed']
 
@@ -82,6 +84,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif)$).*)',
+    '/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif)$).*)',
   ],
 }

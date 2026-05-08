@@ -5,6 +5,8 @@ import { photoModerateFn } from '@/lib/inngest/functions/photo-moderate'
 import { photoDeleteFn } from '@/lib/inngest/functions/photo-delete'
 import { photoReplaceCleanupFn } from '@/lib/inngest/functions/photo-replace-cleanup'
 import { photoAbandonCleanupFn } from '@/lib/inngest/functions/photo-abandon-cleanup'
+import { chatDeleteFn } from '@/lib/inngest/functions/chat-delete'
+import { notificationDispatchFn } from '@/lib/inngest/functions/notification-dispatch'
 
 const handler = serve({
   client: inngest,
@@ -14,6 +16,8 @@ const handler = serve({
     photoDeleteFn,
     photoReplaceCleanupFn,
     photoAbandonCleanupFn,
+    chatDeleteFn,
+    notificationDispatchFn,
   ],
 })
 

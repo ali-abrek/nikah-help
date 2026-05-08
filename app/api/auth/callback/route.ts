@@ -1,7 +1,5 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
-import { requireEnv } from '@/lib/env'
+import { createRouteSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hashBlockedEmail } from '@/lib/crypto/email-hash'
 
@@ -17,30 +15,20 @@ export async function GET(request: Request) {
   const next = safeRedirect(searchParams.get('next') ?? '', '/feed')
 
   if (code) {
-    const cookieStore = await cookies()
-
-    // Collect cookies that Supabase wants to set so we can apply them
-    // directly to the redirect response. Relying on cookieStore.set() alone
-    // is not enough: NextResponse.redirect() creates a new Response object
-    // and those cookies would be silently lost.
-    const pendingCookies: Array<{ name: string; value: string; options: Record<string, unknown> }> = []
-
-    const supabase = createServerClient(
-      requireEnv('SUPABASE_URL'),
-      requireEnv('SUPABASE_PUBLISHABLE_KEY'),
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            pendingCookies.push(...cookiesToSet)
-          },
-        },
-      },
-    )
+    const { supabase, applyCookies } = await createRouteSupabase()
 
     const { error } = await supabase.auth.exchangeCodeForSession(code)
+
+    if (error) {
+      console.error(JSON.stringify({
+        level: 'error',
+        message: 'auth_callback_exchange_failed',
+        errorCode: error.code,
+        errorMessage: error.message,
+        errorName: error.name,
+        errorStatus: (error as Record<string, unknown>).status,
+      }))
+    }
 
     if (!error) {
       const { data: userData } = await supabase.auth.getUser()
@@ -80,16 +68,12 @@ export async function GET(request: Request) {
           : new URL('/onboarding', request.url)
 
         const response = NextResponse.redirect(redirectUrl)
-        pendingCookies.forEach(({ name, value, options }) =>
-          response.cookies.set(name, value, options),
-        )
+        applyCookies(response)
         return response
       }
 
       const response = NextResponse.redirect(new URL(next, request.url))
-      pendingCookies.forEach(({ name, value, options }) =>
-        response.cookies.set(name, value, options),
-      )
+      applyCookies(response)
       return response
     }
   }

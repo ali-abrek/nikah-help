@@ -67,5 +67,51 @@
     "IDEMPOTENCY_KEY_MISSING": "Idempotency-Key header is required",
     "IDEMPOTENCY_KEY_INVALID": "Idempotency-Key must be a valid UUID v4",
     "IDEMPOTENCY_CONFLICT": "Request is already in progress. Try again with a new key."
+  },
+  "notifications": {
+    "like_received": {
+      "title": "New Like",
+      "body": "{actorName} liked your profile"
+    },
+    "like_revoked": {
+      "title": "Like Revoked",
+      "body": "{actorName} revoked their like"
+    },
+    "match_created": {
+      "title": "It's a Match!",
+      "body": "You and {actorName} liked each other"
+    },
+    "message_new": {
+      "title": "New Message",
+      "body": "{actorName} sent you a message"
+    },
+    "photo_approved": {
+      "title": "Photo Approved",
+      "body": "Your photo has been approved"
+    },
+    "photo_rejected": {
+      "title": "Photo Rejected",
+      "body": "Your photo was rejected: {reason}"
+    },
+    "photo_removed_by_moderator": {
+      "title": "Photo Removed",
+      "body": "A moderator removed your photo: {reason}"
+    },
+    "account_blocked": {
+      "title": "Account Blocked",
+      "body": "Your account has been blocked: {reason}"
+    },
+    "account_reinstated": {
+      "title": "Account Reinstated",
+      "body": "Your account has been reinstated. Welcome back!"
+    },
+    "account_suspension_expired": {
+      "title": "Suspension Expired",
+      "body": "Your account suspension period has ended"
+    },
+    "inactivity_warning": {
+      "title": "We Miss You!",
+      "body": "Come back — new connections are waiting!"
+    }
   }
 }
