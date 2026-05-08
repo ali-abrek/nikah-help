@@ -18,6 +18,13 @@ export async function GET(request: Request) {
 
   if (code) {
     const cookieStore = await cookies()
+
+    // Collect cookies that Supabase wants to set so we can apply them
+    // directly to the redirect response. Relying on cookieStore.set() alone
+    // is not enough: NextResponse.redirect() creates a new Response object
+    // and those cookies would be silently lost.
+    const pendingCookies: Array<{ name: string; value: string; options: Record<string, unknown> }> = []
+
     const supabase = createServerClient(
       requireEnv('SUPABASE_URL'),
       requireEnv('SUPABASE_PUBLISHABLE_KEY'),
@@ -27,9 +34,7 @@ export async function GET(request: Request) {
             return cookieStore.getAll()
           },
           setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, options),
-            )
+            pendingCookies.push(...cookiesToSet)
           },
         },
       },
@@ -70,12 +75,22 @@ export async function GET(request: Request) {
           .eq('id', userId)
           .single()
 
-        if (!profile?.onboarding_completed) {
-          return NextResponse.redirect(new URL('/onboarding', request.url))
-        }
+        const redirectUrl = profile?.onboarding_completed
+          ? new URL(next, request.url)
+          : new URL('/onboarding', request.url)
+
+        const response = NextResponse.redirect(redirectUrl)
+        pendingCookies.forEach(({ name, value, options }) =>
+          response.cookies.set(name, value, options),
+        )
+        return response
       }
 
-      return NextResponse.redirect(new URL(next, request.url))
+      const response = NextResponse.redirect(new URL(next, request.url))
+      pendingCookies.forEach(({ name, value, options }) =>
+        response.cookies.set(name, value, options),
+      )
+      return response
     }
   }
 
