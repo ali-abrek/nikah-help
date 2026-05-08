@@ -26,7 +26,7 @@ export async function GET(request: Request) {
         errorCode: error.code,
         errorMessage: error.message,
         errorName: error.name,
-        errorStatus: (error as Record<string, unknown>).status,
+        errorStatus: (error as unknown as Record<string, unknown>).status,
       }))
     }
 
