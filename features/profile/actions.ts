@@ -49,6 +49,23 @@ export async function saveOnboardingStep1(formData: FormData) {
     return { success: false as const, error: err.toResponse() }
   }
 
+  // Verify the city exists in the selected country
+  const { data: cityRow } = await supabase
+    .from('geonames_cities')
+    .select('id')
+    .eq('country_code', parsed.data.country.toUpperCase())
+    .eq('name', parsed.data.city)
+    .maybeSingle()
+
+  if (!cityRow) {
+    return {
+      success: false as const,
+      error: new AppError('VALIDATION_INVALID_INPUT', {
+        message: 'Выбранный город не существует в указанной стране',
+      }).toResponse(),
+    }
+  }
+
   try {
     await saveBasicData(userId, parsed.data)
     return { success: true as const, message: 'Сохранено' }

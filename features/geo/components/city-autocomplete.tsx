@@ -27,7 +27,7 @@ export function CityAutocomplete({ value, onChange, countryCode }: CityAutocompl
 
   const disabled = !countryCode
 
-  // Sync external value changes
+  // Sync input text when external value changes (e.g. form reset)
   useEffect(() => {
     setQuery(value ?? '')
   }, [value])
@@ -72,21 +72,36 @@ export function CityAutocomplete({ value, onChange, countryCode }: CityAutocompl
     }
   }, [open])
 
+  const selectCity = useCallback(
+    (city: City) => {
+      onChange(city.name)
+      setQuery(city.name)
+      setOpen(false)
+    },
+    [onChange],
+  )
+
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Escape') {
         setOpen(false)
       }
-      if (e.key === 'Enter' && open) {
+      if (e.key === 'Enter' && open && cities.length > 0) {
         e.preventDefault()
         if (cities.length === 1 && cities[0]) {
-          onChange(cities[0].name)
-          setOpen(false)
+          selectCity(cities[0])
         }
       }
     },
-    [open, cities, onChange],
+    [open, cities, selectCity],
   )
+
+  const handleBlur = useCallback(() => {
+    // If the user typed something that doesn't match the committed value, revert
+    if (query !== value) {
+      setQuery(value ?? '')
+    }
+  }, [query, value])
 
   return (
     <div ref={containerRef} className="relative" onKeyDown={handleKeyDown}>
@@ -96,11 +111,12 @@ export function CityAutocomplete({ value, onChange, countryCode }: CityAutocompl
         disabled={disabled}
         onChange={(e) => {
           setQuery(e.target.value)
-          onChange(e.target.value)
+          setOpen(false) // close until new results arrive
         }}
         onFocus={() => {
           if (!disabled && cities.length > 0) setOpen(true)
         }}
+        onBlur={handleBlur}
         placeholder={disabled ? 'Сначала выберите страну' : 'Начните вводить город...'}
         className={`w-full rounded-lg border px-3 py-2 text-sm ${
           disabled
@@ -119,10 +135,10 @@ export function CityAutocomplete({ value, onChange, countryCode }: CityAutocompl
                 <button
                   key={c.id}
                   type="button"
-                  onClick={() => {
-                    onChange(c.name)
-                    setQuery(c.name)
-                    setOpen(false)
+                  onMouseDown={(e) => {
+                    // Prevent onBlur from firing before click
+                    e.preventDefault()
+                    selectCity(c)
                   }}
                   className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-emerald-50 dark:hover:bg-emerald-950 ${
                     c.name === value

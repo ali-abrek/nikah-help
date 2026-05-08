@@ -13,6 +13,16 @@ export default async function OnboardingPage() {
   if (!data?.claims) {
     redirect('/auth')
   }
+
+  const userId = (data.claims as Record<string, unknown>).sub as string
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('locale')
+    .eq('id', userId)
+    .single()
+
+  const locale = (profile?.locale as string) ?? 'ru'
+
   return (
     <div className="mx-auto max-w-2xl px-4 py-12">
       <div className="mb-8 text-center">
@@ -21,7 +31,7 @@ export default async function OnboardingPage() {
           Шаг за шагом — это займёт всего пару минут
         </p>
       </div>
-      <OnboardingWizard />
+      <OnboardingWizard locale={locale} />
     </div>
   )
 }

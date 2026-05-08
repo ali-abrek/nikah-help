@@ -4,8 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 
 interface Country {
   iso2: string
-  name_en: string
-  name_ru: string | null
+  name: string
   phone_prefix: string | null
 }
 
@@ -13,6 +12,7 @@ interface CountrySelectProps {
   value: string
   onChange: (iso2: string) => void
   disabled?: boolean
+  locale?: string
 }
 
 function iso2ToFlag(iso2: string): string {
@@ -21,7 +21,7 @@ function iso2ToFlag(iso2: string): string {
   )
 }
 
-export function CountrySelect({ value, onChange, disabled }: CountrySelectProps) {
+export function CountrySelect({ value, onChange, disabled, locale = 'ru' }: CountrySelectProps) {
   const [countries, setCountries] = useState<Country[]>([])
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
@@ -31,12 +31,12 @@ export function CountrySelect({ value, onChange, disabled }: CountrySelectProps)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    fetch('/api/geo/countries')
+    fetch(`/api/geo/countries?locale=${locale}`)
       .then((r) => r.json())
       .then((data) => setCountries(data.countries ?? []))
       .catch(() => setCountries([]))
       .finally(() => setLoading(false))
-  }, [])
+  }, [locale])
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -66,7 +66,7 @@ export function CountrySelect({ value, onChange, disabled }: CountrySelectProps)
       if (e.key === 'Enter' && open) {
         e.preventDefault()
         const filtered = countries.filter((c) =>
-          (c.name_ru ?? c.name_en).toLowerCase().includes(search.toLowerCase()),
+          c.name.toLowerCase().includes(search.toLowerCase()),
         )
         if (filtered.length === 1 && filtered[0]) {
           onChange(filtered[0].iso2)
@@ -78,11 +78,11 @@ export function CountrySelect({ value, onChange, disabled }: CountrySelectProps)
   )
 
   const filtered = countries.filter((c) =>
-    (c.name_ru ?? c.name_en).toLowerCase().includes(search.toLowerCase()),
+    c.name.toLowerCase().includes(search.toLowerCase()),
   )
 
   const selected = countries.find((c) => c.iso2 === value)
-  const displayLabel = selected ? `${iso2ToFlag(selected.iso2)} ${selected.name_ru ?? selected.name_en}` : ''
+  const displayLabel = selected ? `${iso2ToFlag(selected.iso2)} ${selected.name}` : ''
 
   return (
     <div ref={containerRef} className="relative" onKeyDown={handleKeyDown}>
@@ -138,7 +138,7 @@ export function CountrySelect({ value, onChange, disabled }: CountrySelectProps)
                   }`}
                 >
                   <span className="text-base">{iso2ToFlag(c.iso2)}</span>
-                  <span>{c.name_ru ?? c.name_en}</span>
+                  <span>{c.name}</span>
                 </button>
               ))
             )}

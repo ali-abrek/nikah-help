@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { onboardingStep1Schema, type OnboardingStep1Data } from '../schemas'
@@ -15,26 +16,35 @@ export function OnboardingStep1({
   onSubmit,
   defaultValues,
   isPending,
+  locale = 'ru',
 }: {
   onSubmit: (data: FormData) => void
   defaultValues?: Partial<OnboardingStep1Data>
   isPending?: boolean
+  locale?: string
 }) {
   const {
     register,
     handleSubmit,
     control,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<OnboardingStep1Data>({
     resolver: zodResolver(onboardingStep1Schema),
     defaultValues: defaultValues ?? {
       gender: undefined,
+      country: 'RU',
       allow_geolocation: true,
     },
   })
 
   const selectedCountry = watch('country')
+
+  // Clear city when country changes
+  useEffect(() => {
+    setValue('city', '')
+  }, [selectedCountry, setValue])
 
   const onFormSubmit = (data: OnboardingStep1Data) => {
     const fd = new FormData()
@@ -114,7 +124,7 @@ export function OnboardingStep1({
           control={control}
           name="country"
           render={({ field }) => (
-            <CountrySelect value={field.value ?? ''} onChange={field.onChange} />
+            <CountrySelect value={field.value ?? ''} onChange={field.onChange} locale={locale} />
           )}
         />
         {errors.country && <p className="mt-1 text-xs text-red-600">{errors.country.message}</p>}

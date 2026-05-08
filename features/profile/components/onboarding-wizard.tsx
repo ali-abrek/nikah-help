@@ -16,7 +16,7 @@ const STEPS = [
 
 type ActionResult = Awaited<ReturnType<typeof saveOnboardingStep1>>
 
-export function OnboardingWizard() {
+export function OnboardingWizard({ locale = 'ru' }: { locale?: string }) {
   const [step, setStep] = useState(1)
   const [gender, setGender] = useState<'male' | 'female' | null>(null)
   const [result, setResult] = useState<ActionResult | null>(null)
@@ -79,6 +79,7 @@ export function OnboardingWizard() {
         <OnboardingStep1
           onSubmit={handleStep1Submit}
           isPending={isPending}
+          locale={locale}
         />
       )}
 
