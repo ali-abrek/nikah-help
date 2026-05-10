@@ -1,10 +1,13 @@
 {
   "functions": {
-    "app/api/photos/process/route.ts": { "maxDuration": 30 }
+    "app/api/photos/process/route.ts": { "maxDuration": 30 },
+    "app/api/cron/expire-suspensions/route.ts": { "maxDuration": 60 },
+    "app/api/cron/subscription-renewal/route.ts": { "maxDuration": 60 },
+    "app/api/cron/inactive-account-warn/route.ts": { "maxDuration": 60 }
   },
   "crons": [
     { "path": "/api/cron/subscription-renewal", "schedule": "0 9 * * *" },
-    { "path": "/api/cron/expire-suspensions", "schedule": "0 8 * * *" },
+    { "path": "/api/cron/expire-suspensions", "schedule": "0 2 * * *" },
     { "path": "/api/cron/inactive-account-warn", "schedule": "0 10 * * *" }
   ]
 }
