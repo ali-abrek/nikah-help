@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useQuery, keepPreviousData } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 
 interface City {
   id: number
@@ -50,7 +50,21 @@ export function CityAutocomplete({ value, onChange, countryCode }: CityAutocompl
   /* eslint-enable react-hooks/refs */
 
   const containerRef = useRef<HTMLDivElement>(null)
+  // Track the most recent query for which we've already opened the menu so
+  // we don't loop on every render. Declared early so the country-change
+  // reset below can access it.
+  const lastQueryWithResultsRef = useRef('')
   const disabled = !countryCode
+
+  // Reset auto-open tracking when country changes so the dropdown re-opens
+  // for the same query string under a different country.
+  const prevCountryRef = useRef(countryCode)
+  /* eslint-disable react-hooks/refs */
+  if (countryCode !== prevCountryRef.current) {
+    prevCountryRef.current = countryCode
+    lastQueryWithResultsRef.current = ''
+  }
+  /* eslint-enable react-hooks/refs */
 
   // Debounce the query so we don't fire a request on every keystroke.
   const [debouncedQuery, setDebouncedQuery] = useState(query)
@@ -63,7 +77,8 @@ export function CityAutocomplete({ value, onChange, countryCode }: CityAutocompl
     queryKey: ['geo', 'cities', countryCode, debouncedQuery],
     queryFn: () => fetchCities(debouncedQuery, countryCode),
     enabled: !disabled && debouncedQuery.length > 0,
-    placeholderData: keepPreviousData,
+    placeholderData: (prev) =>
+      prev && prev.length > 0 && prev[0]?.country === countryCode ? prev : undefined,
   })
 
   // Derive `open` from the actual query state during render rather than
@@ -71,9 +86,6 @@ export function CityAutocomplete({ value, onChange, countryCode }: CityAutocompl
   // exists so the user can explicitly close the menu (Escape, outside click);
   // we only force it open when results arrive for the current query.
   const shouldShowMenu = open && !disabled && cities.length > 0 && debouncedQuery.length > 0
-  // Track the most recent query for which we've already opened the menu so
-  // we don't loop on every render. Same prop-derivation pattern as above.
-  const lastQueryWithResultsRef = useRef('')
   /* eslint-disable react-hooks/refs */
   if (
     !disabled &&
@@ -121,7 +133,6 @@ export function CityAutocomplete({ value, onChange, countryCode }: CityAutocompl
     },
     [open, cities, selectCity],
   )
-
 
   return (
     <div ref={containerRef} className="relative" onKeyDown={handleKeyDown}>

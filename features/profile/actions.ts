@@ -50,12 +50,13 @@ export async function saveOnboardingStep1(formData: FormData) {
     return { success: false as const, error: err.toResponse() }
   }
 
-  // Verify the city exists in the selected country
+  // Verify the city exists in the selected country (case-insensitive,
+  // matching the ilike behaviour of the city autocomplete API).
   const { data: cityRow } = await supabase
     .from('geonames_cities')
     .select('id')
     .eq('country_code', parsed.data.country.toUpperCase())
-    .eq('name', parsed.data.city)
+    .ilike('name', parsed.data.city)
     .maybeSingle()
 
   if (!cityRow) {
