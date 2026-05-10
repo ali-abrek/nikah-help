@@ -8,7 +8,7 @@ describe('error code registry', () => {
 
   it('should have valid HTTP status for every code', () => {
     for (const [code, status] of Object.entries(STATUS_MAP)) {
-      expect(validStatuses).toContain(status)
+      expect(validStatuses, `${code} → ${status}`).toContain(status)
     }
   })
 

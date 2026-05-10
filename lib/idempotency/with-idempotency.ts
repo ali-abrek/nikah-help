@@ -64,11 +64,13 @@ export function withIdempotency<T>(
         return handleRouteError(error)
       }
       // Redis failure — fail open
-      console.warn(JSON.stringify({
-        level: 'warn',
-        message: 'Idempotency store unavailable, failing open',
-        error: (error as Error).message,
-      }))
+      console.warn(
+        JSON.stringify({
+          level: 'warn',
+          message: 'Idempotency store unavailable, failing open',
+          error: (error as Error).message,
+        }),
+      )
       return handler(request, context)
     }
   }

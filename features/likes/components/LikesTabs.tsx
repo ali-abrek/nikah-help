@@ -71,9 +71,7 @@ export function LikesTabs({ incoming, outgoing, matches }: LikesTabsProps) {
         {data.length === 0 ? (
           <EmptyState tab={activeTab} />
         ) : (
-          data.map((profile) => (
-            <ProfileRow key={profile.id} profile={profile} tab={activeTab} />
-          ))
+          data.map((profile) => <ProfileRow key={profile.id} profile={profile} tab={activeTab} />)
         )}
       </div>
     </div>
@@ -106,6 +104,7 @@ function ProfileRow({ profile, tab }: { profile: LikeProfileData; tab: Tab }) {
       {/* Avatar */}
       <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
         {profile.photo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element -- streamed via auth-aware route
           <img
             src={`/api/photos/stream/${profile.id}/${profile.photo_url}`}
             alt={profile.name ?? ''}
@@ -124,19 +123,13 @@ function ProfileRow({ profile, tab }: { profile: LikeProfileData; tab: Tab }) {
           <span className="truncate text-sm font-medium text-foreground">
             {profile.name ?? 'Без имени'}
           </span>
-          {profile.age != null && (
-            <span className="text-xs text-zinc-500">{profile.age} л.</span>
-          )}
+          {profile.age != null && <span className="text-xs text-zinc-500">{profile.age} л.</span>}
         </div>
-        {profile.city && (
-          <p className="truncate text-xs text-zinc-500">{profile.city}</p>
-        )}
+        {profile.city && <p className="truncate text-xs text-zinc-500">{profile.city}</p>}
       </div>
 
       {/* Time */}
-      {timestamp && (
-        <span className="shrink-0 text-xs text-zinc-400">{timestamp}</span>
-      )}
+      {timestamp && <span className="shrink-0 text-xs text-zinc-400">{timestamp}</span>}
 
       {/* Chat button for matches */}
       {tab === 'matches' && profile.match_id && (

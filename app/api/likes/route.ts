@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { createServerSupabase } from '@/lib/supabase/server'
 import { sendLike } from '@/features/likes/server/send-like'
 import { revokeLike } from '@/features/likes/server/revoke-like'
 import { sendLikeSchema } from '@/features/likes/schemas'
 import { AppError } from '@/lib/errors/app-error'
 import { handleRouteError } from '@/lib/errors/handler'
+import { withAuth } from '@/lib/api/with-auth'
 import { withIdempotency } from '@/lib/idempotency/with-idempotency'
 import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
 import { ACTION_MODERATE } from '@/lib/ratelimit/presets'
@@ -17,14 +17,7 @@ const likeBodySchema = sendLikeSchema.extend({
 
 async function handler(request: NextRequest) {
   try {
-    const supabase = await createServerSupabase()
-
-    const { data: claims } = await supabase.auth.getClaims()
-    if (!claims) {
-      throw new AppError('AUTH_UNAUTHORIZED')
-    }
-
-    const userId = (claims as Record<string, unknown>).sub as string
+    const userId = request.headers.get('x-user-id')!
 
     const body = await request.json().catch(() => ({}))
     const parsed = likeBodySchema.safeParse(body)
@@ -58,4 +51,4 @@ async function handler(request: NextRequest) {
   }
 }
 
-export const POST = withRateLimit(withIdempotency(handler, USER_ACTION), ACTION_MODERATE)
+export const POST = withAuth(withRateLimit(withIdempotency(handler, USER_ACTION), ACTION_MODERATE))

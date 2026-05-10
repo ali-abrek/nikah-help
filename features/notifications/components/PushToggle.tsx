@@ -1,47 +1,49 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { registerPushSubscription, unsubscribePush } from '@/lib/web-push/register'
 
 interface Props {
   userId: string
 }
 
+async function probeExistingSubscription(): Promise<boolean> {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    return false
+  }
+  const reg = await navigator.serviceWorker.ready
+  const sub = await reg.pushManager.getSubscription()
+  return Boolean(sub)
+}
+
 export function PushToggle({ userId }: Props) {
-  const [pushEnabled, setPushEnabled] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [toggling, setToggling] = useState(false)
 
-  useEffect(() => {
-    if ('serviceWorker' in navigator && 'PushManager' in window) {
-      navigator.serviceWorker.ready.then((reg) => {
-        reg.pushManager.getSubscription().then((sub) => {
-          setPushEnabled(!!sub)
-          setLoading(false)
-        })
-      }).catch(() => setLoading(false))
-    } else {
-      setLoading(false)
-    }
-  }, [])
+  const { data: pushEnabled, isPending } = useQuery({
+    queryKey: ['push-subscription'],
+    queryFn: probeExistingSubscription,
+    staleTime: Infinity,
+  })
 
   const toggle = async () => {
     setToggling(true)
     try {
       if (pushEnabled) {
         await unsubscribePush()
-        setPushEnabled(false)
+        queryClient.setQueryData(['push-subscription'], false)
       } else {
         await Notification.requestPermission()
         const sub = await registerPushSubscription(userId)
-        setPushEnabled(!!sub)
+        queryClient.setQueryData(['push-subscription'], Boolean(sub))
       }
     } finally {
       setToggling(false)
     }
   }
 
-  if (loading) {
+  if (isPending) {
     return <div className="h-6 w-11 animate-pulse rounded-full bg-zinc-200" />
   }
 
@@ -52,7 +54,7 @@ export function PushToggle({ userId }: Props) {
       </span>
       <button
         role="switch"
-        aria-checked={pushEnabled}
+        aria-checked={Boolean(pushEnabled)}
         disabled={toggling}
         onClick={toggle}
         className={`

@@ -29,12 +29,7 @@ export function ProfileDetail({ profile, isOwnProfile }: ProfileDetailProps) {
   return (
     <div className="mx-auto max-w-2xl">
       {/* Photos */}
-      <PhotoSlider
-        photos={profile.photos}
-        profileId={profile.id}
-        isOwner={isOwnProfile}
-        showFull={showFull}
-      />
+      <PhotoSlider photos={profile.photos} showFull={showFull} />
 
       {/* Basic info */}
       <div className="mt-6">
@@ -70,15 +65,9 @@ export function ProfileDetail({ profile, isOwnProfile }: ProfileDetailProps) {
 
       {/* Details grid */}
       <div className="mt-6 grid grid-cols-2 gap-4">
-        {profile.nationality && (
-          <DetailItem label="Национальность" value={profile.nationality} />
-        )}
-        {profile.height != null && (
-          <DetailItem label="Рост" value={`${profile.height} см`} />
-        )}
-        {profile.weight != null && (
-          <DetailItem label="Вес" value={`${profile.weight} кг`} />
-        )}
+        {profile.nationality && <DetailItem label="Национальность" value={profile.nationality} />}
+        {profile.height != null && <DetailItem label="Рост" value={`${profile.height} см`} />}
+        {profile.weight != null && <DetailItem label="Вес" value={`${profile.weight} кг`} />}
         {profile.marital_status && (
           <DetailItem
             label="Семейное положение"
@@ -88,15 +77,11 @@ export function ProfileDetail({ profile, isOwnProfile }: ProfileDetailProps) {
         {profile.children_count != null && (
           <DetailItem label="Дети" value={String(profile.children_count)} />
         )}
-        {profile.education && (
-          <DetailItem label="Образование" value={profile.education} />
-        )}
+        {profile.education && <DetailItem label="Образование" value={profile.education} />}
         {profile.income_level && (
           <DetailItem label="Уровень дохода" value={incomeLabel(profile.income_level)} />
         )}
-        {profile.housing && (
-          <DetailItem label="Жильё" value={housingLabel(profile.housing)} />
-        )}
+        {profile.housing && <DetailItem label="Жильё" value={housingLabel(profile.housing)} />}
         {profile.willing_to_relocate != null && (
           <DetailItem
             label="Готовность к переезду"

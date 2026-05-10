@@ -41,6 +41,7 @@ export interface Database {
           theme_preference: string | null
           last_seen_at: string | null
           deletion_status: string | null
+          inactivity_warned_at: string | null
           created_at: string | null
           updated_at: string | null
         }
@@ -76,6 +77,7 @@ export interface Database {
           theme_preference?: string | null
           last_seen_at?: string | null
           deletion_status?: string | null
+          inactivity_warned_at?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -111,6 +113,7 @@ export interface Database {
           theme_preference?: string | null
           last_seen_at?: string | null
           deletion_status?: string | null
+          inactivity_warned_at?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -290,6 +293,7 @@ export interface Database {
           body_key: string
           payload: Json | null
           entity_id: string | null
+          dedupe_key: string | null
           created_at: string | null
           read_at: string | null
         }
@@ -302,6 +306,7 @@ export interface Database {
           body_key: string
           payload?: Json | null
           entity_id?: string | null
+          dedupe_key?: string | null
           created_at?: string | null
           read_at?: string | null
         }
@@ -314,6 +319,7 @@ export interface Database {
           body_key?: string
           payload?: Json | null
           entity_id?: string | null
+          dedupe_key?: string | null
           created_at?: string | null
           read_at?: string | null
         }
@@ -492,9 +498,103 @@ export interface Database {
           { foreignKeyName: 'blocks_blocked_id_fkey'; columns: ['blocked_id']; referencedRelation: 'profiles'; referencedColumns: ['id'] }
         ]
       }
+      user_suspensions: {
+        Row: {
+          id: string
+          user_id: string
+          kind: 'warning' | 'temp_ban' | 'permanent_ban'
+          reason_code: string
+          notes: string | null
+          created_by: string
+          created_at: string | null
+          expires_at: string | null
+          lifted_at: string | null
+          lifted_by: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          kind: 'warning' | 'temp_ban' | 'permanent_ban'
+          reason_code: string
+          notes?: string | null
+          created_by: string
+          created_at?: string | null
+          expires_at?: string | null
+          lifted_at?: string | null
+          lifted_by?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          kind?: 'warning' | 'temp_ban' | 'permanent_ban'
+          reason_code?: string
+          notes?: string | null
+          created_by?: string
+          created_at?: string | null
+          expires_at?: string | null
+          lifted_at?: string | null
+          lifted_by?: string | null
+        }
+        Relationships: [
+          { foreignKeyName: 'user_suspensions_user_id_fkey'; columns: ['user_id']; referencedRelation: 'profiles'; referencedColumns: ['id'] },
+          { foreignKeyName: 'user_suspensions_created_by_fkey'; columns: ['created_by']; referencedRelation: 'profiles'; referencedColumns: ['id'] },
+          { foreignKeyName: 'user_suspensions_lifted_by_fkey'; columns: ['lifted_by']; referencedRelation: 'profiles'; referencedColumns: ['id'] }
+        ]
+      }
     }
     Views: Record<string, never>
-    Functions: Record<string, never>
+    Functions: {
+      is_user_suspended: {
+        Args: { p_user: string }
+        Returns: boolean
+      }
+      is_user_online: {
+        Args: { p_user: string }
+        Returns: boolean
+      }
+      count_likes_used: {
+        Args: { p_user: string }
+        Returns: number
+      }
+      has_active_subscription: {
+        Args: { p_user: string }
+        Returns: boolean
+      }
+      send_like: {
+        Args: { p_from: string; p_to: string }
+        Returns: { matched: boolean; match_id: string | null; error_code: string | null }[]
+      }
+      reorder_profile_photos: {
+        Args: {
+          p_profile_id: string
+          p_photo_ids: string[]
+          p_expected_signature?: string | null
+        }
+        Returns: void
+      }
+      get_photo_stream_context: {
+        Args: { p_photo_id: string; p_viewer_id: string }
+        Returns: {
+          id: string
+          profile_id: string
+          moderation_status: string
+          variants: Json | null
+          is_published: boolean
+          private_mode: boolean
+          show_full: boolean
+          can_view: boolean
+        }[]
+      }
+      get_nearby_profile_ids: {
+        Args: {
+          p_longitude: number
+          p_latitude: number
+          p_radius_meters: number
+          p_limit?: number
+        }
+        Returns: { profile_id: string; distance_meters: number }[]
+      }
+    }
     Enums: {
       user_role: 'user' | 'moderator' | 'admin'
       gender_type: 'male' | 'female'

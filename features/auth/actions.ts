@@ -36,13 +36,15 @@ export async function sendMagicLink(
     return await requestMagicLink(emailRaw as string)
   } catch (err: unknown) {
     const e = err as Error
-    console.error(JSON.stringify({
-      level: 'error',
-      message: 'send_magic_link_action_threw',
-      error: e?.message ?? String(err),
-      stack: e?.stack,
-      name: e?.name,
-    }))
+    console.error(
+      JSON.stringify({
+        level: 'error',
+        message: 'send_magic_link_action_threw',
+        error: e?.message ?? String(err),
+        stack: e?.stack,
+        name: e?.name,
+      }),
+    )
     return {
       success: false,
       error: {

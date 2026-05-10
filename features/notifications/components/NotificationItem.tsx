@@ -1,7 +1,16 @@
 'use client'
 
 import Link from 'next/link'
-import { Heart, MessageCircle, CheckCircle, XCircle, AlertTriangle, Shield, Bell, EyeOff } from 'lucide-react'
+import {
+  Heart,
+  MessageCircle,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  Shield,
+  Bell,
+  EyeOff,
+} from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 import type { NotificationWithPayload } from '@/features/notifications/server/get-notifications'
 
@@ -71,27 +80,30 @@ export function NotificationItem({ notification, onMarkAsRead }: NotificationIte
             {formatRelativeTime(notification.created_at)}
           </span>
         </div>
-        <p className="mt-0.5 text-sm text-zinc-500 line-clamp-2">
-          {notification.body_key}
-        </p>
+        <p className="mt-0.5 text-sm text-zinc-500 line-clamp-2">{notification.body_key}</p>
       </div>
 
-      {isUnread && (
-        <div className="shrink-0 mt-2 h-2 w-2 rounded-full bg-primary" />
-      )}
+      {isUnread && <div className="shrink-0 mt-2 h-2 w-2 rounded-full bg-primary" />}
     </div>
   )
 
   if (link) {
     return (
-      <Link href={link} onClick={handleClick} className="block hover:bg-zinc-50 dark:hover:bg-zinc-900">
+      <Link
+        href={link}
+        onClick={handleClick}
+        className="block hover:bg-zinc-50 dark:hover:bg-zinc-900"
+      >
         {content}
       </Link>
     )
   }
 
   return (
-    <button onClick={handleClick} className="block w-full text-left hover:bg-zinc-50 dark:hover:bg-zinc-900">
+    <button
+      onClick={handleClick}
+      className="block w-full text-left hover:bg-zinc-50 dark:hover:bg-zinc-900"
+    >
       {content}
     </button>
   )

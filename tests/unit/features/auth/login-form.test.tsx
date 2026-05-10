@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { LoginForm } from '@/features/auth/components/login-form'
 
 describe('LoginForm', () => {
@@ -12,9 +11,7 @@ describe('LoginForm', () => {
 
   it('shows validation hint text', () => {
     render(<LoginForm />)
-    expect(
-      screen.getByText(/Ссылка для входа будет отправлена/),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/Ссылка для входа будет отправлена/)).toBeInTheDocument()
   })
 
   it('has email input with required attribute', () => {

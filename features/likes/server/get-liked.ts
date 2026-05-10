@@ -6,14 +6,16 @@ export async function getLikedProfiles(userId: string): Promise<LikeProfile[]> {
 
   const { data } = await supabase
     .from('likes')
-    .select(`
+    .select(
+      `
       to_user_id,
       created_at,
       profiles:to_user_id (
         id, name, gender, birth_date, city,
         photos ( variants )
       )
-    `)
+    `,
+    )
     .eq('from_user_id', userId)
     .order('created_at', { ascending: false })
 

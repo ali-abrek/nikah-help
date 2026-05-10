@@ -1,6 +1,7 @@
 import { inngest } from '@/lib/inngest/client'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPresence } from '@/lib/realtime/presence'
+import { requireEnv } from '@/lib/env'
 import type { NotificationPayload } from '@/lib/notifications/types'
 
 interface NotificationEvent {
@@ -8,6 +9,10 @@ interface NotificationEvent {
   payload: NotificationPayload
   userId: string
   channels?: string[]
+  // Optional caller-supplied uniqueness key. When set, the inserted row
+  // collides on (user_id, dedupe_key) so a duplicate event doesn't produce
+  // a duplicate notification.
+  dedupeKey?: string
 }
 
 export const notificationDispatchFn = inngest.createFunction(
@@ -17,7 +22,7 @@ export const notificationDispatchFn = inngest.createFunction(
     triggers: { event: 'notification/send' },
   },
   async ({ event, step }) => {
-    const { payload, userId, channels = [] } = event.data as NotificationEvent
+    const { payload, userId, channels = [], dedupeKey } = event.data as NotificationEvent
 
     // Step 1: Check notification preferences
     const preferencesEnabled = await step.run('check-preferences', async () => {
@@ -37,26 +42,38 @@ export const notificationDispatchFn = inngest.createFunction(
       return { status: 'skipped', reason: 'disabled_by_preferences' }
     }
 
-    // Step 2: Insert notification into DB
+    // Step 2: Insert notification into DB. Use upsert(onConflict=dedupe_key)
+    // when a key was supplied so duplicate events become a no-op insert.
     await step.run('insert-notification', async () => {
       const supabase = createAdminClient()
-      const { error } = await supabase.from('notifications').insert({
+      const row = {
         user_id: userId,
         type: payload.payload.type,
         title_key: payload.title_key,
         body_key: payload.body_key,
         payload: payload.payload,
         entity_id: payload.payload.entity_id ?? null,
-      })
+        ...(dedupeKey ? { dedupe_key: dedupeKey } : {}),
+      }
+
+      const builder = dedupeKey
+        ? supabase
+            .from('notifications')
+            .upsert(row, { onConflict: 'user_id,dedupe_key', ignoreDuplicates: true })
+        : supabase.from('notifications').insert(row)
+
+      const { error } = await builder
 
       if (error) {
-        console.error(JSON.stringify({
-          level: 'error',
-          message: 'notification_insert_failed',
-          userId,
-          type: payload.payload.type,
-          error: error.message,
-        }))
+        console.error(
+          JSON.stringify({
+            level: 'error',
+            message: 'notification_insert_failed',
+            userId,
+            type: payload.payload.type,
+            error: error.message,
+          }),
+        )
         throw error
       }
     })
@@ -81,9 +98,9 @@ export const notificationDispatchFn = inngest.createFunction(
         const webpush = await import('web-push')
 
         webpush.default.setVapidDetails(
-          process.env.VAPID_EMAIL!,
-          process.env.VAPID_PUBLIC_KEY!,
-          process.env.VAPID_PRIVATE_KEY!,
+          requireEnv('VAPID_EMAIL'),
+          requireEnv('VAPID_PUBLIC_KEY'),
+          requireEnv('VAPID_PRIVATE_KEY'),
         )
 
         let pushed = 0
@@ -102,20 +119,20 @@ export const notificationDispatchFn = inngest.createFunction(
               JSON.stringify(payload),
             )
             pushed++
-          } catch (err: any) {
+          } catch (err) {
+            const e = err as { statusCode?: number; message?: string }
             // If subscription is expired/invalid, remove it
-            if (err.statusCode === 410 || err.statusCode === 404) {
-              await supabase
-                .from('push_subscriptions')
-                .delete()
-                .eq('id', sub.id)
+            if (e.statusCode === 410 || e.statusCode === 404) {
+              await supabase.from('push_subscriptions').delete().eq('id', sub.id)
             }
-            console.error(JSON.stringify({
-              level: 'warn',
-              message: 'web_push_failed',
-              subscriptionId: sub.id,
-              error: err.message,
-            }))
+            console.error(
+              JSON.stringify({
+                level: 'warn',
+                message: 'web_push_failed',
+                subscriptionId: sub.id,
+                error: e.message,
+              }),
+            )
           }
         }
 
@@ -146,12 +163,14 @@ export const notificationDispatchFn = inngest.createFunction(
         })
 
         if (!success) {
-          console.error(JSON.stringify({
-            level: 'error',
-            message: 'email_send_failed',
-            userId,
-            error,
-          }))
+          console.error(
+            JSON.stringify({
+              level: 'error',
+              message: 'email_send_failed',
+              userId,
+              error,
+            }),
+          )
         }
 
         return { sent: success }

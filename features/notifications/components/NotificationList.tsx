@@ -11,14 +11,8 @@ interface NotificationListProps {
 }
 
 export function NotificationList({ initialNotifications, userId }: NotificationListProps) {
-  const {
-    notifications,
-    hasMore,
-    loading,
-    sentinelRef,
-    markAsRead,
-    markAllAsRead,
-  } = useNotifications({ initialNotifications, userId })
+  const { notifications, hasMore, loading, sentinelRef, markAsRead, markAllAsRead } =
+    useNotifications({ initialNotifications, userId })
 
   const hasUnread = notifications.some((n) => n.status === 'unread')
 
@@ -27,7 +21,9 @@ export function NotificationList({ initialNotifications, userId }: NotificationL
       <div className="flex flex-col items-center justify-center py-20 text-zinc-500">
         <Bell className="mb-4 h-12 w-12 text-zinc-300" />
         <p className="text-lg font-medium">Нет уведомлений</p>
-        <p className="mt-1 text-sm">Здесь будут появляться уведомления о лайках, мэтчах и сообщениях</p>
+        <p className="mt-1 text-sm">
+          Здесь будут появляться уведомления о лайках, мэтчах и сообщениях
+        </p>
       </div>
     )
   }

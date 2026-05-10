@@ -7,20 +7,28 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "lint": "next lint",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "test": "vitest",
+    "test:unit": "vitest run",
     "test:ci": "vitest run --coverage",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:integration:db": "vitest run tests/integration/database",
+    "db:typegen": "supabase gen types typescript --linked > types/database.types.ts",
+    "verify": "pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:ci",
+    "prepare": "husky"
   },
   "dependencies": {
     "@hookform/resolvers": "5.2.2",
+    "@sentry/nextjs": "10.52.0",
     "@supabase/ssr": "0.10.2",
     "@supabase/supabase-js": "2.105.3",
     "@tanstack/react-query": "5.100.9",
     "@upstash/ratelimit": "2.0.8",
     "@upstash/redis": "1.37.0",
-    "clsx": "^2.1.1",
+    "clsx": "2.1.1",
     "inngest": "4.2.6",
     "lucide-react": "1.14.0",
     "next": "16.2.4",
@@ -30,11 +38,11 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-hook-form": "7.75.0",
-    "react-intersection-observer": "^10.0.3",
+    "react-intersection-observer": "10.0.3",
     "resend": "6.12.2",
     "sharp": "0.34.5",
     "sonner": "2.0.7",
-    "tailwind-merge": "^3.5.0",
+    "tailwind-merge": "3.5.0",
     "wavesurfer.js": "7.12.6",
     "web-push": "3.6.7",
     "zod": "4.4.3",
@@ -42,30 +50,43 @@
   },
   "devDependencies": {
     "@playwright/test": "1.59.1",
-    "@tailwindcss/postcss": "^4",
+    "@tailwindcss/postcss": "4.2.4",
     "@testing-library/jest-dom": "6.9.1",
     "@testing-library/react": "16.3.2",
     "@testing-library/user-event": "14.6.1",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
+    "@types/node": "20.19.39",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
     "@types/web-push": "3.6.4",
-    "@vitejs/plugin-react": "^6.0.1",
+    "@vitejs/plugin-react": "6.0.1",
     "@vitest/coverage-v8": "4.1.5",
-    "eslint": "^9",
+    "eslint": "9.39.4",
     "eslint-config-next": "16.2.4",
-    "jsdom": "^29.1.1",
+    "husky": "9.1.7",
+    "jsdom": "29.1.1",
+    "lint-staged": "17.0.3",
     "msw": "2.14.3",
-    "tailwindcss": "^4",
-    "typescript": "^5",
+    "prettier": "3.8.3",
+    "tailwindcss": "4.2.4",
+    "typescript": "5.9.3",
     "vitest": "4.1.5"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
       "@parcel/watcher",
       "@swc/core",
+      "@sentry/cli",
       "msw",
       "protobufjs"
+    ]
+  },
+  "lint-staged": {
+    "*.{ts,tsx,mts,mjs,js,jsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md,yml,yaml,css}": [
+      "prettier --write"
     ]
   }
 }

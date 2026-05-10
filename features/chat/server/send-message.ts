@@ -32,10 +32,12 @@ export async function sendMessage({
   // Verify chat exists and sender is participant
   const { data: chat } = await supabase
     .from('chats')
-    .select(`
+    .select(
+      `
       id,
       matches!inner ( user_a, user_b )
-    `)
+    `,
+    )
     .eq('id', chatId)
     .single()
 

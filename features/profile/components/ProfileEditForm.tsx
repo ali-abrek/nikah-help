@@ -21,9 +21,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
   const [nationality, setNationality] = useState(String(profile.nationality ?? ''))
   const [height, setHeight] = useState(profile.height != null ? String(profile.height) : '')
   const [weight, setWeight] = useState(profile.weight != null ? String(profile.weight) : '')
-  const [allowGeolocation, setAllowGeolocation] = useState(
-    profile.allow_geolocation === true,
-  )
+  const [allowGeolocation, setAllowGeolocation] = useState(profile.allow_geolocation === true)
 
   // Section 2: Extended
   const [maritalStatus, setMaritalStatus] = useState(String(profile.marital_status ?? ''))
@@ -33,15 +31,9 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
   const [education, setEducation] = useState(String(profile.education ?? ''))
   const [incomeLevel, setIncomeLevel] = useState(String(profile.income_level ?? ''))
   const [housing, setHousing] = useState(String(profile.housing ?? ''))
-  const [willingToRelocate, setWillingToRelocate] = useState(
-    profile.willing_to_relocate === true,
-  )
-  const [polygynyAttitude, setPolygynyAttitude] = useState(
-    String(profile.polygyny_attitude ?? ''),
-  )
-  const [hijabAttitude, setHijabAttitude] = useState(
-    String(profile.hijab_attitude ?? ''),
-  )
+  const [willingToRelocate, setWillingToRelocate] = useState(profile.willing_to_relocate === true)
+  const [polygynyAttitude, setPolygynyAttitude] = useState(String(profile.polygyny_attitude ?? ''))
+  const [hijabAttitude, setHijabAttitude] = useState(String(profile.hijab_attitude ?? ''))
   const [aboutSelf, setAboutSelf] = useState(String(profile.about_self ?? ''))
 
   const gender = String(profile.gender ?? 'male')
@@ -107,10 +99,25 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
       }
     },
     [
-      name, city, nationality, height, weight, allowGeolocation,
-      maritalStatus, childrenCount, education, incomeLevel, housing,
-      willingToRelocate, polygynyAttitude, hijabAttitude, aboutSelf,
-      gender, isMale, profile, router,
+      name,
+      city,
+      nationality,
+      height,
+      weight,
+      allowGeolocation,
+      maritalStatus,
+      childrenCount,
+      education,
+      incomeLevel,
+      housing,
+      willingToRelocate,
+      polygynyAttitude,
+      hijabAttitude,
+      aboutSelf,
+      gender,
+      isMale,
+      profile,
+      router,
     ],
   )
 
@@ -118,9 +125,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
     <form onSubmit={handleSave} className="space-y-10">
       {/* Section 1: Basic Data */}
       <section>
-        <h2 className="mb-4 text-lg font-semibold text-foreground">
-          1. Основные данные
-        </h2>
+        <h2 className="mb-4 text-lg font-semibold text-foreground">1. Основные данные</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <Field label="Имя" value={name} onChange={setName} required />
           <Field label="Пол" value={gender === 'male' ? 'Мужской' : 'Женский'} disabled />
@@ -153,9 +158,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
 
       {/* Section 2: Extended Data */}
       <section>
-        <h2 className="mb-4 text-lg font-semibold text-foreground">
-          2. Дополнительная информация
-        </h2>
+        <h2 className="mb-4 text-lg font-semibold text-foreground">2. Дополнительная информация</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <SelectField
             label="Семейное положение"
@@ -231,9 +234,7 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
                 onChange={(e) => setWillingToRelocate(e.target.checked)}
                 className="rounded border-zinc-300 accent-primary"
               />
-              <span className="text-sm text-zinc-600 dark:text-zinc-400">
-                Готова к переезду
-              </span>
+              <span className="text-sm text-zinc-600 dark:text-zinc-400">Готова к переезду</span>
             </label>
           </div>
         )}

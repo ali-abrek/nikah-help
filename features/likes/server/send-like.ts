@@ -27,10 +27,7 @@ interface SendLikeRpcRow {
  * gating remains here because it depends on subscription state we cache
  * outside Postgres.
  */
-export async function sendLike({
-  fromUserId,
-  toUserId,
-}: SendLikeParams): Promise<SendLikeResult> {
+export async function sendLike({ fromUserId, toUserId }: SendLikeParams): Promise<SendLikeResult> {
   const supabase = createAdminClient()
 
   // Quota check (subscription-aware) — kept in app layer.
@@ -75,12 +72,14 @@ export async function sendLike({
       },
     ])
     if (notifErr) {
-      console.error(JSON.stringify({
-        level: 'error',
-        message: 'match_notification_insert_failed',
-        match_id: data.match_id,
-        error: notifErr.message,
-      }))
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          message: 'match_notification_insert_failed',
+          match_id: data.match_id,
+          error: notifErr.message,
+        }),
+      )
     }
   }
 

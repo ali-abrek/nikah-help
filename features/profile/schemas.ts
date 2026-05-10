@@ -13,11 +13,14 @@ export const onboardingStep1Schema = z.object({
     .string()
     .min(2, { error: 'Минимум 2 символа' })
     .max(50, { error: 'Максимум 50 символов' }),
-  birth_date: z.string().refine((val) => {
-    const date = new Date(val)
-    if (isNaN(date.getTime())) return false
-    return date <= eighteenYearsAgo()
-  }, { error: 'Вам должно быть не менее 18 лет' }),
+  birth_date: z.string().refine(
+    (val) => {
+      const date = new Date(val)
+      if (isNaN(date.getTime())) return false
+      return date <= eighteenYearsAgo()
+    },
+    { error: 'Вам должно быть не менее 18 лет' },
+  ),
   gender: z.enum(['male', 'female'], { error: 'Выберите пол' }),
   country: z.string().min(1, { error: 'Выберите страну' }),
   city: z.string().min(1, { error: 'Выберите город' }),
@@ -48,35 +51,19 @@ const maritalStatuses = [
   'married_3',
 ] as const
 
-const educations = [
-  'none',
-  'school',
-  'vocational',
-  'bachelor',
-  'master',
-  'phd',
-] as const
+const educations = ['none', 'school', 'vocational', 'bachelor', 'master', 'phd'] as const
 
 const incomeLevels = ['low', 'middle', 'high'] as const
 const housingTypes = ['own', 'rent', 'parents', 'shared'] as const
 
 const polygynyAttitudes = ['positive', 'neutral', 'negative'] as const
-const hijabAttitudes = [
-  'niqab',
-  'hijab_full',
-  'hijab_partial',
-  'no_hijab',
-] as const
+const hijabAttitudes = ['niqab', 'hijab_full', 'hijab_partial', 'no_hijab'] as const
 
 // ── Step 2: Male variant ──────────────────────────────────────────
 
 export const onboardingStep2MaleSchema = z.object({
   marital_status: z.enum(maritalStatuses, { error: 'Выберите семейное положение' }),
-  children_count: z
-    .number({ error: 'Укажите количество детей' })
-    .int()
-    .min(0)
-    .max(20),
+  children_count: z.number({ error: 'Укажите количество детей' }).int().min(0).max(20),
   education: z.enum(educations, { error: 'Выберите образование' }),
   income_level: z.enum(incomeLevels, { error: 'Выберите уровень дохода' }),
   housing: z.enum(housingTypes, { error: 'Выберите тип жилья' }),
@@ -92,11 +79,7 @@ export type OnboardingStep2MaleData = z.infer<typeof onboardingStep2MaleSchema>
 
 export const onboardingStep2FemaleSchema = z.object({
   marital_status: z.enum(maritalStatuses, { error: 'Выберите семейное положение' }),
-  children_count: z
-    .number({ error: 'Укажите количество детей' })
-    .int()
-    .min(0)
-    .max(20),
+  children_count: z.number({ error: 'Укажите количество детей' }).int().min(0).max(20),
   education: z.enum(educations, { error: 'Выберите образование' }),
   willing_to_relocate: z.boolean({ error: 'Укажите готовность к переезду' }),
   polygyny_attitude: z.enum(polygynyAttitudes, { error: 'Укажите отношение к многожёнству' }),

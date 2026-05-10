@@ -7,36 +7,32 @@ import type { MessageRow } from '../server/get-messages'
 interface MessageBubbleProps {
   message: MessageRow
   isOwn: boolean
+  // Long-press / context-menu handlers. The bubble forwards a synthetic
+  // event to the caller, which decides whether to open the action menu.
   onQuote?: (message: MessageRow) => void
   onEdit?: (message: MessageRow) => void
   onDelete?: (message: MessageRow) => void
 }
 
-export function MessageBubble({
-  message,
-  isOwn,
-  onQuote,
-  onEdit,
-  onDelete,
-}: MessageBubbleProps) {
+export function MessageBubble({ message, isOwn, onQuote, onEdit, onDelete }: MessageBubbleProps) {
   const isDeleted = !!message.deleted_at
   const isEdited = !!message.edited_at && !message.deleted_at
   const canEdit =
-    isOwn &&
-    !isDeleted &&
-    message.type === 'text' &&
-    isWithinEditWindow(message.created_at)
+    isOwn && !isDeleted && message.type === 'text' && isWithinEditWindow(message.created_at)
+
+  const openContextMenu = (e: React.MouseEvent | React.TouchEvent) => {
+    e.preventDefault()
+    if (isDeleted) return
+    // Pick the first available handler — the parent owns sequencing.
+    if (canEdit && onEdit) onEdit(message)
+    else if (onQuote) onQuote(message)
+    else if (isOwn && onDelete) onDelete(message)
+  }
 
   return (
     <div
-      className={cn(
-        'group flex gap-2 mb-2',
-        isOwn ? 'justify-end' : 'justify-start',
-      )}
-      onContextMenu={(e) => {
-        e.preventDefault()
-        // Long-press / right-click context menu
-      }}
+      className={cn('group flex gap-2 mb-2', isOwn ? 'justify-end' : 'justify-start')}
+      onContextMenu={openContextMenu}
     >
       <div
         className={cn(
@@ -75,6 +71,7 @@ export function MessageBubble({
         {isDeleted ? (
           <span>Сообщение удалено</span>
         ) : message.type === 'image' ? (
+          // eslint-disable-next-line @next/next/no-img-element -- chat images are streamed via signed URLs, not optimised
           <img
             src={message.content}
             alt="Photo"
@@ -84,9 +81,7 @@ export function MessageBubble({
         ) : message.type === 'voice' ? (
           <div className="flex items-center gap-2 py-1">
             <span>🎤 Голосовое сообщение</span>
-            <span className="text-xs opacity-60">
-              {formatDuration(message.content)}
-            </span>
+            <span className="text-xs opacity-60">{formatDuration(message.content)}</span>
           </div>
         ) : (
           <span className="whitespace-pre-wrap break-words">{message.content}</span>
@@ -99,13 +94,9 @@ export function MessageBubble({
             isOwn ? 'text-white/70 justify-end' : 'text-zinc-400',
           )}
         >
-          {isEdited && !isDeleted && (
-            <span>изм.</span>
-          )}
+          {isEdited && !isDeleted && <span>изм.</span>}
           <span>{formatMessageTime(message.created_at)}</span>
-          {isOwn && !isDeleted && (
-            <StatusIcon status={message.status} />
-          )}
+          {isOwn && !isDeleted && <StatusIcon status={message.status} />}
         </div>
       </div>
     </div>

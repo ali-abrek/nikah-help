@@ -13,7 +13,9 @@ function fiveMinutesAgo() {
  * Simple mock factory: returns a Supabase-like client where
  * .single() returns pre-configured responses in sequence.
  */
-function makeMock(responses: Array<{ data: Record<string, unknown> | null; error: Record<string, unknown> | null }>) {
+function makeMock(
+  responses: Array<{ data: Record<string, unknown> | null; error: Record<string, unknown> | null }>,
+) {
   let callIdx = 0
   const eqSingle = vi.fn().mockImplementation(() => {
     const resp = responses[callIdx] ?? { data: null, error: { message: 'no mock data' } }
@@ -41,7 +43,8 @@ function makeMock(responses: Array<{ data: Record<string, unknown> | null; error
 }
 
 const mockModule = {
-  createAdminClient: () => ({} as ReturnType<typeof import('@/lib/supabase/admin').createAdminClient>),
+  createAdminClient: () =>
+    ({}) as ReturnType<typeof import('@/lib/supabase/admin').createAdminClient>,
 }
 
 vi.mock('@/lib/supabase/admin', () => mockModule)
@@ -58,7 +61,14 @@ describe('editMessage', () => {
     mockModule.createAdminClient = () =>
       makeMock([
         {
-          data: { id: 'msg-1', sender_id: 'user-1', type: 'text', content: 'original', created_at: now(), deleted_at: null },
+          data: {
+            id: 'msg-1',
+            sender_id: 'user-1',
+            type: 'text',
+            content: 'original',
+            created_at: now(),
+            deleted_at: null,
+          },
           error: null,
         },
         {
@@ -85,7 +95,14 @@ describe('editMessage', () => {
     mockModule.createAdminClient = () =>
       makeMock([
         {
-          data: { id: 'msg-2', sender_id: 'user-2', type: 'text', content: 'original', created_at: now(), deleted_at: null },
+          data: {
+            id: 'msg-2',
+            sender_id: 'user-2',
+            type: 'text',
+            content: 'original',
+            created_at: now(),
+            deleted_at: null,
+          },
           error: null,
         },
       ]) as never
@@ -103,7 +120,14 @@ describe('editMessage', () => {
     mockModule.createAdminClient = () =>
       makeMock([
         {
-          data: { id: 'msg-3', sender_id: 'user-1', type: 'image', content: 'photo.jpg', created_at: now(), deleted_at: null },
+          data: {
+            id: 'msg-3',
+            sender_id: 'user-1',
+            type: 'image',
+            content: 'photo.jpg',
+            created_at: now(),
+            deleted_at: null,
+          },
           error: null,
         },
       ]) as never
@@ -121,7 +145,14 @@ describe('editMessage', () => {
     mockModule.createAdminClient = () =>
       makeMock([
         {
-          data: { id: 'msg-4', sender_id: 'user-1', type: 'text', content: 'old', created_at: fiveMinutesAgo(), deleted_at: null },
+          data: {
+            id: 'msg-4',
+            sender_id: 'user-1',
+            type: 'text',
+            content: 'old',
+            created_at: fiveMinutesAgo(),
+            deleted_at: null,
+          },
           error: null,
         },
       ]) as never
@@ -139,7 +170,14 @@ describe('editMessage', () => {
     mockModule.createAdminClient = () =>
       makeMock([
         {
-          data: { id: 'msg-5', sender_id: 'user-1', type: 'text', content: 'deleted', created_at: now(), deleted_at: now() },
+          data: {
+            id: 'msg-5',
+            sender_id: 'user-1',
+            type: 'text',
+            content: 'deleted',
+            created_at: now(),
+            deleted_at: now(),
+          },
           error: null,
         },
       ]) as never
@@ -159,7 +197,13 @@ describe('deleteMessage', () => {
     mockModule.createAdminClient = () =>
       makeMock([
         {
-          data: { id: 'msg-6', sender_id: 'user-1', type: 'text', content: 'to delete', deleted_at: null },
+          data: {
+            id: 'msg-6',
+            sender_id: 'user-1',
+            type: 'text',
+            content: 'to delete',
+            deleted_at: null,
+          },
           error: null,
         },
         {
@@ -168,16 +212,20 @@ describe('deleteMessage', () => {
         },
       ]) as never
 
-    await expect(
-      deleteMessage({ messageId: 'msg-6', userId: 'user-1' }),
-    ).resolves.toBeUndefined()
+    await expect(deleteMessage({ messageId: 'msg-6', userId: 'user-1' })).resolves.toBeUndefined()
   })
 
   it('rejects if not the message owner', async () => {
     mockModule.createAdminClient = () =>
       makeMock([
         {
-          data: { id: 'msg-7', sender_id: 'user-2', type: 'text', content: 'not yours', deleted_at: null },
+          data: {
+            id: 'msg-7',
+            sender_id: 'user-2',
+            type: 'text',
+            content: 'not yours',
+            deleted_at: null,
+          },
           error: null,
         },
       ]) as never

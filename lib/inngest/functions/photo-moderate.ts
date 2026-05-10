@@ -41,10 +41,7 @@ async function loadPhotoContext(photoId: string): Promise<{
     throw new NonRetriableError(`Cover variant not found for photo: ${photoId}`)
   }
 
-  const { data: file, error } = await supabase
-    .storage
-    .from(STORAGE.bucket)
-    .download(coverPath)
+  const { data: file, error } = await supabase.storage.from(STORAGE.bucket).download(coverPath)
 
   if (error || !file) {
     throw new Error(`Failed to download cover: ${error?.message ?? 'unknown'}`)
@@ -116,9 +113,7 @@ async function updateModerationStatus(
       moderation_status: decision.status,
       moderation_result: result as never,
       moderation_reason:
-        decision.status === 'approved'
-          ? null
-          : (decision.reason ?? result.reason ?? null),
+        decision.status === 'approved' ? null : (decision.reason ?? result.reason ?? null),
       updated_at: new Date().toISOString(),
     })
     .eq('id', photoId)

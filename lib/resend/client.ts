@@ -1,14 +1,16 @@
-let _resend: import('resend').Resend | null = null
+import { requireEnv, getEnv } from '@/lib/env'
+import { Resend } from 'resend'
 
-function getResend(): import('resend').Resend {
+let _resend: Resend | null = null
+
+function getResend(): Resend {
   if (!_resend) {
-    const { Resend } = require('resend') as typeof import('resend')
-    _resend = new Resend(process.env.RESEND_API_KEY)
+    _resend = new Resend(requireEnv('RESEND_API_KEY'))
   }
   return _resend
 }
 
-const FROM = process.env.RESEND_FROM_ADDRESS ?? 'NikahHelp <notifications@nikahhelp.com>'
+const FROM = getEnv('RESEND_FROM_ADDRESS') ?? 'NikahHelp <notifications@nikahhelp.com>'
 
 export async function sendEmail(options: {
   to: string
@@ -29,7 +31,7 @@ export async function sendEmail(options: {
     }
 
     return { success: true }
-  } catch (err: any) {
-    return { success: false, error: err.message }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : String(err) }
   }
 }

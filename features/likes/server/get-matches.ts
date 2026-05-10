@@ -22,16 +22,16 @@ export async function getMatches(userId: string): Promise<MatchProfile[]> {
 
   if (!matches?.length) return []
 
-  const otherUserIds = matches.map((m) =>
-    m.user_a === userId ? m.user_b : m.user_a,
-  )
+  const otherUserIds = matches.map((m) => (m.user_a === userId ? m.user_b : m.user_a))
 
   const { data: profiles } = await supabase
     .from('profiles')
-    .select(`
+    .select(
+      `
       id, name, gender, birth_date, city,
       photos ( variants )
-    `)
+    `,
+    )
     .in('id', otherUserIds)
 
   const profileMap = new Map(

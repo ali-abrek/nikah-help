@@ -32,14 +32,16 @@ export const GET = withRateLimit(async (request: NextRequest) => {
       query = query.eq('country_code', parsed.data.country.toUpperCase())
     }
 
-    const { data, error } = await query.returns<Array<{
-      id: number
-      name: string
-      admin1_name: string | null
-      country_code: string
-      population: number | null
-      location: { coordinates: [number, number] } | null
-    }>>()
+    const { data, error } = await query.returns<
+      Array<{
+        id: number
+        name: string
+        admin1_name: string | null
+        country_code: string
+        population: number | null
+        location: { coordinates: [number, number] } | null
+      }>
+    >()
 
     if (error) throw error
 

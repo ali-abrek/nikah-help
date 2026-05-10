@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useEffect, useRef, useOptimistic } from 'react'
+import { useState, useCallback } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, MoreVertical } from 'lucide-react'
 import { toast } from 'sonner'
@@ -22,20 +22,15 @@ interface ChatDetailProps {
 export function ChatDetail({ chatInfo, initialMessages, userId }: ChatDetailProps) {
   const [messages, setMessages] = useState<MessageRow[]>(initialMessages)
   const [quoteMessage, setQuoteMessage] = useState<MessageRow | null>(null)
-  const [editingMessage, setEditingMessage] = useState<MessageRow | null>(null)
 
   // Realtime subscription for new messages
-  const { isOnline } = useChatChannel(
-    chatInfo.chat_id,
-    userId,
-    (newMessage) => {
-      setMessages((prev) => {
-        // Dedup
-        if (prev.some((m) => m.id === newMessage.id)) return prev
-        return [...prev, newMessage]
-      })
-    },
-  )
+  const { isOnline } = useChatChannel(chatInfo.chat_id, userId, (newMessage) => {
+    setMessages((prev) => {
+      // Dedup
+      if (prev.some((m) => m.id === newMessage.id)) return prev
+      return [...prev, newMessage]
+    })
+  })
 
   // Typing indicator
   const { isTyping } = useTypingStatus(chatInfo.chat_id, userId)
@@ -53,9 +48,7 @@ export function ChatDetail({ chatInfo, initialMessages, userId }: ChatDetailProp
 
       // Optimistic
       setMessages((prev) =>
-        prev.map((m) =>
-          unreadIds.includes(m.id) ? { ...m, status: 'read' as const } : m,
-        ),
+        prev.map((m) => (unreadIds.includes(m.id) ? { ...m, status: 'read' as const } : m)),
       )
 
       try {
@@ -76,32 +69,26 @@ export function ChatDetail({ chatInfo, initialMessages, userId }: ChatDetailProp
 
   const handleQuote = useCallback((message: MessageRow) => {
     setQuoteMessage(message)
-    setEditingMessage(null)
   }, [])
 
-  const handleEdit = useCallback((message: MessageRow) => {
-    setEditingMessage(message)
+  const handleEdit = useCallback((_message: MessageRow) => {
+    // Editing UX is composed by Composer when we wire it; nothing to do here yet.
     setQuoteMessage(null)
   }, [])
 
-  const handleDelete = useCallback(
-    async (message: MessageRow) => {
-      try {
-        await fetch(`/api/chats/messages/${message.id}`, { method: 'DELETE' })
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === message.id
-              ? { ...m, deleted_at: new Date().toISOString(), content: '' }
-              : m,
-          ),
-        )
-        toast.success('Сообщение удалено')
-      } catch {
-        toast.error('Не удалось удалить сообщение')
-      }
-    },
-    [],
-  )
+  const handleDelete = useCallback(async (message: MessageRow) => {
+    try {
+      await fetch(`/api/chats/messages/${message.id}`, { method: 'DELETE' })
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === message.id ? { ...m, deleted_at: new Date().toISOString(), content: '' } : m,
+        ),
+      )
+      toast.success('Сообщение удалено')
+    } catch {
+      toast.error('Не удалось удалить сообщение')
+    }
+  }, [])
 
   return (
     <div className="flex h-full flex-col">
@@ -118,6 +105,7 @@ export function ChatDetail({ chatInfo, initialMessages, userId }: ChatDetailProp
           {/* Avatar */}
           <div className="relative h-9 w-9 shrink-0 rounded-full bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
             {chatInfo.other_user.photo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element -- streamed via custom auth-aware route, next/image can't fetch with cookies
               <img
                 src={`/api/photos/stream/${chatInfo.other_user.id}/${chatInfo.other_user.photo_url}`}
                 alt={chatInfo.other_user.name ?? ''}

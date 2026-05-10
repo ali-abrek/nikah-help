@@ -1,10 +1,10 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
-  --color-primary: #FF8C42;
-  --color-primary-hover: #FCAF58;
-  --color-accent: #F9C784;
-  --font-sans: "Inter", sans-serif;
+  --color-primary: #ff8c42;
+  --color-primary-hover: #fcaf58;
+  --color-accent: #f9c784;
+  --font-sans: 'Inter', sans-serif;
 }
 
 /* `inline` keeps the resolution at use-site so utilities like
@@ -17,20 +17,20 @@
 
 @layer base {
   :root {
-    --background: #FFFFFF;
+    --background: #ffffff;
     --foreground: #111111;
   }
   .dark {
-    --background: #4E598C;
-    --foreground: #F5F5F5;
+    --background: #4e598c;
+    --foreground: #f5f5f5;
   }
   /* Tailwind v4's `dark:` variant compiles to `@media (prefers-color-scheme: dark)`,
      so when there's no explicit `.dark` toggle (current setup), --foreground must
      also follow the OS preference — otherwise text-foreground stays dark on dark. */
   @media (prefers-color-scheme: dark) {
     :root:not(.light) {
-      --background: #4E598C;
-      --foreground: #F5F5F5;
+      --background: #4e598c;
+      --foreground: #f5f5f5;
     }
   }
 }

@@ -47,11 +47,13 @@ describe('Notification dispatch flow', () => {
 
   it('factory rejects invalid context for each type', () => {
     // photo_rejected requires reason
-    expect(() => createNotification('photo_rejected', {
-      recipientId: validUuid,
-      photoId: validUuid,
-      // reason missing
-    })).toThrow()
+    expect(() =>
+      createNotification('photo_rejected', {
+        recipientId: validUuid,
+        photoId: validUuid,
+        // reason missing
+      }),
+    ).toThrow()
   })
 
   it('payload includes optional fields only when provided', () => {
@@ -98,13 +100,33 @@ describe('Presence helper', () => {
 
 function getMinimalContext(type: string) {
   const contexts: Record<string, Parameters<typeof createNotification>[1]> = {
-    like_received: { recipientId: validUuid, actorId: validUuid, actorName: 'X', entityId: validUuid },
+    like_received: {
+      recipientId: validUuid,
+      actorId: validUuid,
+      actorName: 'X',
+      entityId: validUuid,
+    },
     like_revoked: { recipientId: validUuid, actorId: validUuid, entityId: validUuid },
-    match_created: { recipientId: validUuid, actorId: validUuid, actorName: 'X', matchId: validUuid },
-    message_new: { recipientId: validUuid, actorId: validUuid, actorName: 'X', messageId: validUuid, chatId: validUuid },
+    match_created: {
+      recipientId: validUuid,
+      actorId: validUuid,
+      actorName: 'X',
+      matchId: validUuid,
+    },
+    message_new: {
+      recipientId: validUuid,
+      actorId: validUuid,
+      actorName: 'X',
+      messageId: validUuid,
+      chatId: validUuid,
+    },
     photo_approved: { recipientId: validUuid, photoId: validUuid },
     photo_rejected: { recipientId: validUuid, photoId: validUuid, reason: 'Blurry' },
-    photo_removed_by_moderator: { recipientId: validUuid, photoId: validUuid, reason: 'Inappropriate' },
+    photo_removed_by_moderator: {
+      recipientId: validUuid,
+      photoId: validUuid,
+      reason: 'Inappropriate',
+    },
     account_blocked: { recipientId: validUuid, reason: 'Violation' },
     account_reinstated: { recipientId: validUuid },
     account_suspension_expired: { recipientId: validUuid },

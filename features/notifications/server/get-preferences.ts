@@ -1,7 +1,4 @@
 import { createAdminClient } from '@/lib/supabase/admin'
-import type { Database } from '@/types/database.types'
-
-type PreferenceRow = Database['public']['Tables']['notification_preferences']['Row']
 
 export type PreferenceMap = Record<string, boolean>
 
@@ -32,21 +29,16 @@ export async function getPreferences(userId: string): Promise<PreferenceMap> {
     map[type] = true
   }
   // Override with stored preferences
-  for (const row of (data ?? [])) {
+  for (const row of data ?? []) {
     map[row.type] = row.enabled ?? true
   }
 
   return map
 }
 
-export async function setPreference(
-  userId: string,
-  type: string,
-  enabled: boolean,
-): Promise<void> {
+export async function setPreference(userId: string, type: string, enabled: boolean): Promise<void> {
   const supabase = createAdminClient()
-  await supabase.from('notification_preferences').upsert(
-    { user_id: userId, type, enabled },
-    { onConflict: 'user_id, type' },
-  )
+  await supabase
+    .from('notification_preferences')
+    .upsert({ user_id: userId, type, enabled }, { onConflict: 'user_id, type' })
 }

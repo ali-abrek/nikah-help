@@ -22,8 +22,6 @@ export async function parseApiError(
   }
 }
 
-export function getActionError(
-  result: { success: false; error: ErrorResponse },
-): ErrorResponse {
+export function getActionError(result: { success: false; error: ErrorResponse }): ErrorResponse {
   return result.error
 }

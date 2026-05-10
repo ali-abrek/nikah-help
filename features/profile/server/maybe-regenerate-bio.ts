@@ -22,7 +22,12 @@ export async function maybeRegenerateBio(
     .from('profiles')
     .select(`onboarding_completed, ai_bio_input_hash, ${BIO_FIELDS_SQL}`)
     .eq('id', userId)
-    .single<Record<string, unknown> & { onboarding_completed?: boolean; ai_bio_input_hash?: string | null }>()
+    .single<
+      Record<string, unknown> & {
+        onboarding_completed?: boolean
+        ai_bio_input_hash?: string | null
+      }
+    >()
 
   if (!profile?.onboarding_completed) return
 

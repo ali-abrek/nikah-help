@@ -44,12 +44,22 @@ export async function queryFeed({
     .eq('is_published', true)
     .eq('photos.moderation_status', 'approved')
     .eq('photos.position', 1)
+    // (created_at, id) gives a strict total order, so callers can't see
+    // duplicates or skips when multiple profiles share a timestamp.
     .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
     .limit(limit + 1)
 
-  // Cursor-based pagination
+  // Cursor-based pagination. Cursor format: "<created_at>|<id>". Older clients
+  // sending only "<created_at>" still work — we degrade to a coarse filter.
   if (cursor) {
-    query = query.lt('created_at', cursor)
+    const [cAt, cId] = cursor.split('|')
+    if (cAt && cId) {
+      // Composite cursor: same timestamp, lower id; OR strictly older timestamp.
+      query = query.or(`and(created_at.eq.${cAt},id.lt.${cId}),created_at.lt.${cAt}`)
+    } else if (cAt) {
+      query = query.lt('created_at', cAt)
+    }
   }
 
   // Age filters: convert age range to birth_date range
@@ -64,11 +74,7 @@ export async function queryFeed({
       query = query.gte('birth_date', minBirth.toISOString().split('T')[0]!)
     }
     if (filters.age_min != null) {
-      const maxBirth = new Date(
-        now.getFullYear() - filters.age_min,
-        now.getMonth(),
-        now.getDate(),
-      )
+      const maxBirth = new Date(now.getFullYear() - filters.age_min, now.getMonth(), now.getDate())
       query = query.lte('birth_date', maxBirth.toISOString().split('T')[0]!)
     }
   }
@@ -140,11 +146,14 @@ export async function queryFeed({
   ])
 
   return {
-    profiles: page.map((p) =>
-      toFeedProfile(p, likedIds.has(p.id), matchedIds.has(p.id)),
-    ),
-    nextCursor: hasMore ? (page[page.length - 1]?.created_at ?? null) : null,
+    profiles: page.map((p) => toFeedProfile(p, likedIds.has(p.id), matchedIds.has(p.id))),
+    nextCursor: hasMore ? buildCursor(page[page.length - 1]) : null,
   }
+}
+
+function buildCursor(row: FeedProfileRaw | undefined): string | null {
+  if (!row?.created_at || !row.id) return null
+  return `${row.created_at}|${row.id}`
 }
 
 async function fetchLikedIds(

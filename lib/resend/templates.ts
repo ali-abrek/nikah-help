@@ -107,7 +107,7 @@ export function accountBlockedTemplate(payload: NotificationPayload): EmailTempl
   }
 }
 
-export function accountReinstatedTemplate(payload: NotificationPayload): EmailTemplate {
+export function accountReinstatedTemplate(_payload: NotificationPayload): EmailTemplate {
   return {
     subject: 'Your account has been reinstated',
     html: baseLayout(
@@ -133,10 +133,7 @@ export function inactivityWarningTemplate(_payload: NotificationPayload): EmailT
   }
 }
 
-export function getEmailTemplate(
-  type: string,
-  payload: NotificationPayload,
-): EmailTemplate {
+export function getEmailTemplate(type: string, payload: NotificationPayload): EmailTemplate {
   switch (type) {
     case 'like_received':
       return likeReceivedTemplate(payload)

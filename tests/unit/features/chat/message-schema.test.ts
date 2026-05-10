@@ -146,3 +146,15 @@ describe('markAsReadSchema', () => {
     expect(result.success).toBe(true)
   })
 })
+
+describe('deleteChatSchema', () => {
+  it('accepts valid chat_id', () => {
+    const result = deleteChatSchema.safeParse({ chat_id: validUuid })
+    expect(result.success).toBe(true)
+  })
+
+  it('rejects invalid chat_id', () => {
+    const result = deleteChatSchema.safeParse({ chat_id: 'not-a-uuid' })
+    expect(result.success).toBe(false)
+  })
+})

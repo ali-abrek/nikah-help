@@ -3,9 +3,27 @@ import { createRouteSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hashBlockedEmail } from '@/lib/crypto/email-hash'
 
+// Strict allowlist of post-login destinations. Anything else falls through
+// to /feed so a crafted `?next=…` parameter can't be used for misdirection
+// or to land an authenticated user on an unintended internal route.
+const SAFE_NEXT_PATHS = new Set([
+  '/feed',
+  '/onboarding',
+  '/dashboard',
+  '/profile',
+  '/profile/edit',
+  '/settings',
+  '/notifications',
+  '/likes',
+  '/chats',
+])
+
 function safeRedirect(url: string, fallback: string): string {
-  // Only allow same-site relative paths, reject protocol-relative and absolute URLs
-  if (url.startsWith('/') && !url.startsWith('//')) return url
+  if (!url) return fallback
+  // Strip query/fragment when matching the allowlist; preserve them on
+  // pass through so the destination retains caller-intended state.
+  const path = url.split(/[?#]/)[0] ?? ''
+  if (SAFE_NEXT_PATHS.has(path)) return url
   return fallback
 }
 
@@ -20,14 +38,16 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (error) {
-      console.error(JSON.stringify({
-        level: 'error',
-        message: 'auth_callback_exchange_failed',
-        errorCode: error.code,
-        errorMessage: error.message,
-        errorName: error.name,
-        errorStatus: (error as unknown as Record<string, unknown>).status,
-      }))
+      console.error(
+        JSON.stringify({
+          level: 'error',
+          message: 'auth_callback_exchange_failed',
+          errorCode: error.code,
+          errorMessage: error.message,
+          errorName: error.name,
+          errorStatus: (error as unknown as Record<string, unknown>).status,
+        }),
+      )
     }
 
     if (!error) {
@@ -49,12 +69,14 @@ export async function GET(request: Request) {
             .is('blocked_id', null)
             .eq('blocked_email_hash', hexHash)
         } catch (rebindErr) {
-          console.error(JSON.stringify({
-            level: 'error',
-            message: 'block_rebind_failed',
-            userId,
-            error: rebindErr instanceof Error ? rebindErr.message : String(rebindErr),
-          }))
+          console.error(
+            JSON.stringify({
+              level: 'error',
+              message: 'block_rebind_failed',
+              userId,
+              error: rebindErr instanceof Error ? rebindErr.message : String(rebindErr),
+            }),
+          )
         }
 
         const { data: profile } = await supabase

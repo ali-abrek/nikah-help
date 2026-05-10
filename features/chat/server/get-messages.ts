@@ -27,13 +27,15 @@ export async function getMessages(chatId: string): Promise<MessageRow[]> {
 
   const { data } = await supabase
     .from('messages')
-    .select(`
+    .select(
+      `
       id, chat_id, sender_id, type, content, parent_id,
       status, created_at, read_at, edited_at, original_content, deleted_at,
       parent_message:parent_id (
         id, sender_id, type, content, deleted_at
       )
-    `)
+    `,
+    )
     .eq('chat_id', chatId)
     .order('created_at', { ascending: true })
     .limit(100)

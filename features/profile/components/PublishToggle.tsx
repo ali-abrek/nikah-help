@@ -69,9 +69,7 @@ export function PublishToggle({ isPublished: initialPublished }: PublishTogglePr
         </button>
       </div>
 
-      {error && (
-        <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
-      )}
+      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
 
       {/* Confirmation dialog */}
       {showConfirm && (
@@ -98,9 +96,7 @@ export function PublishToggle({ isPublished: initialPublished }: PublishTogglePr
                 onClick={handleToggle}
                 className={cn(
                   'rounded-lg px-4 py-2 text-sm font-medium text-white',
-                  isPublished
-                    ? 'bg-red-500 hover:bg-red-600'
-                    : 'bg-primary hover:bg-primary-hover',
+                  isPublished ? 'bg-red-500 hover:bg-red-600' : 'bg-primary hover:bg-primary-hover',
                 )}
               >
                 {isPublished ? 'Скрыть' : 'Опубликовать'}

@@ -26,9 +26,7 @@ export default async function AuthPage({
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-bold text-foreground">Nikah Help</h1>
-          <p className="mt-2 text-sm text-zinc-500">
-            Войдите, чтобы найти свою вторую половину
-          </p>
+          <p className="mt-2 text-sm text-zinc-500">Войдите, чтобы найти свою вторую половину</p>
         </div>
 
         <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">

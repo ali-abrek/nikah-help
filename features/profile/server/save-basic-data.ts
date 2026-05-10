@@ -21,10 +21,7 @@ export async function saveBasicData(userId: string, data: OnboardingStep1Data) {
     updateData.location = null
   }
 
-  const { error } = await supabase
-    .from('profiles')
-    .update(updateData)
-    .eq('id', userId)
+  const { error } = await supabase.from('profiles').update(updateData).eq('id', userId)
 
   if (error) throw error
 

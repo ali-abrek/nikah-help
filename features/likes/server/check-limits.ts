@@ -6,7 +6,9 @@ export async function checkLikeLimits(
   supabase: SupabaseClient<Database>,
   userId: string,
 ): Promise<void> {
-  const { data: hasSub } = await supabase.rpc('has_active_subscription', { p_user: userId } as never)
+  const { data: hasSub } = await supabase.rpc('has_active_subscription', {
+    p_user: userId,
+  } as never)
 
   if (hasSub) return // Premium → unlimited
 
@@ -23,8 +25,7 @@ export async function checkLikeLimits(
   if (profile.gender === 'female') return
 
   // Free-tier male: check lifetime likes count
-  const { data: count } = await supabase
-    .rpc('count_likes_used', { p_user: userId } as never)
+  const { data: count } = await supabase.rpc('count_likes_used', { p_user: userId } as never)
 
   if (typeof count === 'number' && count >= 3) {
     throw new AppError('LIKE_LIMIT_REACHED', {

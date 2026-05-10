@@ -76,11 +76,7 @@ export function OnboardingWizard({ locale = 'ru' }: { locale?: string }) {
 
       {/* Step content */}
       {step === 1 && (
-        <OnboardingStep1
-          onSubmit={handleStep1Submit}
-          isPending={isPending}
-          locale={locale}
-        />
+        <OnboardingStep1 onSubmit={handleStep1Submit} isPending={isPending} locale={locale} />
       )}
 
       {step === 2 && gender && (
@@ -92,19 +88,10 @@ export function OnboardingWizard({ locale = 'ru' }: { locale?: string }) {
         />
       )}
 
-      {step === 3 && (
-        <OnboardingStep3
-          isPending={isPending}
-          onComplete={() => setStep(4)}
-        />
-      )}
+      {step === 3 && <OnboardingStep3 isPending={isPending} onComplete={() => setStep(4)} />}
 
       {step === 4 && gender && (
-        <OnboardingStep4
-          gender={gender}
-          isPending={isPending}
-          onResult={(res) => setResult(res)}
-        />
+        <OnboardingStep4 isPending={isPending} onResult={(res) => setResult(res)} />
       )}
 
       {/* Feedback */}
@@ -112,9 +99,7 @@ export function OnboardingWizard({ locale = 'ru' }: { locale?: string }) {
         <p className="mt-4 text-center text-sm text-emerald-600">{result.message}</p>
       )}
       {result && !result.success && 'error' in result && (
-        <p className="mt-4 text-center text-sm text-red-600">
-          {result.error.message}
-        </p>
+        <p className="mt-4 text-center text-sm text-red-600">{result.error.message}</p>
       )}
 
       {/* Navigation */}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useTransition } from 'react'
+import { useState, useRef } from 'react'
 import { markPhotoUploaded } from '../actions'
 
 const MAX_PHOTOS = 6
@@ -83,7 +83,6 @@ export function OnboardingStep3({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [activeSlot, setActiveSlot] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [, startTransition] = useTransition()
 
   const filledCount = slots.filter((s) => s.preview).length
 
@@ -98,7 +97,14 @@ export function OnboardingStep3({
     if (!file || !activeSlot) return
 
     // Validate type
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/heic', 'image/heif']
+    const validTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/avif',
+      'image/heic',
+      'image/heif',
+    ]
     if (!validTypes.includes(file.type)) {
       setError('Неподдерживаемый формат. Допустимы: JPEG, PNG, WebP, AVIF, HEIC')
       return
@@ -107,11 +113,7 @@ export function OnboardingStep3({
     // Create preview
     const preview = URL.createObjectURL(file)
 
-    setSlots((prev) =>
-      prev.map((s) =>
-        s.position === activeSlot ? { ...s, uploading: true } : s,
-      ),
-    )
+    setSlots((prev) => prev.map((s) => (s.position === activeSlot ? { ...s, uploading: true } : s)))
     setError(null)
 
     const result = await uploadFile(file, activeSlot)
@@ -142,9 +144,7 @@ export function OnboardingStep3({
   const handleRemove = (position: number) => {
     setSlots((prev) =>
       prev.map((s) =>
-        s.position === position
-          ? { ...s, preview: null, photoId: null, path: null }
-          : s,
+        s.position === position ? { ...s, preview: null, photoId: null, path: null } : s,
       ),
     )
   }
@@ -152,8 +152,8 @@ export function OnboardingStep3({
   return (
     <div className="space-y-5">
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Загрузите до 6 фотографий. Первое фото станет аватаром.
-        Рекомендуемое соотношение сторон — 4:5.
+        Загрузите до 6 фотографий. Первое фото станет аватаром. Рекомендуемое соотношение сторон —
+        4:5.
       </p>
 
       <div className="grid grid-cols-3 gap-3">
@@ -161,6 +161,7 @@ export function OnboardingStep3({
           <div key={slot.position}>
             {slot.preview ? (
               <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
+                {/* eslint-disable-next-line @next/next/no-img-element -- preview is an object URL, next/image does not handle blobs */}
                 <img
                   src={slot.preview}
                   alt={`Фото ${slot.position}`}
@@ -231,7 +232,11 @@ export function OnboardingStep3({
         disabled={isPending || filledCount === 0}
         className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
       >
-        {isPending ? 'Сохранение...' : filledCount > 0 ? 'Продолжить' : 'Загрузите хотя бы одно фото'}
+        {isPending
+          ? 'Сохранение...'
+          : filledCount > 0
+            ? 'Продолжить'
+            : 'Загрузите хотя бы одно фото'}
       </button>
     </div>
   )

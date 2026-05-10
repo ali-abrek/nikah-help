@@ -88,7 +88,9 @@ export function useNotifications({ initialNotifications, userId }: UseNotificati
 
   const markAsRead = useCallback(async (notificationId: string) => {
     setNotifications((prev) =>
-      prev.map((n) => (n.id === notificationId ? { ...n, status: 'read', read_at: new Date().toISOString() } : n)),
+      prev.map((n) =>
+        n.id === notificationId ? { ...n, status: 'read', read_at: new Date().toISOString() } : n,
+      ),
     )
     fetch('/api/notifications/read', {
       method: 'POST',
@@ -99,7 +101,9 @@ export function useNotifications({ initialNotifications, userId }: UseNotificati
 
   const markAllAsRead = useCallback(async () => {
     setNotifications((prev) =>
-      prev.map((n) => (n.status === 'unread' ? { ...n, status: 'read', read_at: new Date().toISOString() } : n)),
+      prev.map((n) =>
+        n.status === 'unread' ? { ...n, status: 'read', read_at: new Date().toISOString() } : n,
+      ),
     )
     fetch('/api/notifications/read-all', { method: 'POST' }).catch(() => {})
   }, [])

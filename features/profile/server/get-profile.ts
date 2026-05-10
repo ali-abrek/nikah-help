@@ -73,12 +73,8 @@ export async function getProfile(
     supabase
       .from('matches')
       .select('id')
-      .or(
-        `user_a.eq.${viewerId},user_b.eq.${viewerId}`,
-      )
-      .or(
-        `user_a.eq.${profileId},user_b.eq.${profileId}`,
-      )
+      .or(`user_a.eq.${viewerId},user_b.eq.${viewerId}`)
+      .or(`user_a.eq.${profileId},user_b.eq.${profileId}`)
       .maybeSingle(),
     supabase
       .from('blocks')

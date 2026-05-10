@@ -7,9 +7,7 @@ describe('AppError', () => {
     expect(err.code).toBe('AUTH_UNAUTHORIZED')
     expect(err.status).toBe(401)
     expect(err.traceId).toBeDefined()
-    expect(err.traceId).toMatch(
-      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/,
-    )
+    expect(err.traceId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
   })
 
   it('should use provided message instead of code', () => {

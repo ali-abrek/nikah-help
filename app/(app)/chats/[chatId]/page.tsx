@@ -2,13 +2,9 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { getChatInfo } from '@/features/chat/server/get-chat-info'
 import { getMessages } from '@/features/chat/server/get-messages'
 import { ChatDetail } from '@/features/chat/components/ChatDetail'
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 
-export default async function ChatDetailPage({
-  params,
-}: {
-  params: Promise<{ chatId: string }>
-}) {
+export default async function ChatDetailPage({ params }: { params: Promise<{ chatId: string }> }) {
   const { chatId } = await params
 
   const supabase = await createServerSupabase()
@@ -24,10 +20,7 @@ export default async function ChatDetailPage({
 
   const userId = (claims as Record<string, unknown>).sub as string
 
-  const [chatInfo, messages] = await Promise.all([
-    getChatInfo(chatId, userId),
-    getMessages(chatId),
-  ])
+  const [chatInfo, messages] = await Promise.all([getChatInfo(chatId, userId), getMessages(chatId)])
 
   if (!chatInfo) {
     notFound()
@@ -35,11 +28,7 @@ export default async function ChatDetailPage({
 
   return (
     <div className="mx-auto flex h-full max-w-2xl flex-col">
-      <ChatDetail
-        chatInfo={chatInfo}
-        initialMessages={messages}
-        userId={userId}
-      />
+      <ChatDetail chatInfo={chatInfo} initialMessages={messages} userId={userId} />
     </div>
   )
 }

@@ -15,10 +15,12 @@ export async function getChatInfo(chatId: string, userId: string): Promise<ChatI
 
   const { data: chat } = await supabase
     .from('chats')
-    .select(`
+    .select(
+      `
       id, match_id,
       matches!inner ( id, user_a, user_b )
-    `)
+    `,
+    )
     .eq('id', chatId)
     .single()
 
@@ -33,7 +35,8 @@ export async function getChatInfo(chatId: string, userId: string): Promise<ChatI
     .eq('id', otherId)
     .single()
 
-  const photos = (profile?.photos as Array<{ variants: Record<string, Record<string, string>> }>) ?? []
+  const photos =
+    (profile?.photos as Array<{ variants: Record<string, Record<string, string>> }>) ?? []
   const photoUrl = photos[0]?.variants?.thumbnail_sm?.webp ?? null
 
   return {

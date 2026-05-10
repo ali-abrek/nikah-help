@@ -16,7 +16,8 @@ type Props = {
   isPending?: boolean
 }
 
-const inputClass = 'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-foreground placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-zinc-700 dark:bg-zinc-900'
+const inputClass =
+  'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-foreground placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-zinc-700 dark:bg-zinc-900'
 
 const maritalStatusOptions = [
   { value: 'single', label: 'Не в браке' },
@@ -65,10 +66,15 @@ const hijabOptions = [
 type FieldErrors = Record<string, { message?: string } | undefined>
 
 // Simplified register type to avoid react-hook-form union schema issues
-type SimpleRegister = (name: string, opts?: Record<string, unknown>) => {
+type SimpleRegister = (
+  name: string,
+  opts?: Record<string, unknown>,
+) => {
   id: string
   name: string
-  onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void
+  onChange: (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>,
+  ) => void
   onBlur: () => void
   ref: React.RefCallback<HTMLElement>
 }
@@ -196,7 +202,10 @@ export function OnboardingStep2({ gender, onSubmit, defaultValues, isPending }: 
               id="willing_to_relocate"
               className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
             />
-            <label htmlFor="willing_to_relocate" className="text-sm text-zinc-600 dark:text-zinc-400">
+            <label
+              htmlFor="willing_to_relocate"
+              className="text-sm text-zinc-600 dark:text-zinc-400"
+            >
               Готова к переезду
             </label>
           </div>
@@ -230,9 +239,7 @@ export function OnboardingStep2({ gender, onSubmit, defaultValues, isPending }: 
           className={inputClass}
           placeholder="Расскажите о себе, своих интересах, религиозных взглядах..."
         />
-        {errs.about_self && (
-          <p className="mt-1 text-xs text-red-600">{errs.about_self.message}</p>
-        )}
+        {errs.about_self && <p className="mt-1 text-xs text-red-600">{errs.about_self.message}</p>}
       </div>
 
       <button

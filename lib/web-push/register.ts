@@ -2,7 +2,10 @@
 
 const PUBLIC_KEY = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY
 
-export async function registerPushSubscription(userId: string): Promise<PushSubscription | null> {
+// Caller passes the userId for symmetry with the unsubscribe API but the
+// server route derives the user from the session cookies; no need to send
+// it in the body.
+export async function registerPushSubscription(_userId: string): Promise<PushSubscription | null> {
   if (!PUBLIC_KEY) {
     console.warn('VAPID public key not configured')
     return null
@@ -22,19 +25,15 @@ export async function registerPushSubscription(userId: string): Promise<PushSubs
     let subscription = await registration.pushManager.getSubscription()
 
     if (subscription) {
-      // Already subscribed — verify the key matches
+      // Already subscribed — verify the key matches what the server now
+      // exposes. If not, drop the stale subscription and re-subscribe with
+      // the current public key.
       const existingKey = subscription.options?.applicationServerKey
       if (existingKey) {
-        const keyBytes = new Uint8Array(
-          atob(PUBLIC_KEY.replace(/-/g, '+').replace(/_/g, '/'))
-            .split('')
-            .map((c) => c.charCodeAt(0)),
-        )
-        // Simple check: unsubscribe and re-subscribe if key changed
-        // (full key comparison is complex, so just re-subscribe if needed)
-        const currentKey = btoa(
-          String.fromCharCode(...new Uint8Array(existingKey)),
-        ).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+        const currentKey = btoa(String.fromCharCode(...new Uint8Array(existingKey)))
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=+$/, '')
 
         if (currentKey !== PUBLIC_KEY) {
           await subscription.unsubscribe()

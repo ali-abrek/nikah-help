@@ -24,15 +24,16 @@ export function MessageList({
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevCountRef = useRef(messages.length)
-  const hasNewMessage = messages.length > prevCountRef.current
 
-  // Scroll to bottom on new messages
+  // Scroll to bottom on new messages. Refs are mutated only inside the
+  // effect — never during render — so the React Compiler stays happy.
   useEffect(() => {
-    if (hasNewMessage) {
+    const hadGrowth = messages.length > prevCountRef.current
+    if (hadGrowth) {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
     prevCountRef.current = messages.length
-  }, [messages.length, hasNewMessage])
+  }, [messages.length])
 
   // Scroll to bottom on first load
   useEffect(() => {

@@ -1,5 +1,6 @@
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getOpenAI, AI_BIO_PROMPT } from '@/lib/openai/client'
+import { BIO_FIELDS_SQL, hashBioFields } from '@/lib/profile/bio-fields'
 
 export async function generateBio(userId: string): Promise<string> {
   const supabase = await createServerSupabase()
@@ -15,46 +16,48 @@ export async function generateBio(userId: string): Promise<string> {
   if (lockError) throw lockError
   if (count === 0) throw new Error('Bio regeneration already in progress')
 
-  // Fetch profile data for the bio prompt
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select(
-      'name, gender, birth_date, country, city, nationality, education, ' +
-      'marital_status, children_count, income_level, housing, ' +
-      'willing_to_relocate, polygyny_attitude, hijab_attitude, about_self',
-    )
+    .select(`ai_bio, ai_bio_input_hash, ${BIO_FIELDS_SQL}`)
     .eq('id', userId)
-    .single<{
-      name: string | null
-      gender: string | null
-      birth_date: string | null
-      country: string | null
-      city: string | null
-      nationality: string | null
-      education: string | null
-      marital_status: string | null
-      children_count: number | null
-      income_level: string | null
-      housing: string | null
-      willing_to_relocate: boolean | null
-      polygyny_attitude: string | null
-      hijab_attitude: string | null
-      about_self: string | null
-    }>()
+    .single<
+      Record<string, unknown> & {
+        ai_bio: string | null
+        ai_bio_input_hash: string | null
+        name: string | null
+        gender: string | null
+        birth_date: string | null
+        country: string | null
+        city: string | null
+        nationality: string | null
+        education: string | null
+        marital_status: string | null
+        children_count: number | null
+        income_level: string | null
+        housing: string | null
+        willing_to_relocate: boolean | null
+        polygyny_attitude: string | null
+        hijab_attitude: string | null
+        about_self: string | null
+      }
+    >()
 
   if (error || !profile) {
-    // Release lock on error
-    await supabase
-      .from('profiles')
-      .update({ ai_bio_status: 'ready' })
-      .eq('id', userId)
+    await supabase.from('profiles').update({ ai_bio_status: 'ready' }).eq('id', userId)
     throw new Error('Profile not found')
+  }
+
+  // Short-circuit: if the bio inputs match the hash from the last
+  // successful generation and we already have a stored bio, skip OpenAI.
+  const newHash = hashBioFields(profile)
+  if (profile.ai_bio && profile.ai_bio_input_hash === newHash) {
+    await supabase.from('profiles').update({ ai_bio_status: 'ready' }).eq('id', userId)
+    return profile.ai_bio
   }
 
   const age = profile.birth_date
     ? Math.floor(
-        (Date.now() - new Date(profile.birth_date).getTime()) /
-          (365.25 * 24 * 60 * 60 * 1000),
+        (Date.now() - new Date(profile.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000),
       )
     : undefined
 
@@ -80,11 +83,7 @@ export async function generateBio(userId: string): Promise<string> {
   const bio = completion.choices[0]?.message?.content?.trim()
 
   if (!bio) {
-    // Release lock on empty response
-    await supabase
-      .from('profiles')
-      .update({ ai_bio_status: 'ready' })
-      .eq('id', userId)
+    await supabase.from('profiles').update({ ai_bio_status: 'ready' }).eq('id', userId)
     throw new Error('Failed to generate bio')
   }
 
@@ -93,6 +92,7 @@ export async function generateBio(userId: string): Promise<string> {
     .update({
       ai_bio: bio,
       ai_bio_status: 'ready',
+      ai_bio_input_hash: newHash,
     })
     .eq('id', userId)
 

@@ -1,13 +1,17 @@
 name: CI
+
 on:
   pull_request:
     branches: [main]
   push:
     branches: [main]
+  deployment_status: {}
 
 jobs:
   validate:
+    if: ${{ github.event_name != 'deployment_status' }}
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -17,21 +21,61 @@ jobs:
         with:
           node-version: '22'
           cache: 'pnpm'
+
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
       - name: Type check
         run: pnpm typecheck
+
       - name: Lint
         run: pnpm lint
-      - name: Unit + Integration tests
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Unit + integration tests
         run: pnpm test:ci
         env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_PUBLISHABLE_KEY: ${{ secrets.SUPABASE_PUBLISHABLE_KEY }}
-          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+          SUPABASE_URL: http://localhost:54321
+          SUPABASE_PUBLISHABLE_KEY: ci-publishable
+          SUPABASE_SECRET_KEY: ci-secret
+          UPSTASH_REDIS_REST_URL: http://localhost
+          UPSTASH_REDIS_REST_TOKEN: ci
+          INNGEST_SIGNING_KEY: ci
+          BLOCKED_EMAIL_PEPPER: ci-pepper
+
       - name: Build
         run: pnpm build
+        env:
+          NEXT_PHASE: phase-production-build
+
+  e2e:
+    # Run only when Vercel reports a successful preview deployment.
+    # `target_url` is a URL produced by Vercel — assign it via env: so it is
+    # consumed as a value rather than interpolated into shell commands.
+    if: ${{ github.event_name == 'deployment_status' && github.event.deployment_status.state == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      DEPLOY_URL: ${{ github.event.deployment_status.target_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install --with-deps
+
       - name: E2E tests
         run: pnpm test:e2e
         env:
-          PLAYWRIGHT_BASE_URL: ${{ github.event.deployment_status.target_url }}
+          PLAYWRIGHT_BASE_URL: ${{ env.DEPLOY_URL }}

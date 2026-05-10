@@ -32,27 +32,21 @@ export function withRateLimit<T>(
       for (const key of keys) {
         const result = await rl.limit(key, { rate: 1 })
 
-        if (
-          !mostRestrictive ||
-          result.remaining < mostRestrictive.remaining
-        ) {
+        if (!mostRestrictive || result.remaining < mostRestrictive.remaining) {
           mostRestrictive = result
         }
 
         if (!result.success) {
           const err = handleRouteError(
-            new AppError(
-              options.errorCode ?? 'RATE_LIMIT_TOO_MANY_REQUESTS',
-              {
-                logContext: {
-                  key: key.split(':').slice(0, -1).join(':') +
-                    ':' + key.split(':').pop()!.slice(0, 8),
-                  limit: options.limit,
-                  window: options.window,
-                  reset: result.reset,
-                },
+            new AppError(options.errorCode ?? 'RATE_LIMIT_TOO_MANY_REQUESTS', {
+              logContext: {
+                key:
+                  key.split(':').slice(0, -1).join(':') + ':' + key.split(':').pop()!.slice(0, 8),
+                limit: options.limit,
+                window: options.window,
+                reset: result.reset,
               },
-            ),
+            }),
           )
           err.headers.set('Retry-After', String(Math.ceil((result.reset - Date.now()) / 1000)))
           if (mostRestrictive) {
@@ -81,11 +75,13 @@ export function withRateLimit<T>(
       if (error instanceof AppError) {
         return handleRouteError(error)
       }
-      console.warn(JSON.stringify({
-        level: 'warn',
-        message: 'Rate limiter unavailable, failing open',
-        error: (error as Error).message,
-      }))
+      console.warn(
+        JSON.stringify({
+          level: 'warn',
+          message: 'Rate limiter unavailable, failing open',
+          error: (error as Error).message,
+        }),
+      )
       return handler(request, context)
     }
   }

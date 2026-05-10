@@ -39,7 +39,8 @@ export async function saveOnboardingStep1(formData: FormData) {
     nationality: formData.get('nationality'),
     height: formData.get('height') ? Number(formData.get('height')) : undefined,
     weight: formData.get('weight') ? Number(formData.get('weight')) : undefined,
-    allow_geolocation: formData.get('allow_geolocation') === 'true' || formData.get('allow_geolocation') === 'on',
+    allow_geolocation:
+      formData.get('allow_geolocation') === 'true' || formData.get('allow_geolocation') === 'on',
   }
 
   const parsed = onboardingStep1Schema.safeParse(raw)

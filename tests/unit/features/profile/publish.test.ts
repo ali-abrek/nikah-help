@@ -43,10 +43,7 @@ describe('togglePublish', () => {
       return {}
     })
 
-    const result = await togglePublish(
-      mockSupabase as unknown as SupabaseClient<never>,
-      'user-123',
-    )
+    const result = await togglePublish(mockSupabase as unknown as SupabaseClient<never>, 'user-123')
     expect(result.success).toBe(true)
     expect(result.is_published).toBe(true)
   })
@@ -85,10 +82,7 @@ describe('togglePublish', () => {
       return {}
     })
 
-    const result = await togglePublish(
-      mockSupabase as unknown as SupabaseClient<never>,
-      'user-123',
-    )
+    const result = await togglePublish(mockSupabase as unknown as SupabaseClient<never>, 'user-123')
     expect(result.success).toBe(false)
     expect(result.is_published).toBe(false)
     expect(result.errorCode).toBe('PROFILE_NO_APPROVED_PHOTO')
@@ -114,10 +108,7 @@ describe('togglePublish', () => {
       return {}
     })
 
-    const result = await togglePublish(
-      mockSupabase as unknown as SupabaseClient<never>,
-      'user-123',
-    )
+    const result = await togglePublish(mockSupabase as unknown as SupabaseClient<never>, 'user-123')
     expect(result.success).toBe(true)
     expect(result.is_published).toBe(false)
   })
@@ -134,10 +125,7 @@ describe('togglePublish', () => {
       }),
     })
 
-    const result = await togglePublish(
-      mockSupabase as unknown as SupabaseClient<never>,
-      'user-123',
-    )
+    const result = await togglePublish(mockSupabase as unknown as SupabaseClient<never>, 'user-123')
     expect(result.success).toBe(false)
     expect(result.errorCode).toBe('NOT_FOUND')
   })

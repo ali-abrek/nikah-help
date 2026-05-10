@@ -56,12 +56,7 @@ const EDUCATION_LEVELS = [
   { value: 'phd', label: 'PhD' },
 ]
 
-export function FilterPanel({
-  filters,
-  setFilter,
-  clearFilters,
-  activeCount,
-}: FilterPanelProps) {
+export function FilterPanel({ filters, setFilter, clearFilters, activeCount }: FilterPanelProps) {
   const f = filters as Record<string, unknown>
   const isMaleViewer = filters.gender === 'male' // viewer is male → show filters for females
 
@@ -70,10 +65,7 @@ export function FilterPanel({
       <div className="mb-4 flex items-center justify-between">
         <h2 className="text-lg font-semibold text-foreground">Фильтры</h2>
         {activeCount > 0 && (
-          <button
-            onClick={clearFilters}
-            className="text-sm text-primary hover:underline"
-          >
+          <button onClick={clearFilters} className="text-sm text-primary hover:underline">
             Сбросить ({activeCount})
           </button>
         )}
@@ -121,9 +113,7 @@ export function FilterPanel({
               onChange={(e) =>
                 setFilter(
                   'radius_km',
-                  Number(e.target.value) >= RADIUS_RANGE.max
-                    ? undefined
-                    : Number(e.target.value),
+                  Number(e.target.value) >= RADIUS_RANGE.max ? undefined : Number(e.target.value),
                 )
               }
               className="flex-1 accent-primary"
@@ -152,10 +142,7 @@ export function FilterPanel({
             placeholder="Любое"
             value={f.children_count_max != null ? String(f.children_count_max) : ''}
             onChange={(e) =>
-              setFilter(
-                'children_count_max',
-                e.target.value ? Number(e.target.value) : undefined,
-              )
+              setFilter('children_count_max', e.target.value ? Number(e.target.value) : undefined)
             }
             className="w-full rounded-lg border border-zinc-200 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
           />
@@ -214,13 +201,7 @@ export function FilterPanel({
 
 // ── Sub-components ──────────────────────────────────────────────────
 
-function FilterSection({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
+function FilterSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
       <label className="mb-2 block text-sm font-medium text-zinc-600 dark:text-zinc-400">

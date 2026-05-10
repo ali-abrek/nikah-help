@@ -25,12 +25,12 @@ describe('photo variant config', () => {
   })
 
   it('should have unique jsonb keys', () => {
-    const keys = Object.values(PHOTO_VARIANTS).map(v => v.jsonbKey)
+    const keys = Object.values(PHOTO_VARIANTS).map((v) => v.jsonbKey)
     expect(new Set(keys).size).toBe(keys.length)
   })
 
   it('should have unique file suffixes', () => {
-    const suffixes = Object.values(PHOTO_VARIANTS).map(v => v.fileSuffix)
+    const suffixes = Object.values(PHOTO_VARIANTS).map((v) => v.fileSuffix)
     expect(new Set(suffixes).size).toBe(suffixes.length)
   })
 
@@ -71,8 +71,7 @@ describe('photo variant config', () => {
   })
 
   it('should map fileSuffixes to hyphenated paths', () => {
-    const blurredVariants = Object.values(PHOTO_VARIANTS)
-      .filter(v => v.jsonbKey.includes('_'))
+    const blurredVariants = Object.values(PHOTO_VARIANTS).filter((v) => v.jsonbKey.includes('_'))
 
     for (const v of blurredVariants) {
       expect(v.fileSuffix).toContain('-')
@@ -81,12 +80,7 @@ describe('photo variant config', () => {
   })
 
   it('should build correct storage path', () => {
-    const path = buildStoragePath(
-      'user-1',
-      'photo-1',
-      PHOTO_VARIANTS['avatar']!,
-      'avif',
-    )
+    const path = buildStoragePath('user-1', 'photo-1', PHOTO_VARIANTS['avatar']!, 'avif')
     expect(path).toBe('user-1/photo-1-avatar.avif')
   })
 

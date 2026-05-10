@@ -60,10 +60,7 @@ export async function deletePhoto(userId: string, photoId: string): Promise<void
   }
 
   // 3. Delete the photo row
-  const { error: deleteError } = await supabase
-    .from('photos')
-    .delete()
-    .eq('id', photoId)
+  const { error: deleteError } = await supabase.from('photos').delete().eq('id', photoId)
 
   if (deleteError) throw deleteError
 }

@@ -15,9 +15,7 @@ export async function createServerSupabase() {
           return cookieStore.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options),
-          )
+          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
         },
       },
     },
@@ -46,9 +44,7 @@ export async function createRouteSupabase() {
   )
 
   const applyCookies = (response: NextResponse) => {
-    pendingCookies.forEach(({ name, value, options }) =>
-      response.cookies.set(name, value, options),
-    )
+    pendingCookies.forEach(({ name, value, options }) => response.cookies.set(name, value, options))
   }
 
   return { supabase, applyCookies }

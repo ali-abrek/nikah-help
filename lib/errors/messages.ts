@@ -7,7 +7,8 @@ const messages: Record<string, Record<string, string>> = {
 }
 
 export function getErrorMessage(code: string, locale: 'ru' | 'en' = 'ru'): string {
-  const msg = (messages[locale] as Record<string, string> | undefined)?.[code]
-    ?? (messages.ru as Record<string, string>)?.[code]
+  const msg =
+    (messages[locale] as Record<string, string> | undefined)?.[code] ??
+    (messages.ru as Record<string, string>)?.[code]
   return msg ?? code
 }

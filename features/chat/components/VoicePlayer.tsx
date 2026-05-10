@@ -68,11 +68,7 @@ export function VoicePlayer({ audioUrl, duration }: VoicePlayerProps) {
         className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-700 hover:bg-zinc-300 dark:hover:bg-zinc-600 transition-colors"
         aria-label={playing ? 'Пауза' : 'Воспроизвести'}
       >
-        {playing ? (
-          <Pause className="h-4 w-4" />
-        ) : (
-          <Play className="h-4 w-4" />
-        )}
+        {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
       </button>
       <div ref={containerRef} className="flex-1 min-w-0" />
       <span className="text-xs tabular-nums text-zinc-500 shrink-0">

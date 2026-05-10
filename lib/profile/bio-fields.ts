@@ -32,8 +32,6 @@ export type BioRelevantField = (typeof BIO_RELEVANT_FIELDS)[number]
 export const BIO_FIELDS_SQL = BIO_RELEVANT_FIELDS.join(', ')
 
 export function hashBioFields(profile: Record<string, unknown>): string {
-  const canonical = BIO_RELEVANT_FIELDS
-    .map((k) => `${k}=${profile[k] ?? ''}`)
-    .join('|')
+  const canonical = BIO_RELEVANT_FIELDS.map((k) => `${k}=${profile[k] ?? ''}`).join('|')
   return createHash('sha256').update(canonical).digest('hex')
 }

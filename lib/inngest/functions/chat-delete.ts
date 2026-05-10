@@ -23,17 +23,17 @@ export const chatDeleteFn = inngest.createFunction(
         .filter((p): p is string => p !== null)
 
       if (paths.length > 0) {
-        const { error } = await supabase.storage
-          .from('chat-media')
-          .remove(paths)
+        const { error } = await supabase.storage.from('chat-media').remove(paths)
 
         if (error) {
-          console.error(JSON.stringify({
-            level: 'error',
-            message: 'chat_delete_media_cleanup_failed',
-            chatId,
-            error: error.message,
-          }))
+          console.error(
+            JSON.stringify({
+              level: 'error',
+              message: 'chat_delete_media_cleanup_failed',
+              chatId,
+              error: error.message,
+            }),
+          )
         }
       }
     }

@@ -2,10 +2,7 @@ import type { NextRequest } from 'next/server'
 import type { KeyStrategy } from './types'
 import { extractIp, hashIp } from '@/lib/utils/ip'
 
-export async function resolveKeys(
-  request: NextRequest,
-  strategy: KeyStrategy,
-): Promise<string[]> {
+export async function resolveKeys(request: NextRequest, strategy: KeyStrategy): Promise<string[]> {
   const path = normalizePath(request.nextUrl.pathname)
   const keys: string[] = []
 

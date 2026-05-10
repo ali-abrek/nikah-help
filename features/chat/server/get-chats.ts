@@ -23,10 +23,12 @@ export async function getChats(userId: string): Promise<ChatPreview[]> {
 
   const { data: matches } = await supabase
     .from('matches')
-    .select(`
+    .select(
+      `
       id, user_a, user_b, created_at,
       chats!chats_match_id_fkey ( id )
-    `)
+    `,
+    )
     .or(`user_a.eq.${userId},user_b.eq.${userId}`)
     .order('created_at', { ascending: false })
 
@@ -50,18 +52,30 @@ export async function getChats(userId: string): Promise<ChatPreview[]> {
   const [profilesResult, messagesResult, unreadResult] = await Promise.all([
     supabase.from('profiles').select('id, name, photos ( variants )').in('id', otherUserIds),
     chatIds.length > 0
-      ? supabase.from('messages').select('chat_id, type, content, sender_id, created_at')
-          .in('chat_id', chatIds).is('deleted_at', null).order('created_at', { ascending: false })
+      ? supabase
+          .from('messages')
+          .select('chat_id, type, content, sender_id, created_at')
+          .in('chat_id', chatIds)
+          .is('deleted_at', null)
+          .order('created_at', { ascending: false })
       : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
     chatIds.length > 0
-      ? supabase.from('messages').select('chat_id')
-          .in('chat_id', chatIds).neq('sender_id', userId).is('read_at', null).is('deleted_at', null)
+      ? supabase
+          .from('messages')
+          .select('chat_id')
+          .in('chat_id', chatIds)
+          .neq('sender_id', userId)
+          .is('read_at', null)
+          .is('deleted_at', null)
       : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
   ])
 
   // Build profile map
-  const profileMap = new Map<string, { id: string; name: string | null; photo_url: string | null }>()
-  for (const p of (profilesResult.data ?? [])) {
+  const profileMap = new Map<
+    string,
+    { id: string; name: string | null; photo_url: string | null }
+  >()
+  for (const p of profilesResult.data ?? []) {
     const photos = p.photos as Array<{ variants: Record<string, Record<string, string>> }> | null
     profileMap.set(p.id, {
       id: p.id,
@@ -71,7 +85,10 @@ export async function getChats(userId: string): Promise<ChatPreview[]> {
   }
 
   // Build last message map
-  const lastMsgMap = new Map<string, { type: string; content: string; sender_id: string; created_at: string }>()
+  const lastMsgMap = new Map<
+    string,
+    { type: string; content: string; sender_id: string; created_at: string }
+  >()
   for (const msg of messagesResult.data ?? []) {
     const chatId = msg.chat_id as string
     if (!chatId || lastMsgMap.has(chatId)) continue

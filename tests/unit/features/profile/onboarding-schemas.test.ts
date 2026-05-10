@@ -53,11 +53,7 @@ describe('onboardingStep1Schema', () => {
 
   it('rejects date when user is under 18', () => {
     const today = new Date()
-    const seventeenYearsAgo = new Date(
-      today.getFullYear() - 17,
-      today.getMonth(),
-      today.getDate(),
-    )
+    const seventeenYearsAgo = new Date(today.getFullYear() - 17, today.getMonth(), today.getDate())
       .toISOString()
       .split('T')[0]
     const result = onboardingStep1Schema.safeParse(validStep1({ birth_date: seventeenYearsAgo! }))
@@ -66,11 +62,7 @@ describe('onboardingStep1Schema', () => {
 
   it('accepts date exactly 18 years ago', () => {
     const today = new Date()
-    const eighteenYearsAgo = new Date(
-      today.getFullYear() - 18,
-      today.getMonth(),
-      today.getDate(),
-    )
+    const eighteenYearsAgo = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate())
       .toISOString()
       .split('T')[0]
     const result = onboardingStep1Schema.safeParse(validStep1({ birth_date: eighteenYearsAgo! }))
@@ -151,7 +143,9 @@ describe('onboardingStep2MaleSchema', () => {
   })
 
   it('rejects invalid marital status', () => {
-    const result = onboardingStep2MaleSchema.safeParse(validMaleStep2({ marital_status: 'married_5' }))
+    const result = onboardingStep2MaleSchema.safeParse(
+      validMaleStep2({ marital_status: 'married_5' }),
+    )
     expect(result.success).toBe(false)
   })
 
@@ -166,7 +160,9 @@ describe('onboardingStep2MaleSchema', () => {
   })
 
   it('rejects invalid income level', () => {
-    const result = onboardingStep2MaleSchema.safeParse(validMaleStep2({ income_level: 'billionaire' }))
+    const result = onboardingStep2MaleSchema.safeParse(
+      validMaleStep2({ income_level: 'billionaire' }),
+    )
     expect(result.success).toBe(false)
   })
 

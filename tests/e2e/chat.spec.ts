@@ -62,10 +62,14 @@ test.describe('Chat E2E', () => {
   test('status icons show correct states', () => {
     const getStatusIcon = (status: string): string => {
       switch (status) {
-        case 'sent': return 'check'
-        case 'delivered': return 'checks'
-        case 'read': return 'checks-blue'
-        default: return 'clock'
+        case 'sent':
+          return 'check'
+        case 'delivered':
+          return 'checks'
+        case 'read':
+          return 'checks-blue'
+        default:
+          return 'clock'
       }
     }
 
@@ -92,9 +96,12 @@ test.describe('Chat E2E', () => {
   test('message types have correct previews', () => {
     const getPreview = (type: string, content: string): string => {
       switch (type) {
-        case 'image': return '📷 Фото'
-        case 'voice': return '🎤 Голосовое'
-        default: return content.length > 60 ? content.slice(0, 60) + '...' : content
+        case 'image':
+          return '📷 Фото'
+        case 'voice':
+          return '🎤 Голосовое'
+        default:
+          return content.length > 60 ? content.slice(0, 60) + '...' : content
       }
     }
 

@@ -66,9 +66,7 @@ export function useFeed({ viewerGender, filters, initialData }: UseFeedParams) {
       }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    initialData: initialData
-      ? { pages: [initialData], pageParams: [undefined] }
-      : undefined,
+    initialData: initialData ? { pages: [initialData], pageParams: [undefined] } : undefined,
     staleTime: 30_000,
   })
 }

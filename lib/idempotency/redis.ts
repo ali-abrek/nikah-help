@@ -17,11 +17,7 @@ export async function acquireLock(key: string, ttl: number): Promise<boolean> {
   return result === 1
 }
 
-export async function storeResult(
-  key: string,
-  response: NextResponse,
-  ttl: number,
-): Promise<void> {
+export async function storeResult(key: string, response: NextResponse, ttl: number): Promise<void> {
   const body = await response.clone().text()
 
   const stored: StoredResponse = {

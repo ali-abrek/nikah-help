@@ -1,7 +1,7 @@
 // ── Formats ──────────────────────────────────────────────────────
 
 export const FORMATS = ['avif', 'webp'] as const
-export type ImageFormat = typeof FORMATS[number]
+export type ImageFormat = (typeof FORMATS)[number]
 
 // ── Compression ──────────────────────────────────────────────────
 
@@ -22,13 +22,7 @@ export const PROCESSING = {
 export const UPLOAD = {
   maxFileSize: 10 * 1024 * 1024,
   minShortSide: 1000,
-  acceptedMimeTypes: [
-    'image/jpeg',
-    'image/png',
-    'image/webp',
-    'image/avif',
-    'image/heic',
-  ] as const,
+  acceptedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/heic'] as const,
   maxPhotosPerProfile: 6,
 } as const
 
@@ -134,13 +128,13 @@ export type VariantKey = keyof typeof PHOTO_VARIANTS
 export type PublicVariant = NonNullable<VariantConfig['publicName']>
 
 export const PUBLIC_VARIANTS = Object.values(PHOTO_VARIANTS)
-  .filter(v => v.publicName !== null)
-  .map(v => v.publicName!) as PublicVariant[]
+  .filter((v) => v.publicName !== null)
+  .map((v) => v.publicName!) as PublicVariant[]
 
 // ── Lookup Helpers ────────────────────────────────────────────────
 
 export function getVariantByPublicName(name: PublicVariant): VariantConfig {
-  const variant = Object.values(PHOTO_VARIANTS).find(v => v.publicName === name)
+  const variant = Object.values(PHOTO_VARIANTS).find((v) => v.publicName === name)
   if (!variant) throw new Error(`Unknown public variant: ${name}`)
   return variant
 }

@@ -60,9 +60,7 @@ export function ProfileCard({ profile }: { profile: FeedProfile }) {
           <h3 className="text-lg font-semibold text-foreground group-hover:text-primary">
             {profile.name}
           </h3>
-          {age != null && (
-            <span className="text-sm text-zinc-500">{age} лет</span>
-          )}
+          {age != null && <span className="text-sm text-zinc-500">{age} лет</span>}
         </div>
 
         {profile.city && profile.country && (

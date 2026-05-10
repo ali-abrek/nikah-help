@@ -1,0 +1,11 @@
+.next/
+.vercel/
+node_modules/
+coverage/
+build/
+out/
+pnpm-lock.yaml
+types/database.types.ts
+next-env.d.ts
+*.tsbuildinfo
+public/

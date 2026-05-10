@@ -27,9 +27,7 @@ export default async function OnboardingPage() {
     <div className="mx-auto max-w-2xl px-4 py-12">
       <div className="mb-8 text-center">
         <h1 className="text-2xl font-bold text-foreground">Заполните профиль</h1>
-        <p className="mt-2 text-sm text-zinc-500">
-          Шаг за шагом — это займёт всего пару минут
-        </p>
+        <p className="mt-2 text-sm text-zinc-500">Шаг за шагом — это займёт всего пару минут</p>
       </div>
       <OnboardingWizard locale={locale} />
     </div>

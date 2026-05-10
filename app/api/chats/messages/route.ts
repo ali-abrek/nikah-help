@@ -1,40 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerSupabase } from '@/lib/supabase/server'
 import { sendMessage } from '@/features/chat/server/send-message'
 import { sendMessageSchema } from '@/features/chat/schemas'
+import { withAuth } from '@/lib/api/with-auth'
+import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
+import { withIdempotency } from '@/lib/idempotency/with-idempotency'
+import { MESSAGE_SEND as MESSAGE_SEND_RL } from '@/lib/ratelimit/presets'
+import { MESSAGE_SEND as MESSAGE_SEND_IDEM } from '@/lib/idempotency/presets'
+import { AppError } from '@/lib/errors/app-error'
+import { handleRouteError } from '@/lib/errors/handler'
 
-export async function POST(request: NextRequest) {
-  const supabase = await createServerSupabase()
-  const { data: claims } = await supabase.auth.getClaims()
-
-  if (!claims) {
-    return NextResponse.json(
-      { code: 'AUTH_UNAUTHORIZED', message: 'Требуется авторизация', trace_id: crypto.randomUUID(), status: 401 },
-      { status: 401 },
-    )
-  }
-
-  const userId = (claims as Record<string, unknown>).sub as string
-
-  const raw = Object.fromEntries(await request.formData())
-  const parsed = sendMessageSchema.safeParse(raw)
-
-  if (!parsed.success) {
-    return NextResponse.json(
-      {
-        code: 'VALIDATION_INVALID_INPUT',
-        message: 'Некорректные данные',
-        trace_id: crypto.randomUUID(),
-        status: 422,
-        details: Object.fromEntries(
-          parsed.error.issues.map((i) => [i.path.join('.'), i.message]),
-        ),
-      },
-      { status: 422 },
-    )
-  }
-
+const handler = async (request: NextRequest): Promise<NextResponse> => {
   try {
+    const userId = request.headers.get('x-user-id')!
+
+    const raw = Object.fromEntries(await request.formData())
+    const parsed = sendMessageSchema.safeParse(raw)
+    if (!parsed.success) {
+      const fieldErrors = parsed.error.flatten().fieldErrors
+      const details: Record<string, string> = {}
+      for (const [field, errs] of Object.entries(fieldErrors)) {
+        if (errs && errs.length) details[field] = errs[0]!
+      }
+      throw new AppError('VALIDATION_INVALID_INPUT', { details })
+    }
+
     const result = await sendMessage({
       chatId: parsed.data.chat_id,
       senderId: userId,
@@ -44,15 +33,11 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json(result, { status: 201 })
-  } catch (error: unknown) {
-    const appErr = error as { status?: number; toResponse?: () => Record<string, unknown> }
-    if (appErr.toResponse) {
-      const resp = appErr.toResponse()
-      return NextResponse.json(resp, { status: appErr.status ?? 500 })
-    }
-    return NextResponse.json(
-      { code: 'SYSTEM_INTERNAL_ERROR', message: 'Ошибка сервера', trace_id: crypto.randomUUID(), status: 500 },
-      { status: 500 },
-    )
+  } catch (error) {
+    return handleRouteError(error)
   }
 }
+
+export const POST = withAuth(
+  withRateLimit(withIdempotency(handler, MESSAGE_SEND_IDEM), MESSAGE_SEND_RL),
+)

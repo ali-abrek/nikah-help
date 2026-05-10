@@ -5,19 +5,35 @@ import { Mic, Square, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils/cn'
 
 interface VoiceRecorderProps {
-  chatId: string
   onSend: (blob: Blob, duration: number) => Promise<void>
 }
 
 const MAX_DURATION = 90 // seconds
 
-export function VoiceRecorder({ chatId, onSend }: VoiceRecorderProps) {
+// We drive the timer entirely off a ref + interval. `duration` state is
+// still rendered for the countdown UI, but the auto-stop check happens
+// inside the interval callback so we never call setState from inside an
+// effect just to react to derived state.
+export function VoiceRecorder({ onSend }: VoiceRecorderProps) {
   const [recording, setRecording] = useState(false)
   const [duration, setDuration] = useState(0)
   const [sending, setSending] = useState(false)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const durationRef = useRef(0)
+
+  const stopRecording = useCallback(() => {
+    const mr = mediaRecorderRef.current
+    if (mr && mr.state !== 'inactive') {
+      mr.stop()
+    }
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    setRecording(false)
+  }, [])
 
   const startRecording = useCallback(async () => {
     try {
@@ -28,6 +44,7 @@ export function VoiceRecorder({ chatId, onSend }: VoiceRecorderProps) {
 
       mediaRecorderRef.current = mediaRecorder
       chunksRef.current = []
+      durationRef.current = 0
 
       mediaRecorder.ondataavailable = (e) => {
         if (e.data.size > 0) {
@@ -37,9 +54,8 @@ export function VoiceRecorder({ chatId, onSend }: VoiceRecorderProps) {
 
       mediaRecorder.onstop = async () => {
         const blob = new Blob(chunksRef.current, { type: 'audio/webm' })
-        const actualDuration = duration
+        const actualDuration = durationRef.current
 
-        // Stop all tracks
         stream.getTracks().forEach((t) => t.stop())
 
         if (actualDuration < 1) return // Too short, discard
@@ -50,6 +66,7 @@ export function VoiceRecorder({ chatId, onSend }: VoiceRecorderProps) {
         } finally {
           setSending(false)
           setDuration(0)
+          durationRef.current = 0
         }
       }
 
@@ -58,36 +75,20 @@ export function VoiceRecorder({ chatId, onSend }: VoiceRecorderProps) {
       setDuration(0)
 
       timerRef.current = setInterval(() => {
-        setDuration((prev) => {
-          if (prev >= MAX_DURATION - 1) {
-            mediaRecorder.stop()
-            return prev + 1
-          }
-          return prev + 1
-        })
+        durationRef.current += 1
+        setDuration(durationRef.current)
+        // Auto-stop at the cap. Calling stopRecording from a timer callback
+        // is event-driven, not effect-driven — no React Compiler hazard.
+        if (durationRef.current >= MAX_DURATION) {
+          stopRecording()
+        }
       }, 1000)
     } catch (err) {
       console.error('Failed to start recording:', err)
     }
-  }, [onSend, duration])
+  }, [onSend, stopRecording])
 
-  const stopRecording = useCallback(() => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
-      mediaRecorderRef.current.stop()
-    }
-    if (timerRef.current) {
-      clearInterval(timerRef.current)
-    }
-    setRecording(false)
-  }, [])
-
-  useEffect(() => {
-    if (duration >= MAX_DURATION) {
-      stopRecording()
-    }
-  }, [duration, stopRecording])
-
-  // Cleanup on unmount
+  // Cleanup on unmount.
   useEffect(() => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current)
@@ -99,11 +100,7 @@ export function VoiceRecorder({ chatId, onSend }: VoiceRecorderProps) {
 
   if (sending) {
     return (
-      <button
-        type="button"
-        disabled
-        className="shrink-0 rounded-lg p-2 text-zinc-400"
-      >
+      <button type="button" disabled className="shrink-0 rounded-lg p-2 text-zinc-400">
         <Loader2 className="h-5 w-5 animate-spin" />
       </button>
     )
@@ -120,9 +117,7 @@ export function VoiceRecorder({ chatId, onSend }: VoiceRecorderProps) {
         )}
       >
         <Square className="h-4 w-4" />
-        <span className="text-xs tabular-nums">
-          {MAX_DURATION - duration}с
-        </span>
+        <span className="text-xs tabular-nums">{MAX_DURATION - duration}с</span>
       </button>
     )
   }

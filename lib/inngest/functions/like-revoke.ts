@@ -40,7 +40,10 @@ export const likeRevokeFn = inngest.createFunction(
         if (mediaMessages && mediaMessages.length > 0) {
           const paths = mediaMessages
             .map((m) => m.content)
-            .filter((c): c is string => !!c && (c.startsWith(userId + '/') || c.startsWith(otherUserId + '/')))
+            .filter(
+              (c): c is string =>
+                !!c && (c.startsWith(userId + '/') || c.startsWith(otherUserId + '/')),
+            )
 
           if (paths.length > 0) {
             await supabase.storage.from('chat-media').remove(paths)

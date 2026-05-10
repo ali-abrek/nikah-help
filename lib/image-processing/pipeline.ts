@@ -26,7 +26,12 @@ export async function processImage(
   userId: string,
   photoId: string,
 ): Promise<PipelineResult> {
-  const image = sharp(buffer).rotate()
+  // Match the constraints applied during validation so a malicious image that
+  // somehow reached this stage cannot exhaust memory during variant decode.
+  const image = sharp(buffer, {
+    limitInputPixels: 268_402_689,
+    failOnError: true,
+  }).rotate()
   const files: GeneratedFile[] = []
 
   for (const [key, config] of Object.entries(PHOTO_VARIANTS)) {
@@ -43,6 +48,9 @@ export async function processImage(
           pipeline = pipeline.blur(config.blur)
         }
 
+        // Sharp drops EXIF/IPTC/XMP by default on toFormat — keep it that way
+        // (no withMetadata() call) so profile photos cannot leak GPS, device
+        // IDs, or capture timestamps to viewers.
         pipeline = pipeline.toFormat(format, COMPRESSION[format])
 
         const outputBuffer = await pipeline.toBuffer()

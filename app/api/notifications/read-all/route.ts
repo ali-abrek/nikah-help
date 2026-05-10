@@ -1,19 +1,28 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { createServerSupabase } from '@/lib/supabase/server'
-import { createAdminClient } from '@/lib/supabase/admin'
+import { withAuth } from '@/lib/api/with-auth'
+import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
+import { ACTION_MODERATE } from '@/lib/ratelimit/presets'
+import { AppError } from '@/lib/errors/app-error'
+import { handleRouteError } from '@/lib/errors/handler'
 
-export async function POST() {
-  const supabase = await createServerSupabase()
-  const { data: claims } = await supabase.auth.getClaims()
-  if (!claims) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+export const POST = withAuth(
+  withRateLimit(async (req: NextRequest) => {
+    try {
+      const userId = req.headers.get('x-user-id')!
+      const supabase = await createServerSupabase()
+      const { error } = await supabase
+        .from('notifications')
+        .update({ status: 'read', read_at: new Date().toISOString() })
+        .eq('user_id', userId)
+        .eq('status', 'unread')
 
-  const userId = (claims as Record<string, unknown>).sub as string
-  const admin = createAdminClient()
-  await admin
-    .from('notifications')
-    .update({ status: 'read', read_at: new Date().toISOString() })
-    .eq('user_id', userId)
-    .eq('status', 'unread')
-
-  return NextResponse.json({ ok: true })
-}
+      if (error) {
+        throw new AppError('SYSTEM_DATABASE_ERROR', { cause: error })
+      }
+      return NextResponse.json({ success: true })
+    } catch (error) {
+      return handleRouteError(error)
+    }
+  }, ACTION_MODERATE),
+)

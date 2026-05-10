@@ -2,12 +2,22 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { requireEnv, validateEnv } from '@/lib/env'
 import { validateSiteUrl } from '@/lib/utils/site-url'
+import { isUserSuspendedCached } from '@/lib/auth/suspension'
 
 // Validated at module load (logs missing vars; does not throw — see env.ts).
 validateEnv()
 validateSiteUrl()
 
-const PROTECTED_PATHS = ['/dashboard', '/onboarding', '/feed']
+const PROTECTED_PATHS = [
+  '/dashboard',
+  '/onboarding',
+  '/feed',
+  '/chats',
+  '/profile',
+  '/likes',
+  '/notifications',
+  '/settings',
+]
 
 export async function proxy(request: NextRequest) {
   const supabaseResponse = NextResponse.next({ request })
@@ -52,9 +62,7 @@ export async function proxy(request: NextRequest) {
     requestHeaders.set('x-user-id', userId)
     requestHeaders.set('x-user-role', (claims.role as string) ?? 'user')
 
-    const { data: suspended } = await supabase.rpc('is_user_suspended', {
-      p_user: userId,
-    })
+    const suspended = await isUserSuspendedCached(supabase, userId)
 
     if (suspended) {
       await supabase.auth.signOut()

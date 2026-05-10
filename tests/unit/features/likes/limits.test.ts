@@ -33,7 +33,9 @@ function mockSupabaseClient(overrides: {
       }
       return {
         select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null, error: null }) }),
+          eq: vi
+            .fn()
+            .mockReturnValue({ single: vi.fn().mockResolvedValue({ data: null, error: null }) }),
         }),
       }
     }),

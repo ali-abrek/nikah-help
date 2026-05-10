@@ -125,9 +125,12 @@ test.describe('match modal', () => {
 
       // Wait for potential match modal
       const matchOverlay = page.locator('text=Это мэтч!')
-      await matchOverlay.first().waitFor({ state: 'visible', timeout: 5000 }).catch(() => {
-        // Modal may not appear if animation is skipped or component differs
-      })
+      await matchOverlay
+        .first()
+        .waitFor({ state: 'visible', timeout: 5000 })
+        .catch(() => {
+          // Modal may not appear if animation is skipped or component differs
+        })
     }
   })
 })

@@ -1,6 +1,7 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
+import { useQuery } from '@tanstack/react-query'
 
 interface Country {
   iso2: string
@@ -16,53 +17,59 @@ interface CountrySelectProps {
 }
 
 function iso2ToFlag(iso2: string): string {
-  return String.fromCodePoint(
-    ...[...iso2.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65),
-  )
+  return String.fromCodePoint(...[...iso2.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65))
+}
+
+async function fetchCountries(locale: string): Promise<Country[]> {
+  const res = await fetch(`/api/geo/countries?locale=${encodeURIComponent(locale)}`)
+  if (!res.ok) return []
+  const data = (await res.json()) as { countries?: Country[] }
+  return data.countries ?? []
 }
 
 export function CountrySelect({ value, onChange, disabled, locale = 'ru' }: CountrySelectProps) {
-  const [countries, setCountries] = useState<Country[]>([])
   const [open, setOpen] = useState(false)
   const [search, setSearch] = useState('')
-  const [loading, setLoading] = useState(true)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    fetch(`/api/geo/countries?locale=${locale}`)
-      .then((r) => r.json())
-      .then((data) => setCountries(data.countries ?? []))
-      .catch(() => setCountries([]))
-      .finally(() => setLoading(false))
-  }, [locale])
+  const { data: countries = [], isPending: loading } = useQuery({
+    queryKey: ['geo', 'countries', locale],
+    queryFn: () => fetchCountries(locale),
+  })
 
+  // Outside-click handler — registered only while menu is open.
   useEffect(() => {
+    if (!open) return
     function handleClick(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false)
       }
     }
-    if (open) {
-      document.addEventListener('mousedown', handleClick)
-      return () => document.removeEventListener('mousedown', handleClick)
-    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
   }, [open])
 
+  // Focus the search field when the menu opens. We don't reset `search` from
+  // here — it's reset in the open() handler below to keep state mutations
+  // event-driven rather than effect-driven.
   useEffect(() => {
-    if (open) {
-      inputRef.current?.focus()
-      setSearch('')
-    }
+    if (!open) return
+    inputRef.current?.focus()
   }, [open])
+
+  const openMenu = useCallback(() => {
+    setSearch('')
+    setOpen(true)
+  }, [])
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
       if (e.key === 'Escape') {
         setOpen(false)
+        return
       }
-      // Prevent form submission on Enter when selecting
       if (e.key === 'Enter' && open) {
         e.preventDefault()
         const filtered = countries.filter((c) =>
@@ -77,9 +84,7 @@ export function CountrySelect({ value, onChange, disabled, locale = 'ru' }: Coun
     [open, search, countries, onChange],
   )
 
-  const filtered = countries.filter((c) =>
-    c.name.toLowerCase().includes(search.toLowerCase()),
-  )
+  const filtered = countries.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()))
 
   const selected = countries.find((c) => c.iso2 === value)
   const displayLabel = selected ? `${iso2ToFlag(selected.iso2)} ${selected.name}` : ''
@@ -89,18 +94,18 @@ export function CountrySelect({ value, onChange, disabled, locale = 'ru' }: Coun
       <button
         type="button"
         disabled={disabled}
-        onClick={() => !disabled && setOpen((v) => !v)}
+        onClick={() => {
+          if (disabled) return
+          if (open) setOpen(false)
+          else openMenu()
+        }}
         className={`w-full rounded-lg border px-3 py-2 text-left text-sm ${
           disabled
             ? 'cursor-not-allowed border-zinc-200 bg-zinc-50 text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900'
             : 'border-zinc-300 bg-white text-foreground hover:border-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-zinc-700 dark:bg-zinc-900'
         }`}
       >
-        {value && selected ? (
-          displayLabel
-        ) : (
-          <span className="text-zinc-400">Выберите страну</span>
-        )}
+        {value && selected ? displayLabel : <span className="text-zinc-400">Выберите страну</span>}
       </button>
 
       {open && !disabled && (

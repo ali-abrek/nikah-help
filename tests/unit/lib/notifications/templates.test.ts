@@ -110,9 +110,7 @@ describe('Context validation', () => {
   })
 
   it('passes for account_reinstated with only recipientId', () => {
-    expect(() =>
-      validateContext('account_reinstated', { recipientId: validUuid }),
-    ).not.toThrow()
+    expect(() => validateContext('account_reinstated', { recipientId: validUuid })).not.toThrow()
   })
 
   it('throws for photo_rejected without reason', () => {
@@ -189,14 +187,36 @@ describe('Notification factory', () => {
   })
 
   it('creates payloads for all 11 notification types', () => {
-    const minimalContexts: Partial<Record<NotificationType, Parameters<typeof createNotification>[1]>> = {
-      like_received: { recipientId: validUuid, actorId: validUuid, actorName: 'X', entityId: validUuid },
+    const minimalContexts: Partial<
+      Record<NotificationType, Parameters<typeof createNotification>[1]>
+    > = {
+      like_received: {
+        recipientId: validUuid,
+        actorId: validUuid,
+        actorName: 'X',
+        entityId: validUuid,
+      },
       like_revoked: { recipientId: validUuid, actorId: validUuid, entityId: validUuid },
-      match_created: { recipientId: validUuid, actorId: validUuid, actorName: 'X', matchId: validUuid },
-      message_new: { recipientId: validUuid, actorId: validUuid, actorName: 'X', messageId: validUuid, chatId: validUuid },
+      match_created: {
+        recipientId: validUuid,
+        actorId: validUuid,
+        actorName: 'X',
+        matchId: validUuid,
+      },
+      message_new: {
+        recipientId: validUuid,
+        actorId: validUuid,
+        actorName: 'X',
+        messageId: validUuid,
+        chatId: validUuid,
+      },
       photo_approved: { recipientId: validUuid, photoId: validUuid },
       photo_rejected: { recipientId: validUuid, photoId: validUuid, reason: 'Blurry' },
-      photo_removed_by_moderator: { recipientId: validUuid, photoId: validUuid, reason: 'Inappropriate' },
+      photo_removed_by_moderator: {
+        recipientId: validUuid,
+        photoId: validUuid,
+        reason: 'Inappropriate',
+      },
       account_blocked: { recipientId: validUuid, reason: 'Terms violation' },
       account_reinstated: { recipientId: validUuid },
       account_suspension_expired: { recipientId: validUuid },

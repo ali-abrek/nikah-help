@@ -8,10 +8,12 @@ export async function deleteChat(chatId: string, userId: string) {
   // Verify user is participant
   const { data: chat } = await supabase
     .from('chats')
-    .select(`
+    .select(
+      `
       id, match_id,
       matches!inner ( user_a, user_b )
-    `)
+    `,
+    )
     .eq('id', chatId)
     .single()
 

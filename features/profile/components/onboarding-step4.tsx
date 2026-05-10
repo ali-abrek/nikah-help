@@ -10,11 +10,9 @@ type OnboardingResult =
   | { success: false; error: ErrorResponse }
 
 export function OnboardingStep4({
-  gender: _gender,
   isPending,
   onResult,
 }: {
-  gender: 'male' | 'female'
   isPending?: boolean
   onResult?: (result: OnboardingResult) => void
 }) {
@@ -42,17 +40,13 @@ export function OnboardingStep4({
   return (
     <div className="space-y-6">
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Проверьте введённые данные. После завершения AI создаст вашу биографию,
-        и ваш профиль станет доступен в ленте.
+        Проверьте введённые данные. После завершения AI создаст вашу биографию, и ваш профиль станет
+        доступен в ленте.
       </p>
 
       {generating && !bio && (
         <div className="flex items-center justify-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
-          <svg
-            className="h-5 w-5 animate-spin text-amber-600"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
+          <svg className="h-5 w-5 animate-spin text-amber-600" fill="none" viewBox="0 0 24 24">
             <circle
               className="opacity-25"
               cx="12"

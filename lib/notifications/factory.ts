@@ -1,4 +1,4 @@
-import type { NotificationType, NotificationContext, NotificationOptions, NotificationPayload } from './types'
+import type { NotificationType, NotificationContext, NotificationPayload } from './types'
 import { resolveTemplate } from './templates'
 import { resolveLink } from './links'
 import { validateContext } from './validation'
@@ -6,7 +6,6 @@ import { validateContext } from './validation'
 export function createNotification(
   type: NotificationType,
   context: NotificationContext,
-  options: NotificationOptions = {},
 ): NotificationPayload {
   validateContext(type, context)
 

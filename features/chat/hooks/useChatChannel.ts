@@ -1,21 +1,23 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import type { MessageRow } from '../server/get-messages'
 
-interface TypingPayload {
-  user_id: string
-  is_typing: boolean
-}
-
+// Callbacks are kept in refs so callers don't have to memoise them. Without
+// this, every parent re-render that passes an inline closure would tear down
+// the Realtime channel and rebuild it, dropping in-flight events.
 export function useChatChannel(
   chatId: string,
   userId: string,
   onNewMessage: (message: MessageRow) => void,
 ) {
   const [isOnline, setIsOnline] = useState(false)
-  const channelRef = useRef<ReturnType<ReturnType<typeof createClient>['channel']> | null>(null)
+  const onNewMessageRef = useRef(onNewMessage)
+
+  useEffect(() => {
+    onNewMessageRef.current = onNewMessage
+  }, [onNewMessage])
 
   useEffect(() => {
     const supabase = createClient()
@@ -26,7 +28,6 @@ export function useChatChannel(
       },
     })
 
-    // Postgres Changes for new messages
     channel.on(
       'postgres_changes',
       {
@@ -36,12 +37,10 @@ export function useChatChannel(
         filter: `chat_id=eq.${chatId}`,
       },
       (payload) => {
-        const newMsg = payload.new as MessageRow
-        onNewMessage(newMsg)
+        onNewMessageRef.current(payload.new as MessageRow)
       },
     )
 
-    // Postgres Changes for updates (edit/delete/status)
     channel.on(
       'postgres_changes',
       {
@@ -51,15 +50,13 @@ export function useChatChannel(
         filter: `chat_id=eq.${chatId}`,
       },
       (payload) => {
-        const updated = payload.new as MessageRow
-        onNewMessage(updated) // parent handles dedup and upsert
+        onNewMessageRef.current(payload.new as MessageRow)
       },
     )
 
-    // Presence sync
     channel.on('presence', { event: 'sync' }, () => {
       const state = channel.presenceState()
-      setIsOnline(Object.keys(state).length > 1) // more than just us
+      setIsOnline(Object.keys(state).length > 1)
     })
 
     channel.subscribe(async (status) => {
@@ -72,20 +69,20 @@ export function useChatChannel(
       }
     })
 
-    channelRef.current = channel
-
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [chatId, userId, onNewMessage])
+  }, [chatId, userId])
 
   return { isOnline }
 }
 
-export function useChatUpdates(
-  chatId: string,
-  onUpdate: (message: MessageRow) => void,
-) {
+export function useChatUpdates(chatId: string, onUpdate: (message: MessageRow) => void) {
+  const onUpdateRef = useRef(onUpdate)
+  useEffect(() => {
+    onUpdateRef.current = onUpdate
+  }, [onUpdate])
+
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase.channel(`chat:${chatId}:updates`)
@@ -99,7 +96,7 @@ export function useChatUpdates(
         filter: `chat_id=eq.${chatId}`,
       },
       (payload) => {
-        onUpdate(payload.new as MessageRow)
+        onUpdateRef.current(payload.new as MessageRow)
       },
     )
 
@@ -112,5 +109,5 @@ export function useChatUpdates(
     return () => {
       supabase.removeChannel(channel)
     }
-  }, [chatId, onUpdate])
+  }, [chatId])
 }

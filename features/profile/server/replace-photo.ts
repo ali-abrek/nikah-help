@@ -7,10 +7,7 @@ interface ReplacePhotoResult {
   position: number
 }
 
-export async function replacePhoto(
-  userId: string,
-  position: number,
-): Promise<ReplacePhotoResult> {
+export async function replacePhoto(userId: string, position: number): Promise<ReplacePhotoResult> {
   const supabase = await createServerSupabase()
 
   // 1. Find old photo

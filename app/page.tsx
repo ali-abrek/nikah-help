@@ -5,9 +5,7 @@ export default function HomePage() {
     <div className="flex min-h-full flex-1 flex-col items-center justify-center px-4">
       <div className="w-full max-w-sm text-center">
         <h1 className="text-3xl font-bold text-foreground">Nikah Help</h1>
-        <p className="mt-3 text-zinc-500">
-          Мусульманская платформа для создания семьи
-        </p>
+        <p className="mt-3 text-zinc-500">Мусульманская платформа для создания семьи</p>
         <div className="mt-8 flex flex-col gap-3">
           <Link
             href="/auth"

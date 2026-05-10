@@ -50,6 +50,7 @@ export function ChatList({ chats, userId }: ChatListProps) {
           <div className="relative shrink-0">
             <div className="h-12 w-12 rounded-full bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
               {chat.other_user.photo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element -- streamed via auth-aware route
                 <img
                   src={`/api/photos/stream/${chat.other_user.id}/${chat.other_user.photo_url}`}
                   alt={chat.other_user.name ?? ''}
@@ -77,9 +78,7 @@ export function ChatList({ chats, userId }: ChatListProps) {
             </div>
             <div className="flex items-center justify-between mt-0.5">
               <span className="text-sm text-zinc-500 truncate">
-                {chat.last_message
-                  ? formatPreview(chat.last_message, userId)
-                  : 'Начните общение'}
+                {chat.last_message ? formatPreview(chat.last_message, userId) : 'Начните общение'}
               </span>
               {chat.unread_count > 0 && (
                 <span

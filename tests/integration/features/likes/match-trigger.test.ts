@@ -118,9 +118,7 @@ describe('sendLike (RPC-backed)', () => {
     )
 
     const { sendLike } = await import('@/features/likes/server/send-like')
-    await expect(
-      sendLike({ fromUserId: 'user-a', toUserId: 'user-b' }),
-    ).rejects.toThrow(AppError)
+    await expect(sendLike({ fromUserId: 'user-a', toUserId: 'user-b' })).rejects.toThrow(AppError)
   })
 
   it('rejects with LIKE_LIMIT_REACHED when free-tier male exceeds quota', async () => {
@@ -135,9 +133,7 @@ describe('sendLike (RPC-backed)', () => {
     )
 
     const { sendLike } = await import('@/features/likes/server/send-like')
-    await expect(
-      sendLike({ fromUserId: 'user-a', toUserId: 'user-b' }),
-    ).rejects.toThrow(AppError)
+    await expect(sendLike({ fromUserId: 'user-a', toUserId: 'user-b' })).rejects.toThrow(AppError)
   })
 })
 
@@ -154,10 +150,7 @@ describe('revokeLike - cleanup', () => {
   it('should find and delete like', async () => {
     const { createAdminClient } = await import('@/lib/supabase/admin')
 
-    const maybeSingle = makeMaybeSingleChain([
-      { data: { id: 'like-1' } },
-      { data: null },
-    ])
+    const maybeSingle = makeMaybeSingleChain([{ data: { id: 'like-1' } }, { data: null }])
     const deleteFn = vi.fn().mockReturnValue({
       eq: vi.fn().mockResolvedValue({ error: null }),
     })
@@ -214,8 +207,6 @@ describe('revokeLike - cleanup', () => {
     })
 
     const { revokeLike } = await import('@/features/likes/server/revoke-like')
-    await expect(
-      revokeLike({ fromUserId: 'user-a', toUserId: 'user-b' }),
-    ).rejects.toThrow(AppError)
+    await expect(revokeLike({ fromUserId: 'user-a', toUserId: 'user-b' })).rejects.toThrow(AppError)
   })
 })

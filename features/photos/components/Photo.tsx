@@ -1,7 +1,4 @@
-import {
-  getVariantByPublicName,
-  type PublicVariant,
-} from '@/lib/image-processing/photo-variants'
+import { getVariantByPublicName, type PublicVariant } from '@/lib/image-processing/photo-variants'
 
 interface PhotoProps {
   photoId: string

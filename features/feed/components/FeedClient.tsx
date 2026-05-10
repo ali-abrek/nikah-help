@@ -13,8 +13,11 @@ interface FeedClientProps {
 }
 
 export function FeedClient({ viewerGender, filters, initialData }: FeedClientProps) {
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status } =
-    useFeed({ viewerGender, filters, initialData })
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, status } = useFeed({
+    viewerGender,
+    filters,
+    initialData,
+  })
 
   const { ref, inView } = useInView({ rootMargin: '400px' })
 
@@ -43,9 +46,7 @@ export function FeedClient({ viewerGender, filters, initialData }: FeedClientPro
     <div>
       {isEmpty ? (
         <div className="py-16 text-center">
-          <p className="text-lg text-zinc-500">
-            Профили не найдены. Попробуйте изменить фильтры.
-          </p>
+          <p className="text-lg text-zinc-500">Профили не найдены. Попробуйте изменить фильтры.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">

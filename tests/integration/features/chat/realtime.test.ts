@@ -34,11 +34,7 @@ describe('Realtime channel subscription', () => {
 
 describe('Message status transitions', () => {
   it('status transitions are monotonic: sent -> delivered -> read', () => {
-    const validTransitions = new Set([
-      'sent:delivered',
-      'delivered:read',
-      'sent:read',
-    ])
+    const validTransitions = new Set(['sent:delivered', 'delivered:read', 'sent:read'])
 
     // sent to delivered is valid
     expect(validTransitions.has('sent:delivered')).toBe(true)
@@ -53,8 +49,7 @@ describe('Message status transitions', () => {
   it('markDelivered only updates status=sent messages', () => {
     // This confirms the SQL pattern: UPDATE messages SET status='delivered'
     // WHERE id IN (...) AND sender_id != userId AND status = 'sent'
-    const isEligibleForDelivered = (status: string, isOwn: boolean) =>
-      status === 'sent' && !isOwn
+    const isEligibleForDelivered = (status: string, isOwn: boolean) => status === 'sent' && !isOwn
 
     expect(isEligibleForDelivered('sent', false)).toBe(true)
     expect(isEligibleForDelivered('delivered', false)).toBe(false)
@@ -63,8 +58,7 @@ describe('Message status transitions', () => {
   })
 
   it('markAsRead only updates non-read messages', () => {
-    const isEligibleForRead = (status: string, isOwn: boolean) =>
-      status !== 'read' && !isOwn
+    const isEligibleForRead = (status: string, isOwn: boolean) => status !== 'read' && !isOwn
 
     expect(isEligibleForRead('sent', false)).toBe(true)
     expect(isEligibleForRead('delivered', false)).toBe(true)

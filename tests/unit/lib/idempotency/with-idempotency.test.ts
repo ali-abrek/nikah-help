@@ -1,5 +1,15 @@
 import { describe, it, expect, vi } from 'vitest'
 import { NextRequest } from 'next/server'
+
+// Mock the redis primitives so the wrapper's "fail-open on Redis error"
+// path triggers immediately instead of waiting for Upstash retries.
+vi.mock('@/lib/idempotency/redis', () => ({
+  acquireLock: vi.fn().mockRejectedValue(new Error('redis unavailable in tests')),
+  storeResult: vi.fn(),
+  waitForResult: vi.fn(),
+  releaseLock: vi.fn(),
+}))
+
 import { withIdempotency } from '@/lib/idempotency/with-idempotency'
 import { PAYMENT_CRITICAL } from '@/lib/idempotency/presets'
 

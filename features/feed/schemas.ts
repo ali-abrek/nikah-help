@@ -13,24 +13,12 @@ const maritalStatuses = [
   'married_3',
 ] as const
 
-const educations = [
-  'none',
-  'school',
-  'vocational',
-  'bachelor',
-  'master',
-  'phd',
-] as const
+const educations = ['none', 'school', 'vocational', 'bachelor', 'master', 'phd'] as const
 
 const incomeLevels = ['low', 'middle', 'high'] as const
 const housingTypes = ['own', 'rent', 'parents', 'shared'] as const
 const polygynyAttitudes = ['positive', 'neutral', 'negative'] as const
-const hijabAttitudes = [
-  'niqab',
-  'hijab_full',
-  'hijab_partial',
-  'no_hijab',
-] as const
+const hijabAttitudes = ['niqab', 'hijab_full', 'hijab_partial', 'no_hijab'] as const
 
 // ── Base filters (both genders) ────────────────────────────────────
 
@@ -39,12 +27,7 @@ export const feedFiltersBaseSchema = z.object({
   age_max: z.number().int().min(18).max(120).optional(),
   marital_status: z.array(z.enum(maritalStatuses)).optional(),
   children_count_max: z.number().int().min(0).max(20).optional(),
-  radius_km: z
-    .number()
-    .int()
-    .min(RADIUS_RANGE.min)
-    .max(RADIUS_RANGE.max)
-    .optional(),
+  radius_km: z.number().int().min(RADIUS_RANGE.min).max(RADIUS_RANGE.max).optional(),
 })
 
 // ── Male-specific filters ──────────────────────────────────────────
