@@ -51,8 +51,6 @@ const BOOT_REQUIRED = [
   'SUPABASE_SECRET_KEY',
   'UPSTASH_REDIS_REST_URL',
   'UPSTASH_REDIS_REST_TOKEN',
-  'INNGEST_SIGNING_KEY',
-  'BLOCKED_EMAIL_PEPPER',
 ] as const satisfies readonly ResolvedEnvKey[]
 
 let validated = false
