@@ -1,5 +1,6 @@
 import { createServerSupabase } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 
 export const metadata = {
   title: 'Дашборд — Nikah Help',
@@ -45,16 +46,17 @@ export default async function DashboardPage() {
 
         {!profile?.onboarding_completed && (
           <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
-            Завершите онбординг, чтобы ваш профиль стал видимым
+            Завершите{' '}
+            <Link href="/onboarding" className="underline hover:text-amber-900 dark:hover:text-amber-100">
+              регистрацию
+            </Link>
+            , чтобы ваш профиль стал видимым
           </div>
         )}
       </div>
 
       <form action="/api/auth/signout" method="POST" className="mt-4">
-        <button
-          type="submit"
-          className="text-sm text-zinc-500 underline hover:text-foreground"
-        >
+        <button type="submit" className="text-sm text-zinc-500 underline hover:text-foreground">
           Выйти
         </button>
       </form>

@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { onboardingStep1Schema, type OnboardingStep1Data } from '../schemas'
 import { CountrySelect } from '@/features/geo/components/country-select'
 import { CityAutocomplete } from '@/features/geo/components/city-autocomplete'
+import { NationalityAutocomplete } from './nationality-autocomplete'
 
 const GENDERS = [
   { value: 'male', label: 'Мужчина', icon: '♂' },
@@ -39,6 +40,11 @@ export function OnboardingStep1({
     },
   })
 
+  // react-hook-form's `watch()` is documented as incompatible with React
+  // Compiler memoisation: it returns a fresh function each render and is
+  // tracked by the form's internal subscription, so memoising the call
+  // would yield stale UI. We accept the compiler-skip on this hook.
+  // eslint-disable-next-line react-hooks/incompatible-library -- see comment above
   const selectedCountry = watch('country')
 
   // Clear city when country changes
@@ -149,13 +155,18 @@ export function OnboardingStep1({
 
       {/* Nationality */}
       <div>
-        <label htmlFor="nationality" className="mb-1 block text-sm font-medium text-foreground">
+        <label className="mb-1 block text-sm font-medium text-foreground">
           Национальность
         </label>
-        <input
-          {...register('nationality')}
-          className={inputClass}
-          placeholder="Например, татарин"
+        <Controller
+          control={control}
+          name="nationality"
+          render={({ field }) => (
+            <NationalityAutocomplete
+              value={field.value ?? ''}
+              onChange={field.onChange}
+            />
+          )}
         />
         {errors.nationality && (
           <p className="mt-1 text-xs text-red-600">{errors.nationality.message}</p>
@@ -174,9 +185,7 @@ export function OnboardingStep1({
             className={inputClass}
             placeholder="175"
           />
-          {errors.height && (
-            <p className="mt-1 text-xs text-red-600">{errors.height.message}</p>
-          )}
+          {errors.height && <p className="mt-1 text-xs text-red-600">{errors.height.message}</p>}
         </div>
         <div>
           <label htmlFor="weight" className="mb-1 block text-sm font-medium text-foreground">
@@ -188,18 +197,13 @@ export function OnboardingStep1({
             className={inputClass}
             placeholder="70"
           />
-          {errors.weight && (
-            <p className="mt-1 text-xs text-red-600">{errors.weight.message}</p>
-          )}
+          {errors.weight && <p className="mt-1 text-xs text-red-600">{errors.weight.message}</p>}
         </div>
       </div>
 
       {/* Geolocation toggle */}
       <div className="flex items-center justify-between">
-        <label
-          htmlFor="allow_geolocation"
-          className="text-sm text-zinc-600 dark:text-zinc-400"
-        >
+        <label htmlFor="allow_geolocation" className="text-sm text-zinc-600 dark:text-zinc-400">
           Разрешить геолокацию для поиска поблизости
         </label>
         <Controller

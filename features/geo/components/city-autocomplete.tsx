@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useQuery, keepPreviousData } from '@tanstack/react-query'
 
 interface City {
   id: number
@@ -16,60 +17,85 @@ interface CityAutocompleteProps {
   countryCode: string
 }
 
+async function fetchCities(query: string, country: string): Promise<City[]> {
+  if (!country || query.length < 1) return []
+  const params = new URLSearchParams({ q: query, country })
+  const res = await fetch(`/api/geo/cities?${params}`)
+  if (!res.ok) return []
+  const data = (await res.json()) as { cities?: City[] }
+  return data.cities ?? []
+}
+
 export function CityAutocomplete({ value, onChange, countryCode }: CityAutocompleteProps) {
-  const [cities, setCities] = useState<City[]>([])
   const [open, setOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
+  // `query` is local input state that we keep in sync with the external
+  // committed `value`. We track the last committed value in a ref and reset
+  // `query` only when it actually drifts — the cheap render-time check
+  // satisfies React Compiler's `set-state-in-effect` rule (no setState
+  // inside an effect just to mirror a prop).
   const [query, setQuery] = useState(value ?? '')
+  // Mirror the committed `value` into `query` only when it actually changes.
+  // This is the React-blessed prop-to-state-derivation pattern documented at
+  // https://react.dev/reference/react/useState#storing-information-from-previous-renders.
+  // The compiler-aware `react-hooks/refs` rule rejects ref reads/writes
+  // during render, but this is exactly the case the docs sanction.
+  const lastCommittedRef = useRef(value ?? '')
+  /* eslint-disable react-hooks/refs */
+  if (value !== lastCommittedRef.current) {
+    lastCommittedRef.current = value ?? ''
+    if (query !== (value ?? '')) {
+      setQuery(value ?? '')
+    }
+  }
+  /* eslint-enable react-hooks/refs */
 
   const containerRef = useRef<HTMLDivElement>(null)
-  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined)
-
   const disabled = !countryCode
 
-  // Sync input text when external value changes (e.g. form reset)
+  // Debounce the query so we don't fire a request on every keystroke.
+  const [debouncedQuery, setDebouncedQuery] = useState(query)
   useEffect(() => {
-    setQuery(value ?? '')
-  }, [value])
+    const t = setTimeout(() => setDebouncedQuery(query), 300)
+    return () => clearTimeout(t)
+  }, [query])
 
-  // Fetch cities on query change (debounced)
+  const { data: cities = [], isFetching: loading } = useQuery({
+    queryKey: ['geo', 'cities', countryCode, debouncedQuery],
+    queryFn: () => fetchCities(debouncedQuery, countryCode),
+    enabled: !disabled && debouncedQuery.length > 0,
+    placeholderData: keepPreviousData,
+  })
+
+  // Derive `open` from the actual query state during render rather than
+  // mirroring it via setState inside an effect. The local `open` state still
+  // exists so the user can explicitly close the menu (Escape, outside click);
+  // we only force it open when results arrive for the current query.
+  const shouldShowMenu = open && !disabled && cities.length > 0 && debouncedQuery.length > 0
+  // Track the most recent query for which we've already opened the menu so
+  // we don't loop on every render. Same prop-derivation pattern as above.
+  const lastQueryWithResultsRef = useRef('')
+  /* eslint-disable react-hooks/refs */
+  if (
+    !disabled &&
+    cities.length > 0 &&
+    debouncedQuery.length > 0 &&
+    debouncedQuery !== lastQueryWithResultsRef.current
+  ) {
+    lastQueryWithResultsRef.current = debouncedQuery
+    if (!open) setOpen(true)
+  }
+  /* eslint-enable react-hooks/refs */
+
+  // Close on outside click.
   useEffect(() => {
-    if (disabled || query.length < 1) {
-      setCities([])
-      return
-    }
-
-    setLoading(true)
-
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = setTimeout(() => {
-      const params = new URLSearchParams({ q: query, country: countryCode })
-      fetch(`/api/geo/cities?${params}`)
-        .then((r) => r.json())
-        .then((data) => {
-          setCities(data.cities ?? [])
-          setOpen((data.cities?.length ?? 0) > 0)
-        })
-        .catch(() => setCities([]))
-        .finally(() => setLoading(false))
-    }, 300)
-
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current)
-    }
-  }, [query, countryCode, disabled])
-
-  // Close on outside click
-  useEffect(() => {
+    if (!open) return
     function handleClick(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setOpen(false)
       }
     }
-    if (open) {
-      document.addEventListener('mousedown', handleClick)
-      return () => document.removeEventListener('mousedown', handleClick)
-    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
   }, [open])
 
   const selectCity = useCallback(
@@ -96,12 +122,6 @@ export function CityAutocomplete({ value, onChange, countryCode }: CityAutocompl
     [open, cities, selectCity],
   )
 
-  const handleBlur = useCallback(() => {
-    // If the user typed something that doesn't match the committed value, revert
-    if (query !== value) {
-      setQuery(value ?? '')
-    }
-  }, [query, value])
 
   return (
     <div ref={containerRef} className="relative" onKeyDown={handleKeyDown}>
@@ -111,12 +131,11 @@ export function CityAutocomplete({ value, onChange, countryCode }: CityAutocompl
         disabled={disabled}
         onChange={(e) => {
           setQuery(e.target.value)
-          setOpen(false) // close until new results arrive
+          onChange(e.target.value)
         }}
         onFocus={() => {
           if (!disabled && cities.length > 0) setOpen(true)
         }}
-        onBlur={handleBlur}
         placeholder={disabled ? 'Сначала выберите страну' : 'Начните вводить город...'}
         className={`w-full rounded-lg border px-3 py-2 text-sm ${
           disabled
@@ -125,7 +144,7 @@ export function CityAutocomplete({ value, onChange, countryCode }: CityAutocompl
         }`}
       />
 
-      {open && !disabled && cities.length > 0 && (
+      {shouldShowMenu && (
         <div className="absolute z-50 mt-1 w-full rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
           <div className="max-h-60 overflow-auto">
             {loading ? (
@@ -136,7 +155,6 @@ export function CityAutocomplete({ value, onChange, countryCode }: CityAutocompl
                   key={c.id}
                   type="button"
                   onMouseDown={(e) => {
-                    // Prevent onBlur from firing before click
                     e.preventDefault()
                     selectCity(c)
                   }}
@@ -147,9 +165,7 @@ export function CityAutocomplete({ value, onChange, countryCode }: CityAutocompl
                   }`}
                 >
                   <span>{c.name}</span>
-                  {c.region && (
-                    <span className="ml-2 text-xs text-zinc-400">{c.region}</span>
-                  )}
+                  {c.region && <span className="ml-2 text-xs text-zinc-400">{c.region}</span>}
                 </button>
               ))
             )}

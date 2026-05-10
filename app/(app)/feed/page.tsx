@@ -1,6 +1,7 @@
 import { createServerSupabase } from '@/lib/supabase/server'
 import { queryFeed } from '@/features/feed/server/query-feed'
 import { FeedClient } from '@/features/feed/components/FeedClient'
+import Link from 'next/link'
 
 export const metadata = {
   title: 'Лента — Nikah Help',
@@ -30,7 +31,11 @@ export default async function FeedPage() {
     return (
       <div className="py-16 text-center">
         <p className="text-zinc-500">
-          Завершите онбординг для доступа к ленте.
+          Завершите{' '}
+          <Link href="/onboarding" className="underline">
+            регистрацию
+          </Link>{' '}
+          для доступа к ленте.
         </p>
       </div>
     )
