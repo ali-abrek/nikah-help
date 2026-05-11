@@ -172,18 +172,21 @@ export interface Database {
           from_user_id: string
           to_user_id: string
           created_at: string | null
+          revoked_at: string | null
         }
         Insert: {
           id?: string
           from_user_id: string
           to_user_id: string
           created_at?: string | null
+          revoked_at?: string | null
         }
         Update: {
           id?: string
           from_user_id?: string
           to_user_id?: string
           created_at?: string | null
+          revoked_at?: string | null
         }
         Relationships: [
           { foreignKeyName: 'likes_from_user_id_fkey'; columns: ['from_user_id']; referencedRelation: 'profiles'; referencedColumns: ['id'] },

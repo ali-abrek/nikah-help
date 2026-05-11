@@ -34,7 +34,8 @@ export function PushToggle({ userId }: Props) {
         await unsubscribePush()
         queryClient.setQueryData(['push-subscription'], false)
       } else {
-        await Notification.requestPermission()
+        const permission = await Notification.requestPermission()
+        if (permission !== 'granted') return
         const sub = await registerPushSubscription(userId)
         queryClient.setQueryData(['push-subscription'], Boolean(sub))
       }

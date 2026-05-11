@@ -1,5 +1,5 @@
 import { AppError } from './app-error'
-import { getEnv } from '@/lib/env'
+import { captureSentryException, deriveFlowFromCode, safeLogContext } from '@/lib/sentry/capture'
 
 export function logError(error: AppError): void {
   console.error(
@@ -16,18 +16,18 @@ export function logError(error: AppError): void {
 
   // Forward 5xx to Sentry. 4xx are client/validation errors that would
   // pollute alerting volume — we keep them in stdout/Logflare only.
-  if (error.status >= 500 && getEnv('SENTRY_DSN')) {
-    // Lazy-import so client/edge bundles that never call logError do not
-    // pull in @sentry/nextjs.
-    import('@sentry/nextjs')
-      .then((Sentry) => {
-        Sentry.captureException(error.cause ?? error, {
-          tags: { error_code: error.code, trace_id: error.traceId },
-          extra: { logContext: error.logContext, traceId: error.traceId },
-        })
-      })
-      .catch(() => {
-        // Swallow — Sentry being unavailable should never break the request.
-      })
+  if (error.status >= 500) {
+    const flow = deriveFlowFromCode(error.code)
+    void captureSentryException(error.cause ?? error, {
+      // Fall back to 'db.query' for unmapped system errors so they land in
+      // a catchall alert bucket rather than being completely unrouted.
+      flow: flow ?? 'db.query',
+      severity: error.status >= 500 ? 'error' : 'warning',
+      tags: { error_code: error.code },
+      extra: {
+        traceId: error.traceId,
+        logContext: safeLogContext(error.logContext),
+      },
+    })
   }
 }

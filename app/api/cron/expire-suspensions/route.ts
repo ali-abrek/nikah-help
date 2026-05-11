@@ -1,17 +1,17 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assertCronAuth } from '@/lib/api/cron'
 import { handleRouteError } from '@/lib/errors/handler'
 import { invalidateSuspensionCache } from '@/lib/auth/suspension'
+import { withSentryMonitor } from '@/lib/sentry/monitor'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-// Lift expired suspensions. Runs every 15 minutes (vercel.json) so users
-// regain access close to their expiry time. The `is_user_suspended` cache
-// has a 30s TTL, so we explicitly invalidate the lifted users to avoid
-// up to half a minute of stale enforcement.
-export async function GET(request: NextRequest) {
+// Lift expired suspensions. Runs daily (vercel.json) so users regain access
+// close to their expiry time. The `is_user_suspended` cache has a 30s TTL,
+// so we explicitly invalidate the lifted users to avoid stale enforcement.
+async function handler(request: NextRequest): Promise<NextResponse> {
   try {
     assertCronAuth(request)
 
@@ -50,3 +50,5 @@ export async function GET(request: NextRequest) {
     return handleRouteError(error)
   }
 }
+
+export const GET = withSentryMonitor('cron.expire-suspensions', handler, '0 2 * * *')

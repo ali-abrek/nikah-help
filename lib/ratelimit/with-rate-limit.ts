@@ -4,7 +4,9 @@ import { resolveKeys } from './keys'
 import { setRateLimitHeaders } from './headers'
 import { AppError } from '@/lib/errors/app-error'
 import { handleRouteError } from '@/lib/errors/handler'
+import { captureSentryException } from '@/lib/sentry/capture'
 import type { RateLimitOptions } from './types'
+
 interface RatelimitResult {
   success: boolean
   limit: number
@@ -19,8 +21,11 @@ export function withRateLimit<T>(
   return async (request: NextRequest, context: T): Promise<NextResponse> => {
     try {
       const userRole = request.headers.get('x-user-role')
-      const bypassRoles = options.bypassRoles ?? ['admin', 'moderator']
-      if (userRole && bypassRoles.includes(userRole)) {
+      // Only bypass when the caller explicitly opted-in via bypassRoles.
+      // Defaulting to ['admin','moderator'] allowed unauthenticated routes
+      // to be bypassed by a client-supplied x-user-role header.
+      const bypassRoles = options.bypassRoles ?? []
+      if (bypassRoles.length > 0 && userRole && bypassRoles.includes(userRole)) {
         return handler(request, context)
       }
 
@@ -75,13 +80,13 @@ export function withRateLimit<T>(
       if (error instanceof AppError) {
         return handleRouteError(error)
       }
-      console.warn(
-        JSON.stringify({
-          level: 'warn',
-          message: 'Rate limiter unavailable, failing open',
-          error: (error as Error).message,
-        }),
-      )
+      // Limiter infrastructure is unavailable — fail open to avoid blocking
+      // users, but report so the DDoS surface opening does not go unnoticed.
+      void captureSentryException(error, {
+        flow: 'ratelimit.infra',
+        severity: 'error',
+        tags: { path: request.nextUrl.pathname },
+      })
       return handler(request, context)
     }
   }

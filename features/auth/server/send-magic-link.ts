@@ -6,6 +6,7 @@ import { getSiteUrl } from '@/lib/utils/site-url'
 import { getRatelimit } from '@/lib/ratelimit/client'
 import { extractIp, hashIp } from '@/lib/utils/ip'
 import type { ServerActionResult } from '@/lib/errors/action'
+import { captureSentryException } from '@/lib/sentry/capture'
 
 // Lazy: instantiating the limiter requires UPSTASH_REDIS_REST_URL/TOKEN, and
 // resolving those at module load would fail the import and surface as an
@@ -41,13 +42,11 @@ export async function requestMagicLink(
   try {
     authRatelimit = getAuthRatelimit()
   } catch (err) {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        message: 'auth_ratelimit_unavailable',
-        error: err instanceof Error ? err.message : String(err),
-      }),
-    )
+    void captureSentryException(err, {
+      flow: 'auth.magic_link_send',
+      severity: 'error',
+      tags: { step: 'ratelimit_init' },
+    })
     return {
       success: false,
       error: {
@@ -64,18 +63,17 @@ export async function requestMagicLink(
     try {
       result = await authRatelimit.limit(key, { rate: 1 })
     } catch (err) {
-      console.error(
-        JSON.stringify({
-          level: 'error',
-          message: 'auth_ratelimit_call_failed',
-          key,
-          error: err instanceof Error ? err.message : String(err),
-          stack: err instanceof Error ? err.stack : undefined,
-          upstash_url_set: Boolean(process.env.UPSTASH_REDIS_REST_URL),
-          upstash_token_set: Boolean(process.env.UPSTASH_REDIS_REST_TOKEN),
-          upstash_url_host: process.env.UPSTASH_REDIS_REST_URL?.slice(0, 24),
-        }),
-      )
+      void captureSentryException(err, {
+        flow: 'auth.magic_link_send',
+        severity: 'error',
+        tags: { step: 'ratelimit_call' },
+        extra: {
+          logContext: {
+            upstash_url_set: Boolean(process.env.UPSTASH_REDIS_REST_URL),
+            upstash_token_set: Boolean(process.env.UPSTASH_REDIS_REST_TOKEN),
+          },
+        },
+      })
       return {
         success: false,
         error: {
@@ -111,14 +109,11 @@ export async function requestMagicLink(
     })
     otpError = result.error
   } catch (err) {
-    console.error(
-      JSON.stringify({
-        level: 'error',
-        message: 'auth_signinwithotp_threw',
-        error: err instanceof Error ? err.message : String(err),
-        stack: err instanceof Error ? err.stack : undefined,
-      }),
-    )
+    void captureSentryException(err, {
+      flow: 'auth.magic_link_send',
+      severity: 'error',
+      tags: { step: 'otp_send' },
+    })
     return {
       success: false,
       error: {

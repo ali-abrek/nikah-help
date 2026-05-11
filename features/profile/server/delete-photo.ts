@@ -24,7 +24,10 @@ export async function deletePhoto(userId: string, photoId: string): Promise<void
     })
   }
 
-  // 2. If deleting position 1 (avatar), try to promote another approved photo
+  // 2. If deleting position 1 (avatar), find the next approved photo to promote.
+  //    We must resolve the candidate BEFORE deleting, but actually delete FIRST
+  //    to avoid a UNIQUE(profile_id, position) violation when we then set the
+  //    candidate's position to 1.
   if (photo.position === 1) {
     const { data: nextApproved } = await supabase
       .from('photos')
@@ -36,14 +39,8 @@ export async function deletePhoto(userId: string, photoId: string): Promise<void
       .limit(1)
       .single()
 
-    if (nextApproved) {
-      // Promote to position 1
-      await supabase
-        .from('photos')
-        .update({ position: 1, updated_at: new Date().toISOString() })
-        .eq('id', nextApproved.id)
-    } else {
-      // Check if profile is published - if so, block deletion
+    if (!nextApproved) {
+      // No other approved photo — block deletion if profile is published.
       const { data: profile } = await supabase
         .from('profiles')
         .select('is_published')
@@ -57,9 +54,23 @@ export async function deletePhoto(userId: string, photoId: string): Promise<void
         })
       }
     }
+
+    // Delete the photo row first so the unique position constraint is released,
+    // then promote the next approved photo to position 1.
+    const { error: deleteError } = await supabase.from('photos').delete().eq('id', photoId)
+    if (deleteError) throw deleteError
+
+    if (nextApproved) {
+      await supabase
+        .from('photos')
+        .update({ position: 1, updated_at: new Date().toISOString() })
+        .eq('id', nextApproved.id)
+    }
+
+    return
   }
 
-  // 3. Delete the photo row
+  // 3. Delete the photo row (non-position-1 case)
   const { error: deleteError } = await supabase.from('photos').delete().eq('id', photoId)
 
   if (deleteError) throw deleteError

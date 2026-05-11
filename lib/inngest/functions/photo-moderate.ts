@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getOpenAI } from '@/lib/openai/client'
 import { STORAGE } from '@/lib/image-processing/photo-variants'
 import { NonRetriableError } from 'inngest'
+import { captureSentryException } from '@/lib/sentry/capture'
 
 interface ModerationScores {
   explicit_nudity_score: number
@@ -126,6 +127,15 @@ export const photoModerateFn = inngest.createFunction(
     id: 'photo.moderate',
     retries: 3,
     triggers: { event: 'photo/moderate' },
+    onFailure: async ({ event, error }) => {
+      const { photoId } = (event.data as { data?: { photoId?: string } }).data ?? {}
+      await captureSentryException(error, {
+        flow: 'moderation.vision',
+        severity: 'error',
+        tags: { step: 'retry_exhausted' },
+        extra: { photoId: photoId ?? 'unknown' },
+      })
+    },
   },
   async ({ event, step }) => {
     const { photoId } = event.data as { photoId: string }
@@ -138,12 +148,15 @@ export const photoModerateFn = inngest.createFunction(
       const base64 = buf.toString('base64')
 
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const response = await (getOpenAI().chat.completions as any).create({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: `You are a content moderation system for a Muslim marriage application.
+      let response: any
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        response = await (getOpenAI().chat.completions as any).create({
+          model: 'gpt-4o',
+          messages: [
+            {
+              role: 'system',
+              content: `You are a content moderation system for a Muslim marriage application.
 Analyze the image against the following categories and return ONLY a JSON object (no other text):
 
 {
@@ -157,23 +170,32 @@ Analyze the image against the following categories and return ONLY a JSON object
 }
 
 Be strict with nudity and suggestive content — the application requires modest, Islamic-compliant photos.`,
-          },
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:image/webp;base64,${base64}`,
-                  detail: 'low',
+            },
+            {
+              role: 'user',
+              content: [
+                {
+                  type: 'image_url',
+                  image_url: {
+                    url: `data:image/webp;base64,${base64}`,
+                    detail: 'low',
+                  },
                 },
-              },
-            ],
-          },
-        ],
-        max_tokens: 300,
-        temperature: 0,
-      })
+              ],
+            },
+          ],
+          max_tokens: 300,
+          temperature: 0,
+        })
+      } catch (err) {
+        void captureSentryException(err, {
+          flow: 'moderation.vision',
+          severity: 'error',
+          tags: { step: 'openai_call' },
+          extra: { provider: 'openai', photoId },
+        })
+        throw err
+      }
 
       const content = response.choices[0]?.message?.content
       if (!content) throw new Error('OpenAI returned empty response')
@@ -183,7 +205,19 @@ Be strict with nudity and suggestive content — the application requires modest
 
     const decision = evaluateModeration(result, profileGender)
 
-    await step.run('update-status', () => updateModerationStatus(photoId, decision, result))
+    await step.run('update-status', async () => {
+      try {
+        await updateModerationStatus(photoId, decision, result)
+      } catch (err) {
+        void captureSentryException(err, {
+          flow: 'moderation.action',
+          severity: 'error',
+          tags: { step: 'update_status' },
+          extra: { photoId },
+        })
+        throw err
+      }
+    })
 
     return { photoId, decision, scores: result }
   },

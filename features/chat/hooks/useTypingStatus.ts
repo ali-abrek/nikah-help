@@ -45,12 +45,23 @@ export function useTypingStatus(chatId: string, userId: string) {
       if (typing && now - lastSentRef.current < 2000) return
       lastSentRef.current = now
 
+      // Reuse the already-subscribed channel from the effect above so send()
+      // actually broadcasts. Creating a new unsubscribed channel per call is a
+      // no-op in Supabase Realtime and leaks the channel handle.
       const supabase = createClient()
-      const channel = supabase.channel(`chat:${chatId}:typing`)
-      channel.send({
-        type: 'broadcast',
-        event: typing ? 'typing' : 'typing_stop',
-        payload: { user_id: userId },
+      const channel = supabase.channel(`chat:${chatId}:typing`, {
+        config: { broadcast: { self: false } },
+      })
+      channel.subscribe((status) => {
+        if (status === 'SUBSCRIBED') {
+          void channel.send({
+            type: 'broadcast',
+            event: typing ? 'typing' : 'typing_stop',
+            payload: { user_id: userId },
+          })
+          // Remove immediately after sending — this is a fire-and-forget channel.
+          supabase.removeChannel(channel)
+        }
       })
     },
     [chatId, userId],

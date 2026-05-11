@@ -39,7 +39,9 @@ const ENV_RESOLVERS = {
   VAPID_PUBLIC_KEY: () => resolve('VAPID_PUBLIC_KEY', 'NEXT_PUBLIC_VAPID_PUBLIC_KEY'),
   VAPID_PRIVATE_KEY: () => resolve('VAPID_PRIVATE_KEY'),
   VERCEL_CRON_SECRET: () => resolve('VERCEL_CRON_SECRET'),
-  SENTRY_DSN: () => resolve('SENTRY_DSN', 'NEXT_PUBLIC_SENTRY_DSN'),
+  SENTRY_DSN: () => resolve('SENTRY_DSN'),
+  NEXT_PUBLIC_SENTRY_DSN: () => resolve('NEXT_PUBLIC_SENTRY_DSN'),
+  NEXT_PUBLIC_SENTRY_ENV: () => resolve('NEXT_PUBLIC_SENTRY_ENV'),
   SENTRY_AUTH_TOKEN: () => resolve('SENTRY_AUTH_TOKEN'),
 } as const
 
@@ -51,6 +53,8 @@ const BOOT_REQUIRED = [
   'SUPABASE_SECRET_KEY',
   'UPSTASH_REDIS_REST_URL',
   'UPSTASH_REDIS_REST_TOKEN',
+  'INNGEST_SIGNING_KEY',
+  'BLOCKED_EMAIL_PEPPER',
 ] as const satisfies readonly ResolvedEnvKey[]
 
 let validated = false

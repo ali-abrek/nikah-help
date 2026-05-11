@@ -39,7 +39,13 @@ export function withIdempotency<T>(
         }
 
         if (response.status >= 200 && response.status < 300) {
-          await storeResult(redisKey, response, ttl)
+          try {
+            await storeResult(redisKey, response, ttl)
+          } catch {
+            // storeResult failed — release the lock so subsequent retries can
+            // proceed rather than spinning on a 'pending' key until TTL expires.
+            await releaseLock(redisKey)
+          }
         } else {
           await releaseLock(redisKey)
         }

@@ -57,6 +57,7 @@ function buildAdminMock({
       return {
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({ single }),
+          in: vi.fn().mockResolvedValue({ data: [], error: null }),
         }),
       }
     }
@@ -85,17 +86,16 @@ describe('sendLike (RPC-backed)', () => {
     expect(result.match_id).toBeUndefined()
   })
 
-  it('returns matched=true and inserts notifications when mutual', async () => {
+  it('returns matched=true and dispatches notifications via Inngest when mutual', async () => {
     const { createAdminClient } = await import('@/lib/supabase/admin')
+    const { inngest } = await import('@/lib/inngest/client')
 
-    const notifInsert = vi.fn().mockReturnValue({ error: null })
     ;(createAdminClient as unknown as ReturnType<typeof vi.fn>).mockReturnValue(
       buildAdminMock({
         senderGender: 'female',
         rpcSendLike: {
           data: { matched: true, match_id: 'match-1', error_code: null },
         },
-        notifInsert,
       }),
     )
 
@@ -103,7 +103,11 @@ describe('sendLike (RPC-backed)', () => {
     const result = await sendLike({ fromUserId: 'user-b', toUserId: 'user-a' })
     expect(result.matched).toBe(true)
     expect(result.match_id).toBe('match-1')
-    expect(notifInsert).toHaveBeenCalledTimes(1)
+    // Two notification/send events: one for each participant.
+    expect(inngest.send).toHaveBeenCalledTimes(2)
+    expect(inngest.send).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'notification/send' }),
+    )
   })
 
   it('translates RPC error_code into AppError', async () => {
@@ -147,11 +151,11 @@ describe('revokeLike - cleanup', () => {
     })
   }
 
-  it('should find and delete like', async () => {
+  it('should find and soft-delete like via revoked_at', async () => {
     const { createAdminClient } = await import('@/lib/supabase/admin')
 
     const maybeSingle = makeMaybeSingleChain([{ data: { id: 'like-1' } }, { data: null }])
-    const deleteFn = vi.fn().mockReturnValue({
+    const updateFn = vi.fn().mockReturnValue({
       eq: vi.fn().mockResolvedValue({ error: null }),
     })
 
@@ -165,7 +169,7 @@ describe('revokeLike - cleanup', () => {
                 eq: vi.fn().mockReturnValue({ maybeSingle }),
               }),
             }),
-            delete: deleteFn,
+            update: updateFn,
           }
         }
         if (table === 'matches') {
@@ -187,7 +191,7 @@ describe('revokeLike - cleanup', () => {
 
     const { revokeLike } = await import('@/features/likes/server/revoke-like')
     await revokeLike({ fromUserId: 'user-a', toUserId: 'user-b' })
-    expect(deleteFn).toHaveBeenCalled()
+    expect(updateFn).toHaveBeenCalledWith(expect.objectContaining({ revoked_at: expect.any(String) }))
   })
 
   it('should throw NOT_FOUND when like does not exist', async () => {

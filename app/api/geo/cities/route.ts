@@ -21,10 +21,13 @@ export const GET = withRateLimit(async (request: NextRequest) => {
 
     const supabase = await createServerSupabase()
 
+    // Search across both Latin (name) and Russian (alt_names_ru) columns
+    // because users may type city names in either script.
+    const pattern = `${parsed.data.q}%`
     let query = supabase
       .from('geonames_cities')
-      .select('id, name, admin1_name, country_code, population, location')
-      .ilike('name', `${parsed.data.q}%`)
+      .select('id, name, alt_names_ru, admin1_name, country_code, population, location')
+      .or(`name.ilike.${pattern},alt_names_ru.ilike.${pattern}`)
       .order('population', { ascending: false })
       .limit(10)
 
@@ -36,6 +39,7 @@ export const GET = withRateLimit(async (request: NextRequest) => {
       Array<{
         id: number
         name: string
+        alt_names_ru: string | null
         admin1_name: string | null
         country_code: string
         population: number | null
@@ -47,7 +51,7 @@ export const GET = withRateLimit(async (request: NextRequest) => {
 
     const cities = (data ?? []).map((city) => ({
       id: city.id,
-      name: city.name,
+      name: city.alt_names_ru ?? city.name,
       region: city.admin1_name,
       country: city.country_code,
       population: city.population,

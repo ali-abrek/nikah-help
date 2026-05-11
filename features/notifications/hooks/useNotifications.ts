@@ -17,6 +17,8 @@ export function useNotifications({ initialNotifications, userId }: UseNotificati
   const last = initialNotifications.at(-1)
   const cursorRef = useRef<string | undefined>(last?.created_at ?? undefined)
   const channelRef = useRef<RealtimeChannel | null>(null)
+  // Keep a ref to the supabase client so cleanup can call removeChannel.
+  const supabaseRef = useRef<Awaited<ReturnType<typeof import('@/lib/supabase/client').createClient>> | null>(null)
 
   const { ref: sentinelRef } = useInView({
     threshold: 0,
@@ -57,6 +59,7 @@ export function useNotifications({ initialNotifications, userId }: UseNotificati
 
       if (cancelled) return
       const supabase = createClient()
+      supabaseRef.current = supabase
 
       const channel = supabase
         .channel(`notifications:${userId}`)
@@ -82,7 +85,11 @@ export function useNotifications({ initialNotifications, userId }: UseNotificati
 
     return () => {
       cancelled = true
-      channelRef.current?.unsubscribe()
+      if (channelRef.current && supabaseRef.current) {
+        supabaseRef.current.removeChannel(channelRef.current)
+      }
+      channelRef.current = null
+      supabaseRef.current = null
     }
   }, [userId])
 

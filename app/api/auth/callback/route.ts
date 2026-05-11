@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createRouteSupabase } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { hashBlockedEmail } from '@/lib/crypto/email-hash'
+import { captureSentryException } from '@/lib/sentry/capture'
 
 // Strict allowlist of post-login destinations. Anything else falls through
 // to /feed so a crafted `?next=…` parameter can't be used for misdirection
@@ -38,16 +39,11 @@ export async function GET(request: Request) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (error) {
-      console.error(
-        JSON.stringify({
-          level: 'error',
-          message: 'auth_callback_exchange_failed',
-          errorCode: error.code,
-          errorMessage: error.message,
-          errorName: error.name,
-          errorStatus: (error as unknown as Record<string, unknown>).status,
-        }),
-      )
+      void captureSentryException(error, {
+        flow: 'auth.callback',
+        severity: 'error',
+        tags: { step: 'exchange_code' },
+      })
     }
 
     if (!error) {
@@ -69,14 +65,12 @@ export async function GET(request: Request) {
             .is('blocked_id', null)
             .eq('blocked_email_hash', hexHash)
         } catch (rebindErr) {
-          console.error(
-            JSON.stringify({
-              level: 'error',
-              message: 'block_rebind_failed',
-              userId,
-              error: rebindErr instanceof Error ? rebindErr.message : String(rebindErr),
-            }),
-          )
+          void captureSentryException(rebindErr, {
+            flow: 'auth.callback',
+            severity: 'warning',
+            tags: { step: 'block_rebind' },
+            extra: { traceId: userId },
+          })
         }
 
         const { data: profile } = await supabase

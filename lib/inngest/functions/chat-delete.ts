@@ -8,33 +8,29 @@ export const chatDeleteFn = inngest.createFunction(
     triggers: { event: 'chat/delete' },
   },
   async ({ event }) => {
-    const { chatId } = event.data as { chatId: string; matchId: string }
+    const { chatId, mediaPaths } = event.data as {
+      chatId: string
+      matchId: string
+      mediaPaths?: string[]
+    }
     const supabase = createAdminClient()
 
-    const { data: mediaMessages } = await supabase
-      .from('messages')
-      .select('id, type, content')
-      .eq('chat_id', chatId)
-      .in('type', ['image', 'voice'])
+    // mediaPaths are collected by deleteChat() before the cascade delete runs.
+    // Falling back to an empty array is safe — it just means no cleanup needed.
+    const paths = mediaPaths ?? []
 
-    if (mediaMessages?.length) {
-      const paths = mediaMessages
-        .map((m) => extractStoragePath(m.type, m.content))
-        .filter((p): p is string => p !== null)
+    if (paths.length > 0) {
+      const { error } = await supabase.storage.from('chat-media').remove(paths)
 
-      if (paths.length > 0) {
-        const { error } = await supabase.storage.from('chat-media').remove(paths)
-
-        if (error) {
-          console.error(
-            JSON.stringify({
-              level: 'error',
-              message: 'chat_delete_media_cleanup_failed',
-              chatId,
-              error: error.message,
-            }),
-          )
-        }
+      if (error) {
+        console.error(
+          JSON.stringify({
+            level: 'error',
+            message: 'chat_delete_media_cleanup_failed',
+            chatId,
+            error: error.message,
+          }),
+        )
       }
     }
 
@@ -42,31 +38,3 @@ export const chatDeleteFn = inngest.createFunction(
   },
 )
 
-function extractStoragePath(type: string, content: string): string | null {
-  if (type === 'image') {
-    try {
-      const url = new URL(content)
-      const parts = url.pathname.split('/')
-      const bucketIdx = parts.indexOf('chat-media')
-      if (bucketIdx >= 0) {
-        return parts.slice(bucketIdx + 1).join('/')
-      }
-    } catch {
-      if (content.startsWith('chat-media/')) {
-        return content.replace('chat-media/', '')
-      }
-    }
-  }
-
-  if (type === 'voice') {
-    if (content.includes('/')) {
-      const parts = content.split('/')
-      const bucketIdx = parts.indexOf('chat-media')
-      if (bucketIdx >= 0) {
-        return parts.slice(bucketIdx + 1).join('/')
-      }
-    }
-  }
-
-  return null
-}

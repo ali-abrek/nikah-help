@@ -30,8 +30,19 @@ export async function revokeLike({ fromUserId, toUserId }: RevokeLikeParams): Pr
     .or(`user_a.eq.${toUserId},user_b.eq.${toUserId}`)
     .maybeSingle()
 
-  // 3. Delete the like (this won't cascade to matches since it's not FK-linked)
-  await supabase.from('likes').delete().eq('id', like.id)
+  // 3. Soft-delete the like via revoked_at so count_likes_used includes it in
+  //    the lifetime quota, preventing free-tier bypass through revoke-and-resend.
+  const { error: revokeError } = await supabase
+    .from('likes')
+    .update({ revoked_at: new Date().toISOString() })
+    .eq('id', like.id)
+
+  if (revokeError) {
+    throw new AppError('SYSTEM_DATABASE_ERROR', {
+      cause: revokeError,
+      logContext: { likeId: like.id, fromUserId, toUserId },
+    })
+  }
 
   // 4. If match existed, trigger Inngest for cascading cleanup
   if (match) {

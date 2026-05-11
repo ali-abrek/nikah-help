@@ -27,9 +27,9 @@ export function NationalityAutocomplete({ value, onChange }: NationalityAutocomp
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState(value ?? '')
 
-  const lastCommittedRef = useRef(value ?? '')
-  if (value !== lastCommittedRef.current) {
-    lastCommittedRef.current = value ?? ''
+  const [prevValue, setPrevValue] = useState(value ?? '')
+  if (value !== prevValue) {
+    setPrevValue(value ?? '')
     if (query !== (value ?? '')) {
       setQuery(value ?? '')
     }

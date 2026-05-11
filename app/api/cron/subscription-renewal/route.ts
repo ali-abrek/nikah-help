@@ -1,7 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assertCronAuth } from '@/lib/api/cron'
 import { handleRouteError } from '@/lib/errors/handler'
+import { withSentryMonitor } from '@/lib/sentry/monitor'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -11,7 +12,7 @@ export const maxDuration = 60
 // only marks lapsed subscriptions as expired so the rest of the app's
 // `has_active_subscription` checks return false promptly. The actual auto-
 // renewal API call is implemented when the payments module ships.
-export async function GET(request: NextRequest) {
+async function handler(request: NextRequest): Promise<NextResponse> {
   try {
     assertCronAuth(request)
 
@@ -34,3 +35,5 @@ export async function GET(request: NextRequest) {
     return handleRouteError(error)
   }
 }
+
+export const GET = withSentryMonitor('cron.subscription-renewal', handler, '0 9 * * *')

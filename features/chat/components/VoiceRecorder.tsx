@@ -22,6 +22,7 @@ export function VoiceRecorder({ onSend }: VoiceRecorderProps) {
   const chunksRef = useRef<Blob[]>([])
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const durationRef = useRef(0)
+  const mountedRef = useRef(true)
 
   const stopRecording = useCallback(() => {
     const mr = mediaRecorderRef.current
@@ -60,12 +61,16 @@ export function VoiceRecorder({ onSend }: VoiceRecorderProps) {
 
         if (actualDuration < 1) return // Too short, discard
 
+        if (!mountedRef.current) return // Component unmounted during recording
+
         setSending(true)
         try {
           await onSend(blob, actualDuration)
         } finally {
-          setSending(false)
-          setDuration(0)
+          if (mountedRef.current) {
+            setSending(false)
+            setDuration(0)
+          }
           durationRef.current = 0
         }
       }
@@ -90,7 +95,9 @@ export function VoiceRecorder({ onSend }: VoiceRecorderProps) {
 
   // Cleanup on unmount.
   useEffect(() => {
+    mountedRef.current = true
     return () => {
+      mountedRef.current = false
       if (timerRef.current) clearInterval(timerRef.current)
       if (mediaRecorderRef.current?.state !== 'inactive') {
         mediaRecorderRef.current?.stop()

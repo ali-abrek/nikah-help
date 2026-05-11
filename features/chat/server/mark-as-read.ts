@@ -10,6 +10,22 @@ interface MarkAsReadParams {
 export async function markAsRead({ chatId, messageIds, userId }: MarkAsReadParams) {
   const supabase = createAdminClient()
 
+  // Verify the caller is a participant of this chat before touching any rows.
+  const { data: chat } = await supabase
+    .from('chats')
+    .select('id, matches!inner ( user_a, user_b )')
+    .eq('id', chatId)
+    .single()
+
+  if (!chat) {
+    throw new AppError('NOT_FOUND', { logContext: { chatId } })
+  }
+
+  const m = chat.matches as unknown as { user_a: string; user_b: string }
+  if (m.user_a !== userId && m.user_b !== userId) {
+    throw new AppError('AUTH_UNAUTHORIZED', { logContext: { chatId, userId } })
+  }
+
   const { error } = await supabase
     .from('messages')
     .update({

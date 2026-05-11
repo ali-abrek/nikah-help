@@ -1,6 +1,8 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { checkLikeLimits } from './check-limits'
 import { AppError } from '@/lib/errors/app-error'
+import { inngest } from '@/lib/inngest/client'
+import { createNotification } from '@/lib/notifications/factory'
 import type { ErrorCode } from '@/lib/errors/registry'
 
 interface SendLikeParams {
@@ -51,36 +53,78 @@ export async function sendLike({ fromUserId, toUserId }: SendLikeParams): Promis
   }
 
   if (data.matched && data.match_id) {
-    // Notification fan-out is best-effort — failures here must not poison the
-    // like itself. Inngest dispatcher already handles retries for delivery.
-    const { error: notifErr } = await supabase.from('notifications').insert([
-      {
-        user_id: toUserId,
-        type: 'match',
-        title_key: 'notification.match.title',
-        body_key: 'notification.match.body',
-        payload: { match_id: data.match_id },
-        entity_id: data.match_id,
-      },
-      {
-        user_id: fromUserId,
-        type: 'match',
-        title_key: 'notification.match.title',
-        body_key: 'notification.match.body',
-        payload: { match_id: data.match_id },
-        entity_id: data.match_id,
-      },
+    // Fetch profile names so push/email notifications can personalise the body.
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, name')
+      .in('id', [fromUserId, toUserId])
+
+    const nameOf = (id: string) =>
+      profiles?.find((p) => p.id === id)?.name ?? null
+
+    // Route through Inngest notification dispatcher so push + email delivery
+    // runs with retries. Use 'match_created' — the canonical NotificationType.
+    const matchPayload = createNotification('match_created', {
+      recipientId: toUserId,
+      actorId: fromUserId,
+      actorName: nameOf(fromUserId) ?? undefined,
+      matchId: data.match_id,
+      entityId: data.match_id,
+      entityType: 'match',
+    })
+    const matchPayloadFrom = createNotification('match_created', {
+      recipientId: fromUserId,
+      actorId: toUserId,
+      actorName: nameOf(toUserId) ?? undefined,
+      matchId: data.match_id,
+      entityId: data.match_id,
+      entityType: 'match',
+    })
+
+    await Promise.all([
+      inngest
+        .send({
+          name: 'notification/send',
+          data: {
+            type: 'match_created',
+            payload: matchPayload,
+            userId: toUserId,
+            dedupeKey: `match_created:${data.match_id}:${toUserId}`,
+          },
+        })
+        .catch((err: unknown) =>
+          console.error(
+            JSON.stringify({
+              level: 'error',
+              message: 'match_notification_dispatch_failed',
+              match_id: data.match_id,
+              userId: toUserId,
+              error: (err as Error).message,
+            }),
+          ),
+        ),
+      inngest
+        .send({
+          name: 'notification/send',
+          data: {
+            type: 'match_created',
+            payload: matchPayloadFrom,
+            userId: fromUserId,
+            dedupeKey: `match_created:${data.match_id}:${fromUserId}`,
+          },
+        })
+        .catch((err: unknown) =>
+          console.error(
+            JSON.stringify({
+              level: 'error',
+              message: 'match_notification_dispatch_failed',
+              match_id: data.match_id,
+              userId: fromUserId,
+              error: (err as Error).message,
+            }),
+          ),
+        ),
     ])
-    if (notifErr) {
-      console.error(
-        JSON.stringify({
-          level: 'error',
-          message: 'match_notification_insert_failed',
-          match_id: data.match_id,
-          error: notifErr.message,
-        }),
-      )
-    }
   }
 
   return {

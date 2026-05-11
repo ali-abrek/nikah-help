@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
+import { captureSentryException } from '@/lib/sentry/capture'
 
 interface MatchProfile {
   id: string
@@ -28,7 +29,8 @@ export function useMatchListener(userId: string | null) {
     if (!userId) return
 
     const supabase = createClient()
-    const channel = supabase.channel(`user:${userId}`)
+    const channelName = `user:${userId}`
+    const channel = supabase.channel(channelName)
 
     channel.on('broadcast', { event: 'match.created' }, ({ payload }) => {
       const data = payload as {
@@ -49,14 +51,21 @@ export function useMatchListener(userId: string | null) {
       }
     })
 
+    let reconnectTimer: ReturnType<typeof setTimeout> | undefined
+
     channel.subscribe((status) => {
-      if (status === 'CHANNEL_ERROR') {
-        console.warn('[useMatchListener] Realtime channel error, retrying...')
-        channel.subscribe()
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        void captureSentryException(new Error(`Match listener channel ${status}: ${channelName}`), {
+          flow: 'realtime.channel',
+          severity: 'warning',
+          tags: { channel: channelName, status },
+        })
+        reconnectTimer = setTimeout(() => channel.subscribe(), 2000)
       }
     })
 
     return () => {
+      clearTimeout(reconnectTimer)
       supabase.removeChannel(channel)
     }
   }, [userId])

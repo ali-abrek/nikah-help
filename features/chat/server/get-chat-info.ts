@@ -27,6 +27,8 @@ export async function getChatInfo(chatId: string, userId: string): Promise<ChatI
   if (!chat) return null
 
   const m = chat.matches as unknown as { id: string; user_a: string; user_b: string }
+  if (m.user_a !== userId && m.user_b !== userId) return null
+
   const otherId = m.user_a === userId ? m.user_b : m.user_a
 
   const { data: profile } = await supabase

@@ -2,6 +2,7 @@ import { inngest } from '@/lib/inngest/client'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPresence } from '@/lib/realtime/presence'
 import { requireEnv } from '@/lib/env'
+import { captureSentryException } from '@/lib/sentry/capture'
 import type { NotificationPayload } from '@/lib/notifications/types'
 
 interface NotificationEvent {
@@ -20,6 +21,15 @@ export const notificationDispatchFn = inngest.createFunction(
     id: 'notification.dispatch',
     retries: 3,
     triggers: { event: 'notification/send' },
+    onFailure: async ({ event, error }) => {
+      const { userId } = (event.data as { data?: { userId?: string } }).data ?? {}
+      await captureSentryException(error, {
+        flow: 'notif.send',
+        severity: 'error',
+        tags: { step: 'retry_exhausted' },
+        extra: { traceId: userId ?? 'unknown' },
+      })
+    },
   },
   async ({ event, step }) => {
     const { payload, userId, channels = [], dedupeKey } = event.data as NotificationEvent
@@ -65,15 +75,11 @@ export const notificationDispatchFn = inngest.createFunction(
       const { error } = await builder
 
       if (error) {
-        console.error(
-          JSON.stringify({
-            level: 'error',
-            message: 'notification_insert_failed',
-            userId,
-            type: payload.payload.type,
-            error: error.message,
-          }),
-        )
+        void captureSentryException(error, {
+          flow: 'notif.send',
+          severity: 'error',
+          tags: { step: 'insert_notification' },
+        })
         throw error
       }
     })
@@ -121,18 +127,18 @@ export const notificationDispatchFn = inngest.createFunction(
             pushed++
           } catch (err) {
             const e = err as { statusCode?: number; message?: string }
-            // If subscription is expired/invalid, remove it
+            // If subscription is expired/invalid, remove it silently.
             if (e.statusCode === 410 || e.statusCode === 404) {
               await supabase.from('push_subscriptions').delete().eq('id', sub.id)
+              continue
             }
-            console.error(
-              JSON.stringify({
-                level: 'warn',
-                message: 'web_push_failed',
-                subscriptionId: sub.id,
-                error: e.message,
-              }),
-            )
+            // Non-expiry push failure — report to Sentry.
+            void captureSentryException(err, {
+              flow: 'notif.send',
+              severity: 'warning',
+              tags: { step: 'web_push' },
+              extra: { channel: 'push', subscriptionId: String(sub.id) },
+            })
           }
         }
 
@@ -163,13 +169,14 @@ export const notificationDispatchFn = inngest.createFunction(
         })
 
         if (!success) {
-          console.error(
-            JSON.stringify({
-              level: 'error',
-              message: 'email_send_failed',
-              userId,
-              error,
-            }),
+          void captureSentryException(
+            new Error(error ?? 'email send failed'),
+            {
+              flow: 'notif.send',
+              severity: 'error',
+              tags: { step: 'send_email' },
+              extra: { channel: 'email' },
+            },
           )
         }
 

@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { requireEnv, validateEnv } from '@/lib/env'
 import { validateSiteUrl } from '@/lib/utils/site-url'
 import { isUserSuspendedCached } from '@/lib/auth/suspension'
+import { captureSentryException } from '@/lib/sentry/capture'
 
 // Validated at module load (logs missing vars; does not throw — see env.ts).
 validateEnv()
@@ -46,6 +47,17 @@ export async function proxy(request: NextRequest) {
   try {
     const { data, error } = await supabase.auth.getClaims()
 
+    if (error) {
+      // A structured error from getClaims() indicates session parsing failure,
+      // token corruption, or Supabase unreachability — not just unauthenticated.
+      // Capture it so operators know when session refresh is broken.
+      void captureSentryException(error, {
+        flow: 'auth.session_refresh',
+        severity: 'warning',
+        tags: { step: 'get_claims' },
+      })
+    }
+
     if (error || !data?.claims) {
       if (PROTECTED_PATHS.some((p) => url.pathname.startsWith(p))) {
         url.pathname = '/auth'
@@ -80,7 +92,12 @@ export async function proxy(request: NextRequest) {
       forwarded.cookies.set(cookie.name, cookie.value, cookie)
     })
     return forwarded
-  } catch {
+  } catch (err) {
+    void captureSentryException(err, {
+      flow: 'edge.proxy',
+      severity: 'error',
+      tags: { path: url.pathname },
+    })
     if (PROTECTED_PATHS.some((p) => url.pathname.startsWith(p))) {
       url.pathname = '/auth'
       url.searchParams.set('error', 'AUTH_UNAUTHORIZED')
@@ -92,6 +109,7 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!api/|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif)$).*)',
+    // Exclude: API routes, Sentry tunnel, Next.js internals, static assets.
+    '/((?!api/|monitoring|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|avif)$).*)',
   ],
 }

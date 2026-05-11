@@ -1,8 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { type NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { assertCronAuth } from '@/lib/api/cron'
 import { handleRouteError } from '@/lib/errors/handler'
 import { inngest } from '@/lib/inngest/client'
+import { withSentryMonitor } from '@/lib/sentry/monitor'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60
@@ -15,7 +16,7 @@ const INACTIVITY_DAYS = 30
 const WARN_INTERVAL_DAYS = 14
 const BATCH_LIMIT = 500
 
-export async function GET(request: NextRequest) {
+async function handler(request: NextRequest): Promise<NextResponse> {
   try {
     assertCronAuth(request)
     const supabase = createAdminClient()
@@ -70,3 +71,5 @@ export async function GET(request: NextRequest) {
     return handleRouteError(error)
   }
 }
+
+export const GET = withSentryMonitor('cron.inactive-account-warn', handler, '0 10 * * *')

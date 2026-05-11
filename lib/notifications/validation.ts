@@ -3,7 +3,7 @@ import { AppError } from '@/lib/errors/app-error'
 
 const REQUIRED_FIELDS: Record<NotificationType, (keyof NotificationContext)[]> = {
   like_received: ['recipientId', 'actorId', 'actorName', 'entityId'],
-  match_created: ['recipientId', 'actorId', 'actorName', 'matchId'],
+  match_created: ['recipientId', 'actorId', 'matchId'],
   message_new: ['recipientId', 'actorId', 'actorName', 'messageId', 'chatId'],
   like_revoked: ['recipientId', 'actorId', 'entityId'],
   photo_approved: ['recipientId', 'photoId'],

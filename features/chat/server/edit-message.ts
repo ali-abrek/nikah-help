@@ -12,7 +12,7 @@ export async function editMessage({ messageId, content, userId }: EditMessagePar
 
   const { data: existing } = await supabase
     .from('messages')
-    .select('id, sender_id, type, content, created_at, deleted_at')
+    .select('id, sender_id, type, content, original_content, created_at, deleted_at')
     .eq('id', messageId)
     .single()
 
@@ -45,7 +45,8 @@ export async function editMessage({ messageId, content, userId }: EditMessagePar
     .from('messages')
     .update({
       content,
-      original_content: existing.content || undefined,
+      // Preserve the true original on repeated edits: only write once.
+      original_content: existing.original_content ?? existing.content,
       edited_at: new Date().toISOString(),
     })
     .eq('id', messageId)

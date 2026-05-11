@@ -52,11 +52,12 @@ export async function saveOnboardingStep1(formData: FormData) {
 
   // Verify the city exists in the selected country (case-insensitive,
   // matching the ilike behaviour of the city autocomplete API).
+  // Search both name (Latin) and alt_names_ru (Russian) columns.
   const { data: cityRow } = await supabase
     .from('geonames_cities')
     .select('id')
     .eq('country_code', parsed.data.country.toUpperCase())
-    .ilike('name', parsed.data.city)
+    .or(`name.ilike.${parsed.data.city},alt_names_ru.ilike.${parsed.data.city}`)
     .maybeSingle()
 
   if (!cityRow) {
