@@ -24,11 +24,11 @@ function unauthorized() {
 
 export async function saveOnboardingStep1(formData: FormData) {
   const supabase = await createServerSupabase()
-  const { data: claims, error } = await supabase.auth.getClaims()
+  const { data, error } = await supabase.auth.getClaims()
 
-  if (error || !claims) return unauthorized()
+  if (error || !data?.claims) return unauthorized()
 
-  const userId = (claims as Record<string, unknown>).sub as string
+  const userId = (data.claims as Record<string, unknown>).sub as string
 
   const raw = {
     name: formData.get('name'),
@@ -79,11 +79,11 @@ export async function saveOnboardingStep1(formData: FormData) {
 
 export async function saveOnboardingStep2(formData: FormData) {
   const supabase = await createServerSupabase()
-  const { data: claims, error } = await supabase.auth.getClaims()
+  const { data, error } = await supabase.auth.getClaims()
 
-  if (error || !claims) return unauthorized()
+  if (error || !data?.claims) return unauthorized()
 
-  const userId = (claims as Record<string, unknown>).sub as string
+  const userId = (data.claims as Record<string, unknown>).sub as string
   const gender = formData.get('gender') as string
 
   if (gender !== 'male' && gender !== 'female') {
@@ -150,11 +150,11 @@ export async function saveOnboardingStep2(formData: FormData) {
 
 export async function markPhotoUploaded(photoId: string) {
   const supabase = await createServerSupabase()
-  const { data: claims, error } = await supabase.auth.getClaims()
+  const { data, error } = await supabase.auth.getClaims()
 
-  if (error || !claims) return unauthorized()
+  if (error || !data?.claims) return unauthorized()
 
-  const userId = (claims as Record<string, unknown>).sub as string
+  const userId = (data.claims as Record<string, unknown>).sub as string
 
   try {
     // Atomic transition: only flip a pending row owned by this user. If the
@@ -187,11 +187,11 @@ export async function markPhotoUploaded(photoId: string) {
 
 export async function completeOnboardingAction() {
   const supabase = await createServerSupabase()
-  const { data: claims, error } = await supabase.auth.getClaims()
+  const { data, error } = await supabase.auth.getClaims()
 
-  if (error || !claims) return unauthorized()
+  if (error || !data?.claims) return unauthorized()
 
-  const userId = (claims as Record<string, unknown>).sub as string
+  const userId = (data.claims as Record<string, unknown>).sub as string
 
   try {
     const bio = await generateBio(userId)
@@ -204,11 +204,11 @@ export async function completeOnboardingAction() {
 
 export async function replacePhotoAction(position: number) {
   const supabase = await createServerSupabase()
-  const { data: claims, error } = await supabase.auth.getClaims()
+  const { data, error } = await supabase.auth.getClaims()
 
-  if (error || !claims) return unauthorized()
+  if (error || !data?.claims) return unauthorized()
 
-  const userId = (claims as Record<string, unknown>).sub as string
+  const userId = (data.claims as Record<string, unknown>).sub as string
 
   if (position < 1 || position > 6) {
     return {
@@ -229,11 +229,11 @@ export async function replacePhotoAction(position: number) {
 
 export async function deletePhotoAction(photoId: string) {
   const supabase = await createServerSupabase()
-  const { data: claims, error } = await supabase.auth.getClaims()
+  const { data, error } = await supabase.auth.getClaims()
 
-  if (error || !claims) return unauthorized()
+  if (error || !data?.claims) return unauthorized()
 
-  const userId = (claims as Record<string, unknown>).sub as string
+  const userId = (data.claims as Record<string, unknown>).sub as string
 
   try {
     await deletePhoto(userId, photoId)
@@ -245,11 +245,11 @@ export async function deletePhotoAction(photoId: string) {
 
 export async function reorderPhotosAction(orderedPhotoIds: string[]) {
   const supabase = await createServerSupabase()
-  const { data: claims, error } = await supabase.auth.getClaims()
+  const { data, error } = await supabase.auth.getClaims()
 
-  if (error || !claims) return unauthorized()
+  if (error || !data?.claims) return unauthorized()
 
-  const userId = (claims as Record<string, unknown>).sub as string
+  const userId = (data.claims as Record<string, unknown>).sub as string
 
   const parsed = reorderPhotosSchema.safeParse({ orderedPhotoIds })
   if (!parsed.success) {

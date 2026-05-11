@@ -12,9 +12,9 @@ export async function sendMessageAction(
 ): Promise<ServerActionResult<{ id: string }>> {
   try {
     const supabase = await createServerSupabase()
-    const { data: claims } = await supabase.auth.getClaims()
+    const { data } = await supabase.auth.getClaims()
 
-    if (!claims) {
+    if (!data?.claims) {
       return {
         success: false,
         error: {
@@ -26,7 +26,7 @@ export async function sendMessageAction(
       }
     }
 
-    const userId = (claims as Record<string, unknown>).sub as string
+    const userId = (data.claims as Record<string, unknown>).sub as string
     const raw = Object.fromEntries(formData)
     const parsed = sendMessageSchema.safeParse(raw)
 

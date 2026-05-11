@@ -7,6 +7,7 @@ import { photoReplaceCleanupFn } from '@/lib/inngest/functions/photo-replace-cle
 import { photoAbandonCleanupFn } from '@/lib/inngest/functions/photo-abandon-cleanup'
 import { chatDeleteFn } from '@/lib/inngest/functions/chat-delete'
 import { notificationDispatchFn } from '@/lib/inngest/functions/notification-dispatch'
+import { likeRevokeFn } from '@/lib/inngest/functions/like-revoke'
 
 const handler = serve({
   client: inngest,
@@ -18,6 +19,7 @@ const handler = serve({
     photoAbandonCleanupFn,
     chatDeleteFn,
     notificationDispatchFn,
+    likeRevokeFn,
   ],
 })
 
