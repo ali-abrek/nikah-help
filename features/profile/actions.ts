@@ -4,6 +4,7 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { AppError } from '@/lib/errors/app-error'
 import { validationError } from '@/lib/errors/validation'
 import { handleActionError } from '@/lib/errors/action'
+import { getUserId } from '@/lib/auth/claims'
 import {
   onboardingStep1Schema,
   onboardingStep2MaleSchema,
@@ -28,7 +29,8 @@ export async function saveOnboardingStep1(formData: FormData) {
 
   if (error || !data?.claims) return unauthorized()
 
-  const userId = (data.claims as Record<string, unknown>).sub as string
+  const userId = getUserId(data.claims as Record<string, unknown>)
+  if (!userId) return unauthorized()
 
   const raw = {
     name: formData.get('name'),
@@ -70,7 +72,7 @@ export async function saveOnboardingStep1(formData: FormData) {
   }
 
   try {
-    await saveBasicData(userId, parsed.data)
+    await saveBasicData(supabase, userId, parsed.data)
     return { success: true as const, message: 'Сохранено' }
   } catch (e) {
     return handleActionError(e)
@@ -83,7 +85,9 @@ export async function saveOnboardingStep2(formData: FormData) {
 
   if (error || !data?.claims) return unauthorized()
 
-  const userId = (data.claims as Record<string, unknown>).sub as string
+  const userId = getUserId(data.claims as Record<string, unknown>)
+  if (!userId) return unauthorized()
+
   const gender = formData.get('gender') as string
 
   if (gender !== 'male' && gender !== 'female') {
@@ -119,7 +123,7 @@ export async function saveOnboardingStep2(formData: FormData) {
     }
 
     try {
-      await saveExtendedData(userId, { ...parsed.data, gender })
+      await saveExtendedData(supabase, userId, { ...parsed.data, gender })
       return { success: true as const, message: 'Сохранено' }
     } catch (e) {
       return handleActionError(e)
@@ -141,7 +145,7 @@ export async function saveOnboardingStep2(formData: FormData) {
   }
 
   try {
-    await saveExtendedData(userId, { ...parsed.data, gender })
+    await saveExtendedData(supabase, userId, { ...parsed.data, gender })
     return { success: true as const, message: 'Сохранено' }
   } catch (e) {
     return handleActionError(e)
@@ -154,7 +158,8 @@ export async function markPhotoUploaded(photoId: string) {
 
   if (error || !data?.claims) return unauthorized()
 
-  const userId = (data.claims as Record<string, unknown>).sub as string
+  const userId = getUserId(data.claims as Record<string, unknown>)
+  if (!userId) return unauthorized()
 
   try {
     // Atomic transition: only flip a pending row owned by this user. If the
@@ -191,11 +196,12 @@ export async function completeOnboardingAction() {
 
   if (error || !data?.claims) return unauthorized()
 
-  const userId = (data.claims as Record<string, unknown>).sub as string
+  const userId = getUserId(data.claims as Record<string, unknown>)
+  if (!userId) return unauthorized()
 
   try {
-    const bio = await generateBio(userId)
-    await completeOnboarding(userId)
+    const bio = await generateBio(supabase, userId)
+    await completeOnboarding(supabase, userId)
     return { success: true as const, message: 'Онбординг завершён', bio }
   } catch (e) {
     return handleActionError(e)
@@ -208,7 +214,8 @@ export async function replacePhotoAction(position: number) {
 
   if (error || !data?.claims) return unauthorized()
 
-  const userId = (data.claims as Record<string, unknown>).sub as string
+  const userId = getUserId(data.claims as Record<string, unknown>)
+  if (!userId) return unauthorized()
 
   if (position < 1 || position > 6) {
     return {
@@ -220,7 +227,7 @@ export async function replacePhotoAction(position: number) {
   }
 
   try {
-    const result = await replacePhoto(userId, position)
+    const result = await replacePhoto(supabase, userId, position)
     return { success: true as const, ...result }
   } catch (e) {
     return handleActionError(e)
@@ -233,10 +240,11 @@ export async function deletePhotoAction(photoId: string) {
 
   if (error || !data?.claims) return unauthorized()
 
-  const userId = (data.claims as Record<string, unknown>).sub as string
+  const userId = getUserId(data.claims as Record<string, unknown>)
+  if (!userId) return unauthorized()
 
   try {
-    await deletePhoto(userId, photoId)
+    await deletePhoto(supabase, userId, photoId)
     return { success: true as const, message: 'Фото удалено' }
   } catch (e) {
     return handleActionError(e)
@@ -249,7 +257,8 @@ export async function reorderPhotosAction(orderedPhotoIds: string[]) {
 
   if (error || !data?.claims) return unauthorized()
 
-  const userId = (data.claims as Record<string, unknown>).sub as string
+  const userId = getUserId(data.claims as Record<string, unknown>)
+  if (!userId) return unauthorized()
 
   const parsed = reorderPhotosSchema.safeParse({ orderedPhotoIds })
   if (!parsed.success) {
@@ -258,7 +267,7 @@ export async function reorderPhotosAction(orderedPhotoIds: string[]) {
   }
 
   try {
-    await reorderPhotos(userId, orderedPhotoIds)
+    await reorderPhotos(supabase, userId, orderedPhotoIds)
     return { success: true as const, message: 'Порядок сохранён' }
   } catch (e) {
     return handleActionError(e)

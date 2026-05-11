@@ -1,4 +1,5 @@
-import { createServerSupabase } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database.types'
 import { AppError } from '@/lib/errors/app-error'
 
 interface ReplacePhotoResult {
@@ -7,9 +8,11 @@ interface ReplacePhotoResult {
   position: number
 }
 
-export async function replacePhoto(userId: string, position: number): Promise<ReplacePhotoResult> {
-  const supabase = await createServerSupabase()
-
+export async function replacePhoto(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  position: number,
+): Promise<ReplacePhotoResult> {
   // 1. Find old photo
   const { data: oldPhoto, error: findError } = await supabase
     .from('photos')

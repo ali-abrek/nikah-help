@@ -1,12 +1,13 @@
 import { getChats } from '@/features/chat/server/get-chats'
 import { ChatList } from '@/features/chat/components/ChatList'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { getUserId } from '@/lib/auth/claims'
 
 export default async function ChatsPage() {
   const supabase = await createServerSupabase()
-  const { data: claims } = await supabase.auth.getClaims()
+  const { data } = await supabase.auth.getClaims()
 
-  if (!claims) {
+  if (!data?.claims) {
     return (
       <div className="flex items-center justify-center py-20">
         <p className="text-zinc-500">Требуется авторизация</p>
@@ -14,7 +15,14 @@ export default async function ChatsPage() {
     )
   }
 
-  const userId = (claims as Record<string, unknown>).sub as string
+  const userId = getUserId(data.claims as Record<string, unknown>)
+  if (!userId) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <p className="text-zinc-500">Требуется авторизация</p>
+      </div>
+    )
+  }
   const chats = await getChats(userId)
 
   return (

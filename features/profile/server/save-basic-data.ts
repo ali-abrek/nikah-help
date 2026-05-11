@@ -1,11 +1,14 @@
-import { createServerSupabase } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
 import type { OnboardingStep1Data } from '../schemas'
 import { maybeRegenerateBio } from './maybe-regenerate-bio'
+import { AppError } from '@/lib/errors/app-error'
 
-export async function saveBasicData(userId: string, data: OnboardingStep1Data) {
-  const supabase = await createServerSupabase()
-
+export async function saveBasicData(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  data: OnboardingStep1Data,
+) {
   const updateData: Database['public']['Tables']['profiles']['Update'] = {
     name: data.name,
     birth_date: data.birth_date,
@@ -23,7 +26,17 @@ export async function saveBasicData(userId: string, data: OnboardingStep1Data) {
 
   const { error } = await supabase.from('profiles').update(updateData).eq('id', userId)
 
-  if (error) throw error
+  if (error) {
+    // Surface PostgREST auth failures as explicit AppErrors so the caller's
+    // handleActionError returns AUTH_UNAUTHORIZED instead of a generic 500.
+    if (error.code === '42501' || error.code === 'PGRST301') {
+      throw new AppError('AUTH_UNAUTHORIZED', {
+        details: { pg_code: error.code, pg_details: error.details },
+        cause: error,
+      })
+    }
+    throw error
+  }
 
   // Bio regen is a no-op until onboarding is completed; safe to call from
   // both the wizard's step-1 save and post-onboarding edits.

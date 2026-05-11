@@ -1,9 +1,8 @@
-import { createServerSupabase } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database.types'
 import { BIO_FIELDS_SQL, hashBioFields } from '@/lib/profile/bio-fields'
 
-export async function completeOnboarding(userId: string) {
-  const supabase = await createServerSupabase()
-
+export async function completeOnboarding(supabase: SupabaseClient<Database>, userId: string) {
   // Snapshot the bio-relevant inputs so post-onboarding edits can detect
   // actual changes and skip a redundant OpenAI call.
   const { data: profile } = await supabase

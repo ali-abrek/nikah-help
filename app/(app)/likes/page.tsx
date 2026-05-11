@@ -3,12 +3,13 @@ import { getLikedByProfiles } from '@/features/likes/server/get-liked-by'
 import { getLikedProfiles } from '@/features/likes/server/get-liked'
 import { getMatches } from '@/features/likes/server/get-matches'
 import { LikesTabs } from '@/features/likes/components/LikesTabs'
+import { getUserId } from '@/lib/auth/claims'
 
 export default async function LikesPage() {
   const supabase = await createServerSupabase()
-  const { data: claims } = await supabase.auth.getClaims()
+  const { data } = await supabase.auth.getClaims()
 
-  if (!claims) {
+  if (!data?.claims) {
     return (
       <div className="py-16 text-center">
         <p className="text-zinc-500">Требуется авторизация</p>
@@ -16,7 +17,14 @@ export default async function LikesPage() {
     )
   }
 
-  const userId = (claims as Record<string, unknown>).sub as string
+  const userId = getUserId(data.claims as Record<string, unknown>)
+  if (!userId) {
+    return (
+      <div className="py-16 text-center">
+        <p className="text-zinc-500">Требуется авторизация</p>
+      </div>
+    )
+  }
 
   const [incoming, outgoing, matches] = await Promise.all([
     getLikedByProfiles(userId),

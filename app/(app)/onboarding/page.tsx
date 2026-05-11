@@ -1,5 +1,6 @@
 import { createServerSupabase } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getUserId } from '@/lib/auth/claims'
 import { OnboardingWizard } from '@/features/profile/components/onboarding-wizard'
 
 export const metadata = {
@@ -14,7 +15,9 @@ export default async function OnboardingPage() {
     redirect('/auth')
   }
 
-  const userId = (data.claims as Record<string, unknown>).sub as string
+  const userId = getUserId(data.claims as Record<string, unknown>)
+  if (!userId) redirect('/auth')
+
   const { data: profile } = await supabase
     .from('profiles')
     .select('locale')

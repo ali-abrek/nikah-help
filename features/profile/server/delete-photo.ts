@@ -1,9 +1,12 @@
-import { createServerSupabase } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database.types'
 import { AppError } from '@/lib/errors/app-error'
 
-export async function deletePhoto(userId: string, photoId: string): Promise<void> {
-  const supabase = await createServerSupabase()
-
+export async function deletePhoto(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  photoId: string,
+): Promise<void> {
   // 1. Fetch photo to verify ownership and get position
   const { data: photo, error: findError } = await supabase
     .from('photos')

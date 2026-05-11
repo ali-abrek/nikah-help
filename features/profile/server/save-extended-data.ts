@@ -1,14 +1,18 @@
-import { createServerSupabase } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database.types'
 import type { OnboardingStep2MaleData, OnboardingStep2FemaleData } from '../schemas'
 import { maybeRegenerateBio } from './maybe-regenerate-bio'
+import { AppError } from '@/lib/errors/app-error'
 
 type Step2Data = (OnboardingStep2MaleData | OnboardingStep2FemaleData) & {
   gender: 'male' | 'female'
 }
 
-export async function saveExtendedData(userId: string, data: Step2Data) {
-  const supabase = await createServerSupabase()
-
+export async function saveExtendedData(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  data: Step2Data,
+) {
   const base = {
     marital_status: data.marital_status,
     children_count: data.children_count,
@@ -33,7 +37,15 @@ export async function saveExtendedData(userId: string, data: Step2Data) {
     .update({ ...base, ...gendered })
     .eq('id', userId)
 
-  if (error) throw error
+  if (error) {
+    if (error.code === '42501' || error.code === 'PGRST301') {
+      throw new AppError('AUTH_UNAUTHORIZED', {
+        details: { pg_code: error.code, pg_details: error.details },
+        cause: error,
+      })
+    }
+    throw error
+  }
 
   await maybeRegenerateBio(supabase, userId)
 }

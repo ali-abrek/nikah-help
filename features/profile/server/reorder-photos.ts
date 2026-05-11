@@ -1,14 +1,14 @@
-import { createServerSupabase } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Database } from '@/types/database.types'
 import { AppError } from '@/lib/errors/app-error'
 import { callReorderProfilePhotos } from '@/lib/supabase/rpc'
 
 export async function reorderPhotos(
+  supabase: SupabaseClient<Database>,
   userId: string,
   orderedPhotoIds: string[],
   expectedSignature?: string,
 ): Promise<void> {
-  const supabase = await createServerSupabase()
-
   const { error } = await callReorderProfilePhotos(supabase, {
     p_profile_id: userId,
     p_photo_ids: orderedPhotoIds,

@@ -1,5 +1,6 @@
 import { createServerSupabase } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { getUserId } from '@/lib/auth/claims'
 import Link from 'next/link'
 
 export const metadata = {
@@ -14,7 +15,8 @@ export default async function DashboardPage() {
     redirect('/auth')
   }
 
-  const userId = data.claims.sub as string
+  const userId = getUserId(data.claims as Record<string, unknown>)
+  if (!userId) redirect('/auth')
 
   const { data: profile } = await supabase
     .from('profiles')

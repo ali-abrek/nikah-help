@@ -1,4 +1,5 @@
 import { createServerSupabase } from '@/lib/supabase/server'
+import { getUserId } from '@/lib/auth/claims'
 import { queryFeed } from '@/features/feed/server/query-feed'
 import { FeedClient } from '@/features/feed/components/FeedClient'
 import Link from 'next/link'
@@ -9,9 +10,9 @@ export const metadata = {
 
 export default async function FeedPage() {
   const supabase = await createServerSupabase()
-  const { data: claims } = await supabase.auth.getClaims()
+  const { data } = await supabase.auth.getClaims()
 
-  if (!claims) {
+  if (!data?.claims) {
     return (
       <div className="py-16 text-center">
         <p className="text-zinc-500">Требуется авторизация</p>
@@ -19,7 +20,14 @@ export default async function FeedPage() {
     )
   }
 
-  const userId = (claims as Record<string, unknown>).sub as string
+  const userId = getUserId(data.claims as Record<string, unknown>)
+  if (!userId) {
+    return (
+      <div className="py-16 text-center">
+        <p className="text-zinc-500">Требуется авторизация</p>
+      </div>
+    )
+  }
 
   const { data: viewer } = await supabase
     .from('profiles')

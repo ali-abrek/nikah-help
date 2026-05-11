@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { requireEnv, validateEnv } from '@/lib/env'
 import { validateSiteUrl } from '@/lib/utils/site-url'
 import { isUserSuspendedCached } from '@/lib/auth/suspension'
+import { getUserId } from '@/lib/auth/claims'
 import { captureSentryException } from '@/lib/sentry/capture'
 
 // Validated at module load (logs missing vars; does not throw — see env.ts).
@@ -68,7 +69,15 @@ export async function proxy(request: NextRequest) {
     }
 
     const claims = data.claims as Record<string, unknown>
-    const userId = claims.sub as string
+    const userId = getUserId(claims)
+    if (!userId) {
+      if (PROTECTED_PATHS.some((p) => url.pathname.startsWith(p))) {
+        url.pathname = '/auth'
+        url.searchParams.set('error', 'AUTH_UNAUTHORIZED')
+        return NextResponse.redirect(url)
+      }
+      return supabaseResponse
+    }
 
     const requestHeaders = new Headers(request.headers)
     requestHeaders.set('x-user-id', userId)

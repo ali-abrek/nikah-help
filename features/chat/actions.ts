@@ -5,6 +5,7 @@ import { sendMessage } from '@/features/chat/server/send-message'
 import { sendMessageSchema } from '@/features/chat/schemas'
 import { handleActionError } from '@/lib/errors/action'
 import type { ServerActionResult } from '@/lib/errors/action'
+import { getUserId } from '@/lib/auth/claims'
 
 export async function sendMessageAction(
   _prev: ServerActionResult<{ id: string }> | null,
@@ -26,7 +27,19 @@ export async function sendMessageAction(
       }
     }
 
-    const userId = (data.claims as Record<string, unknown>).sub as string
+    const userId = getUserId(data.claims as Record<string, unknown>)
+    if (!userId) {
+      return {
+        success: false,
+        error: {
+          code: 'AUTH_UNAUTHORIZED',
+          message: 'Требуется авторизация',
+          trace_id: crypto.randomUUID(),
+          status: 401,
+        },
+      }
+    }
+
     const raw = Object.fromEntries(formData)
     const parsed = sendMessageSchema.safeParse(raw)
 
