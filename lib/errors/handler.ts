@@ -7,14 +7,14 @@ import { getErrorMessage } from './messages'
 const AUTH_POSTGREST_CODES = new Set(['42501', 'PGRST301', 'PGRST102', 'PGRST104'])
 const VALIDATION_POSTGREST_CODES = new Set(['23505', '23514'])
 
+// Supabase JS v2 with shouldThrowOnError=false (the default) returns errors as
+// plain JSON objects { message, code, details, hint }, NOT as PostgrestError
+// instances. Accept either shape so our code mapping works in both modes.
 function isPostgrestError(
   error: unknown,
-): error is Error & { code: string; details: string; hint: string } {
-  return (
-    error instanceof Error &&
-    error.name === 'PostgrestError' &&
-    typeof (error as unknown as Record<string, unknown>).code === 'string'
-  )
+): error is { message: string; code: string; details: string; hint: string } {
+  if (error === null || typeof error !== 'object') return false
+  return typeof (error as Record<string, unknown>).code === 'string'
 }
 
 export function handleRouteError(

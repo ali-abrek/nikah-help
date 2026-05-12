@@ -5,7 +5,7 @@ import type { ErrorResponse } from './types'
 interface AppErrorOptions {
   message?: string
   details?: Record<string, string>
-  cause?: Error
+  cause?: unknown
   logContext?: Record<string, unknown>
 }
 
@@ -13,7 +13,7 @@ export class AppError extends Error {
   readonly code: ErrorCode
   readonly status: number
   readonly details?: Record<string, string>
-  readonly cause?: Error
+  override readonly cause?: unknown
   readonly logContext?: Record<string, unknown>
   readonly traceId: string
 

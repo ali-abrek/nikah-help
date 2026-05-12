@@ -10,7 +10,7 @@ export function logError(error: AppError): void {
       message: error.message,
       trace_id: error.traceId,
       context: error.logContext ?? {},
-      cause: error.cause?.message ?? null,
+      cause: (error.cause as Error | undefined)?.message ?? null,
     }),
   )
 
