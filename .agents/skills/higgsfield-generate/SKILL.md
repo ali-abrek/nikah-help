@@ -22,7 +22,7 @@ description: |
   score. NOT for: Soul Character training (use
   higgsfield-soul-id), product photoshoots, marketplace
   listing cards, text/chat/TTS tasks.
-argument-hint: "[prompt-or-analysis-request] [--model <name>] [--image|--video <path-or-id>]"
+argument-hint: '[prompt-or-analysis-request] [--model <name>] [--image|--video <path-or-id>]'
 allowed-tools: Bash
 ---
 
@@ -39,7 +39,6 @@ Before any other command:
    curl -fsSL https://raw.githubusercontent.com/higgsfield-ai/cli/main/install.sh | sh
    ```
 2. If `higgsfield account status` fails with `Session expired` / `Not authenticated`, ask the user to run `higgsfield auth login` (interactive) and wait for confirmation.
-
 
 ## UX Rules
 
@@ -67,7 +66,6 @@ If the user says "analyze this video", "score this ad", "evaluate the hook", or 
 ## Workflow — generic generation
 
 1. **Pick a model.** Start with the core defaults unless the brief clearly needs a specialist:
-
    - **GPT Image 2** → default image model for high-fidelity general generation, graphic design, UI, banners, typography, and on-image text.
    - **Seedance 2.0** → default video model for serious motion, cinematic clips, multi-shot work, image-to-video, and 4–15s production-quality output. 12s is valid.
    - **Nano Banana 2/Pro** → default for character, cartoon, stylized, and reference-driven image work; use Pro for harder briefs.
@@ -110,13 +108,13 @@ To inspect or rerun later, `higgsfield generate list --json` and `higgsfield gen
 
 ## Media flags
 
-| Flag | Purpose | Models that accept it |
-|---|---|---|
-| `--image <path-or-id>` | reference image | most image models, `seedance_2_0`, `veo3`, `marketing_studio_video` |
-| `--start-image <path-or-id>` | first frame for image-to-video transitions | `kling3_0`, `kling2_6`, `veo3_1`, `seedance_2_0`, `marketing_studio_video` |
-| `--end-image <path-or-id>` | last frame for transitions | `kling3_0`, `seedance_2_0`, `marketing_studio_video` |
-| `--video <path-or-id>` | reference or analyzed video | `seedance_2_0`, `brain_activity` |
-| `--audio <path-or-id>` | reference audio (lipsync, soundtrack match) | `seedance_2_0` (use this, NOT `--generate-audio`) |
+| Flag                         | Purpose                                     | Models that accept it                                                      |
+| ---------------------------- | ------------------------------------------- | -------------------------------------------------------------------------- |
+| `--image <path-or-id>`       | reference image                             | most image models, `seedance_2_0`, `veo3`, `marketing_studio_video`        |
+| `--start-image <path-or-id>` | first frame for image-to-video transitions  | `kling3_0`, `kling2_6`, `veo3_1`, `seedance_2_0`, `marketing_studio_video` |
+| `--end-image <path-or-id>`   | last frame for transitions                  | `kling3_0`, `seedance_2_0`, `marketing_studio_video`                       |
+| `--video <path-or-id>`       | reference or analyzed video                 | `seedance_2_0`, `brain_activity`                                           |
+| `--audio <path-or-id>`       | reference audio (lipsync, soundtrack match) | `seedance_2_0` (use this, NOT `--generate-audio`)                          |
 
 Each flag accepts either a local file path (auto-uploaded) or a UUID (upload id from `higgsfield upload create`, or a previous job id). Each model declares its own role set via `MEDIA_ROLES`. See `references/media-inputs.md` for the full table.
 
@@ -183,17 +181,18 @@ higgsfield marketing-studio ad-formats list --json
    - Existing product → `higgsfield marketing-studio products list --json`
    - URL → `higgsfield marketing-studio products fetch --url <url> --wait` (polls until import done)
    - Local images → `higgsfield upload create <photo>...` then `higgsfield marketing-studio products create --title "..." --image <id>...`
-   Capture product id. When using `--hook_id`, strongly prefer passing `--product_ids`; hooks are designed to pivot into a product and work poorly without product context.
+     Capture product id. When using `--hook_id`, strongly prefer passing `--product_ids`; hooks are designed to pivot into a product and work poorly without product context.
 2. **Pick avatar if needed.**
    - Default: `higgsfield marketing-studio avatars list` and pick a preset matching the brand voice.
    - Custom: `higgsfield marketing-studio avatars create --name "..." --image <upload_id>`.
-   For UGC modes, you may omit `--avatars` when no specific presenter is required and the brief mentions a person; the backend can synthesize a Soul Character.
+     For UGC modes, you may omit `--avatars` when no specific presenter is required and the brief mentions a person; the backend can synthesize a Soul Character.
 3. **Optionally pick setup items.**
    - Hook: `higgsfield marketing-studio hooks list --json`
    - Setting: `higgsfield marketing-studio settings list --json`
-   Pass selected IDs as `--hook_id <hook_id>` and `--setting_id <setting_id>` for `marketing_studio_video` only. Do not copy the hook's prompt into `--prompt` unless the user explicitly wants to reinforce the same wording.
+     Pass selected IDs as `--hook_id <hook_id>` and `--setting_id <setting_id>` for `marketing_studio_video` only. Do not copy the hook's prompt into `--prompt` unless the user explicitly wants to reinforce the same wording.
 4. **Pick mode if needed.** Default is `ugc`; `--mode` is not required just because `--hook_id` is present. Other current slugs: `ugc_how_to`, `ugc_unboxing`, `product_showcase`, `product_review`, `tv_spot`, `wild_card`, `ugc_virtual_try_on`, `virtual_try_on`. **Hook/setting are valid only for `ugc`, `ugc_how_to`, `ugc_unboxing`, `product_review`, `ugc_virtual_try_on`** — do not pass `--hook_id` / `--setting_id` with the other modes. See `references/marketing-modes.md`.
 5. **Generate (one-shot).**
+
    ```bash
    PRODUCT_IDS_JSON=$(mktemp)
    AVATARS_JSON=$(mktemp)
@@ -210,9 +209,11 @@ higgsfield marketing-studio ad-formats list --json
      --aspect_ratio 9:16 \
      --wait
    ```
+
    Add `--hook_id <hook_id>` and/or `--setting_id <setting_id>` when a setup hook/setting was selected.
    `product_ids` and `avatars` are JSON arrays; pass them via `@/path/to/file.json`. Do not pass a bare UUID to `--product_ids`.
    Resolution is `480p` or `720p`. Aspect ratio is one of `auto`/`21:9`/`16:9`/`4:3`/`1:1`/`3:4`/`9:16`. `--generate-audio true` is supported here (unlike `seedance_2_0`). `--wait` blocks until done; bump `--wait-timeout 30m` for longer ad runs.
+
 6. **Deliver.** URL + one-line summary (mode, duration).
 
 ### Click-to-Ad shortcut (URL-driven)

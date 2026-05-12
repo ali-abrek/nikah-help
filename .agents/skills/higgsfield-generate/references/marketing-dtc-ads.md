@@ -56,23 +56,23 @@ higgsfield marketing-studio dtc-ads generate \
 
 Flags:
 
-| Flag | Required | Default | Notes |
-|---|---|---|---|
-| `--prompt` | yes | — | The brief. Required at the CLI level (or supply via `--from-file`). |
-| `--format-id` | **yes** | — | Pick from `ad-formats list`. The CLI rejects calls without it. |
-| `--brand-kit-id` | no | — | The kit must be `status: "completed"`. |
-| `--aspect-ratio` | no | `1:1` | `1:1, 3:2, 2:3, 4:3, 3:4, 16:9, 9:16, 21:9, 27:16, 16:27, 9:8, 8:9, 4:9, 9:4, auto` |
-| `--resolution` | no | `1k` | `1k, 2k, 4k` |
-| `--quality` | no | `low` | `low, medium, high` |
-| `--batch-size` | no | `1` | 1..20 |
-| `--media` | no | — | Repeatable, ≤14. Format: `<media_input_id>[:role]` (default role `image`). |
-| `--avatar` | no | — | Max 1. Format: `<avatar_id>[:type]` (default type `preset`; use `custom` for user-uploaded avatars). |
-| `--product` | no | — | Max 1. Product UUID from `marketing-studio products list`. |
-| `--folder-id` | no | — | Folder placement. |
-| `--from-file` | no | — | JSON file with the params shape. Flags merge over file values (flags win). |
-| `--cost-only` | no | `false` | Print credit cost; do not create a job. |
-| `--wait` | no | `false` | Poll until terminal status, then print the result URL. |
-| `--timeout` | no | `5m` | Wait timeout. |
+| Flag             | Required | Default | Notes                                                                                                |
+| ---------------- | -------- | ------- | ---------------------------------------------------------------------------------------------------- |
+| `--prompt`       | yes      | —       | The brief. Required at the CLI level (or supply via `--from-file`).                                  |
+| `--format-id`    | **yes**  | —       | Pick from `ad-formats list`. The CLI rejects calls without it.                                       |
+| `--brand-kit-id` | no       | —       | The kit must be `status: "completed"`.                                                               |
+| `--aspect-ratio` | no       | `1:1`   | `1:1, 3:2, 2:3, 4:3, 3:4, 16:9, 9:16, 21:9, 27:16, 16:27, 9:8, 8:9, 4:9, 9:4, auto`                  |
+| `--resolution`   | no       | `1k`    | `1k, 2k, 4k`                                                                                         |
+| `--quality`      | no       | `low`   | `low, medium, high`                                                                                  |
+| `--batch-size`   | no       | `1`     | 1..20                                                                                                |
+| `--media`        | no       | —       | Repeatable, ≤14. Format: `<media_input_id>[:role]` (default role `image`).                           |
+| `--avatar`       | no       | —       | Max 1. Format: `<avatar_id>[:type]` (default type `preset`; use `custom` for user-uploaded avatars). |
+| `--product`      | no       | —       | Max 1. Product UUID from `marketing-studio products list`.                                           |
+| `--folder-id`    | no       | —       | Folder placement.                                                                                    |
+| `--from-file`    | no       | —       | JSON file with the params shape. Flags merge over file values (flags win).                           |
+| `--cost-only`    | no       | `false` | Print credit cost; do not create a job.                                                              |
+| `--wait`         | no       | `false` | Poll until terminal status, then print the result URL.                                               |
+| `--timeout`      | no       | `5m`    | Wait timeout.                                                                                        |
 
 ## UX rules for the agent
 

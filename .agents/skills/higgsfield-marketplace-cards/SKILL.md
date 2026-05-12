@@ -12,7 +12,7 @@ description: |
   NOT for generic brand product photography without marketplace/listing context
   (use higgsfield-product-photoshoot), video generation or UGC ads (use
   higgsfield-generate), or Soul Character training (use higgsfield-soul-id).
-argument-hint: "[--scope main|product-images|aplus|full-set] [prompt]"
+argument-hint: '[--scope main|product-images|aplus|full-set] [prompt]'
 allowed-tools: Bash
 ---
 
@@ -38,12 +38,12 @@ The CLI first calls the backend enhancer, where marketplace rules and templates 
 
 Use `--scope` when the user asks for a common bundle:
 
-| Scope | Creates |
-|---|---|
-| `main` | 1 marketplace main image |
-| `product-images` | main image + 5 secondary images |
-| `aplus` | main image + 7 A+ modules |
-| `full-set` | main image + 5 secondary images + 7 A+ modules |
+| Scope            | Creates                                        |
+| ---------------- | ---------------------------------------------- |
+| `main`           | 1 marketplace main image                       |
+| `product-images` | main image + 5 secondary images                |
+| `aplus`          | main image + 7 A+ modules                      |
+| `full-set`       | main image + 5 secondary images + 7 A+ modules |
 
 Use repeated `--asset` only for custom subsets:
 

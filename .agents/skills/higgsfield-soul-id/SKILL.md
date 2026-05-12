@@ -12,7 +12,7 @@ description: |
   `text2image_soul_v2` or `soul_cinema_studio`.
   NOT for: one-shot face swaps (use higgsfield-generate with --image),
   named-character / non-photo avatars (use higgsfield-generate with prompt).
-argument-hint: "[name] [photo paths...]"
+argument-hint: '[name] [photo paths...]'
 allowed-tools: Bash
 ---
 
@@ -45,7 +45,7 @@ Before any other command:
 3. **Pick variant.**
    - `--soul-2` — for image generation (default)
    - `--soul-cinematic` — for cinematic / video work
-   Choose based on user's stated downstream use. Default to `--soul-2`.
+     Choose based on user's stated downstream use. Default to `--soul-2`.
 4. **Submit.**
    ```bash
    higgsfield soul-id create --name "<name>" --soul-2 --image ./photo1.png --image ./photo2.png ...

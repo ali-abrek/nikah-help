@@ -2,12 +2,12 @@
 
 ## Preset vs Custom
 
-| | Preset | Custom |
-|---|---|---|
-| Source | Curated by Higgsfield | User-uploaded |
-| Cost | None for selection | Cost of upload |
-| Diversity | Limited but professional | Unlimited |
-| Use when | Generic ad, fast turnaround | Brand-specific face, founder, employee |
+|           | Preset                      | Custom                                 |
+| --------- | --------------------------- | -------------------------------------- |
+| Source    | Curated by Higgsfield       | User-uploaded                          |
+| Cost      | None for selection          | Cost of upload                         |
+| Diversity | Limited but professional    | Unlimited                              |
+| Use when  | Generic ad, fast turnaround | Brand-specific face, founder, employee |
 
 ## Listing presets
 

@@ -18,7 +18,7 @@ description: |
   video (use higgsfield-generate Marketing Studio), marketplace listing cards
   (use higgsfield-marketplace-cards), Soul Character training (use
   higgsfield-soul-id).
-argument-hint: "[--mode <mode>] [--count N] [prompt]"
+argument-hint: '[--mode <mode>] [--count N] [prompt]'
 allowed-tools: Bash
 ---
 
@@ -47,18 +47,18 @@ Before any other command:
 
 ## Modes
 
-| Mode | When user wants… |
-|---|---|
-| `product_shot` | Product on neutral / studio / catalog background |
-| `lifestyle_scene` | Product in real-world environment, hands, action, atmosphere |
+| Mode                          | When user wants…                                                                  |
+| ----------------------------- | --------------------------------------------------------------------------------- |
+| `product_shot`                | Product on neutral / studio / catalog background                                  |
+| `lifestyle_scene`             | Product in real-world environment, hands, action, atmosphere                      |
 | `closeup_product_with_person` | Tight crop with hands / partial face — beauty application, holding, demonstrating |
-| `moodboard_pin` | Vertical 2:3 Pinterest-native aesthetic, moodboard feel |
-| `hero_banner` | Wide-format website / email / campaign header |
-| `social_carousel` | 3–10 connected slides for IG / LinkedIn / Facebook |
-| `ad_creative_pack` | Coordinated pack of static ad variants for Meta / TikTok / Pinterest / Google Ads |
-| `virtual_model_tryout` | Product worn or used by an AI-rendered model |
-| `conceptual_product` | Surreal / CGI-style / levitating / splash / sculptural product |
-| `restyle` | Transform an existing image's aesthetic, mood, or seasonal context |
+| `moodboard_pin`               | Vertical 2:3 Pinterest-native aesthetic, moodboard feel                           |
+| `hero_banner`                 | Wide-format website / email / campaign header                                     |
+| `social_carousel`             | 3–10 connected slides for IG / LinkedIn / Facebook                                |
+| `ad_creative_pack`            | Coordinated pack of static ad variants for Meta / TikTok / Pinterest / Google Ads |
+| `virtual_model_tryout`        | Product worn or used by an AI-rendered model                                      |
+| `conceptual_product`          | Surreal / CGI-style / levitating / splash / sculptural product                    |
+| `restyle`                     | Transform an existing image's aesthetic, mood, or seasonal context                |
 
 ## Mode selection
 
@@ -76,6 +76,7 @@ Pick by intent, not surface keyword. When two modes could apply, prefer the more
 - modify EXISTING image's aesthetic, mood, season — without changing subject → `restyle`
 
 Tie-breakers:
+
 - "Pinterest pin of my product on a kitchen counter" → `moodboard_pin` (Pinterest is the platform)
 - "Hero banner showing my product in use" → `hero_banner` (banner format wins)
 - "Carousel of my product in different scenes" → `social_carousel` (multi-slide wins)

@@ -29,6 +29,7 @@ Good: "transform into anime style, vibrant colors, soft cel shading"
 ## Negative phrasing
 
 Most models don't expose a `negative_prompt`. Phrase positively:
+
 - Instead of "no blur" → "tack sharp"
 - Instead of "no people" → "uninhabited landscape"
 
@@ -42,6 +43,7 @@ Most models don't expose a `negative_prompt`. Phrase positively:
 ## Safety
 
 Models reject prompts with `nsfw` or `ip_detected` terminal status. Avoid:
+
 - Real public figures
 - Sexual content
 - Trademarks / branded characters
