@@ -34,12 +34,16 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          // Mirror refreshed Supabase cookies onto the outgoing response.
-          // If the response is later replaced (to inject x-user-id headers),
-          // we copy these forward so the auth refresh is not lost.
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
-          )
+          // Mirror onto BOTH the incoming request and the outgoing response.
+          // Writing to `request.cookies` lets the downstream handler (Server
+          // Action, Route Handler, RSC) read the freshly refreshed JWT via
+          // `cookies()`; without this, a token refresh in middleware would
+          // not propagate to the same-request handler, which then re-reads
+          // the stale cookie and Supabase rejects the JWT as expired.
+          cookiesToSet.forEach(({ name, value, options }) => {
+            request.cookies.set(name, value)
+            supabaseResponse.cookies.set(name, value, options)
+          })
         },
       },
     },

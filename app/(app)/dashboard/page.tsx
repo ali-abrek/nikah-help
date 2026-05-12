@@ -49,7 +49,10 @@ export default async function DashboardPage() {
         {!profile?.onboarding_completed && (
           <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
             Завершите{' '}
-            <Link href="/onboarding" className="underline hover:text-amber-900 dark:hover:text-amber-100">
+            <Link
+              href="/onboarding"
+              className="underline hover:text-amber-900 dark:hover:text-amber-100"
+            >
               регистрацию
             </Link>
             , чтобы ваш профиль стал видимым

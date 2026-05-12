@@ -3,7 +3,10 @@ import type { Database } from '@/types/database.types'
 import { getOpenAI, AI_BIO_PROMPT } from '@/lib/openai/client'
 import { BIO_FIELDS_SQL, hashBioFields } from '@/lib/profile/bio-fields'
 
-export async function generateBio(supabase: SupabaseClient<Database>, userId: string): Promise<string> {
+export async function generateBio(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+): Promise<string> {
   // Atomically claim the regenerate lock — only if no regeneration is in flight.
   // This avoids duplicate OpenAI calls from concurrent requests.
   const { error: lockError, count } = await supabase

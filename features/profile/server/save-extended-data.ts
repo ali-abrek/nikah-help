@@ -2,7 +2,6 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
 import type { OnboardingStep2MaleData, OnboardingStep2FemaleData } from '../schemas'
 import { maybeRegenerateBio } from './maybe-regenerate-bio'
-import { AppError } from '@/lib/errors/app-error'
 
 type Step2Data = (OnboardingStep2MaleData | OnboardingStep2FemaleData) & {
   gender: 'male' | 'female'
@@ -37,15 +36,9 @@ export async function saveExtendedData(
     .update({ ...base, ...gendered })
     .eq('id', userId)
 
-  if (error) {
-    if (error.code === '42501' || error.code === 'PGRST301') {
-      throw new AppError('AUTH_UNAUTHORIZED', {
-        details: { pg_code: error.code, pg_details: error.details },
-        cause: error,
-      })
-    }
-    throw error
-  }
+  // PostgREST auth-code mapping (42501, PGRST301, …) is handled centrally in
+  // handleActionError — re-throw so the action wrapper can classify.
+  if (error) throw error
 
   await maybeRegenerateBio(supabase, userId)
 }

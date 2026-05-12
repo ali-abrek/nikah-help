@@ -20,7 +20,9 @@ import { deletePhoto } from './server/delete-photo'
 import { reorderPhotos } from './server/reorder-photos'
 
 function unauthorized() {
-  return { success: false as const, error: new AppError('AUTH_UNAUTHORIZED').toResponse() }
+  // Re-route through handleActionError so the response carries the localized
+  // message ("Пожалуйста, войдите в аккаунт") instead of the bare error code.
+  return handleActionError(new AppError('AUTH_UNAUTHORIZED'))
 }
 
 export async function saveOnboardingStep1(formData: FormData) {
@@ -52,17 +54,28 @@ export async function saveOnboardingStep1(formData: FormData) {
     return { success: false as const, error: err.toResponse() }
   }
 
-  // Verify the city exists in the selected country (case-insensitive,
-  // matching the ilike behaviour of the city autocomplete API).
-  // Search both name (Latin) and alt_names_ru (Russian) columns.
-  const { data: cityRow } = await supabase
-    .from('geonames_cities')
-    .select('id')
-    .eq('country_code', parsed.data.country.toUpperCase())
-    .or(`name.ilike.${parsed.data.city},alt_names_ru.ilike.${parsed.data.city}`)
-    .maybeSingle()
+  // Verify the city exists in the selected country (case-insensitive).
+  // Two separate queries instead of a PostgREST `.or()` filter: arbitrary
+  // user input (commas, dots, parens) can break the OR-filter syntax, and
+  // duplicate alt_names_ru rows would make `.maybeSingle()` error out.
+  const country = parsed.data.country.toUpperCase()
+  const cityValue = parsed.data.city
+  const [byName, byAltRu] = await Promise.all([
+    supabase
+      .from('geonames_cities')
+      .select('id')
+      .eq('country_code', country)
+      .ilike('name', cityValue)
+      .limit(1),
+    supabase
+      .from('geonames_cities')
+      .select('id')
+      .eq('country_code', country)
+      .ilike('alt_names_ru', cityValue)
+      .limit(1),
+  ])
 
-  if (!cityRow) {
+  if (!byName.data?.length && !byAltRu.data?.length) {
     return {
       success: false as const,
       error: new AppError('VALIDATION_INVALID_INPUT', {
