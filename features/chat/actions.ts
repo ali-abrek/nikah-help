@@ -1,33 +1,17 @@
 'use server'
 
-import { createServerSupabase } from '@/lib/supabase/server'
 import { sendMessage } from '@/features/chat/server/send-message'
 import { sendMessageSchema } from '@/features/chat/schemas'
 import { handleActionError } from '@/lib/errors/action'
 import type { ServerActionResult } from '@/lib/errors/action'
-import { getUserId } from '@/lib/auth/claims'
+import { getServerUserId } from '@/lib/auth/claims'
 
 export async function sendMessageAction(
   _prev: ServerActionResult<{ id: string }> | null,
   formData: FormData,
 ): Promise<ServerActionResult<{ id: string }>> {
   try {
-    const supabase = await createServerSupabase()
-    const { data } = await supabase.auth.getClaims()
-
-    if (!data?.claims) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTH_UNAUTHORIZED',
-          message: 'Требуется авторизация',
-          trace_id: crypto.randomUUID(),
-          status: 401,
-        },
-      }
-    }
-
-    const userId = getUserId(data.claims as Record<string, unknown>)
+    const userId = await getServerUserId()
     if (!userId) {
       return {
         success: false,

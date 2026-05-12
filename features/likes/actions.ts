@@ -1,33 +1,17 @@
 'use server'
 
-import { createServerSupabase } from '@/lib/supabase/server'
 import { sendLike } from '@/features/likes/server/send-like'
 import { sendLikeSchema } from '@/features/likes/schemas'
 import { handleActionError } from '@/lib/errors/action'
 import type { ServerActionResult } from '@/lib/errors/action'
-import { getUserId } from '@/lib/auth/claims'
+import { getServerUserId } from '@/lib/auth/claims'
 
 export async function likeUser(
   _prev: ServerActionResult<{ matched: boolean }> | null,
   formData: FormData,
 ): Promise<ServerActionResult<{ matched: boolean }>> {
   try {
-    const supabase = await createServerSupabase()
-    const { data } = await supabase.auth.getClaims()
-
-    if (!data?.claims) {
-      return {
-        success: false,
-        error: {
-          code: 'AUTH_UNAUTHORIZED',
-          message: 'Требуется авторизация',
-          trace_id: crypto.randomUUID(),
-          status: 401,
-        },
-      }
-    }
-
-    const userId = getUserId(data.claims as Record<string, unknown>)
+    const userId = await getServerUserId()
     if (!userId) {
       return {
         success: false,
