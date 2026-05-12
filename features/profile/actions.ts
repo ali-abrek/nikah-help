@@ -4,7 +4,7 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { AppError } from '@/lib/errors/app-error'
 import { validationError } from '@/lib/errors/validation'
 import { handleActionError } from '@/lib/errors/action'
-import { getServerUserId } from '@/lib/auth/claims'
+import { getUserId } from '@/lib/auth/claims'
 import {
   onboardingStep1Schema,
   onboardingStep2MaleSchema,
@@ -27,7 +27,8 @@ function unauthorized() {
 
 export async function saveOnboardingStep1(formData: FormData) {
   const supabase = await createServerSupabase()
-  const userId = await getServerUserId()
+  const { data: authData } = await supabase.auth.getClaims()
+  const userId = getUserId((authData?.claims ?? {}) as Record<string, unknown>)
   if (!userId) return unauthorized()
 
   const raw = {
@@ -90,7 +91,8 @@ export async function saveOnboardingStep1(formData: FormData) {
 
 export async function saveOnboardingStep2(formData: FormData) {
   const supabase = await createServerSupabase()
-  const userId = await getServerUserId()
+  const { data: authData } = await supabase.auth.getClaims()
+  const userId = getUserId((authData?.claims ?? {}) as Record<string, unknown>)
   if (!userId) return unauthorized()
 
   const gender = formData.get('gender') as string
@@ -159,7 +161,8 @@ export async function saveOnboardingStep2(formData: FormData) {
 
 export async function markPhotoUploaded(photoId: string) {
   const supabase = await createServerSupabase()
-  const userId = await getServerUserId()
+  const { data: authData } = await supabase.auth.getClaims()
+  const userId = getUserId((authData?.claims ?? {}) as Record<string, unknown>)
   if (!userId) return unauthorized()
 
   try {
@@ -193,7 +196,8 @@ export async function markPhotoUploaded(photoId: string) {
 
 export async function completeOnboardingAction() {
   const supabase = await createServerSupabase()
-  const userId = await getServerUserId()
+  const { data: authData } = await supabase.auth.getClaims()
+  const userId = getUserId((authData?.claims ?? {}) as Record<string, unknown>)
   if (!userId) return unauthorized()
 
   try {
@@ -207,7 +211,8 @@ export async function completeOnboardingAction() {
 
 export async function replacePhotoAction(position: number) {
   const supabase = await createServerSupabase()
-  const userId = await getServerUserId()
+  const { data: authData } = await supabase.auth.getClaims()
+  const userId = getUserId((authData?.claims ?? {}) as Record<string, unknown>)
   if (!userId) return unauthorized()
 
   if (position < 1 || position > 6) {
@@ -229,7 +234,8 @@ export async function replacePhotoAction(position: number) {
 
 export async function deletePhotoAction(photoId: string) {
   const supabase = await createServerSupabase()
-  const userId = await getServerUserId()
+  const { data: authData } = await supabase.auth.getClaims()
+  const userId = getUserId((authData?.claims ?? {}) as Record<string, unknown>)
   if (!userId) return unauthorized()
 
   try {
@@ -242,7 +248,8 @@ export async function deletePhotoAction(photoId: string) {
 
 export async function reorderPhotosAction(orderedPhotoIds: string[]) {
   const supabase = await createServerSupabase()
-  const userId = await getServerUserId()
+  const { data: authData } = await supabase.auth.getClaims()
+  const userId = getUserId((authData?.claims ?? {}) as Record<string, unknown>)
   if (!userId) return unauthorized()
 
   const parsed = reorderPhotosSchema.safeParse({ orderedPhotoIds })
