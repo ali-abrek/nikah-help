@@ -11,6 +11,7 @@ const CSP_BASELINE = [
   "font-src 'self' data:",
   "style-src 'self' 'unsafe-inline'",
   "script-src 'self' 'unsafe-inline'",
+  "worker-src 'self' blob:",
   // /monitoring is the Sentry tunnel route — same-origin, no extra entry needed.
   // https://*.ingest.sentry.io is kept for server-side SDK direct delivery
   // and as a fallback when the tunnel is unavailable.
