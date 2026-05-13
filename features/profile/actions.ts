@@ -21,29 +21,45 @@ import { replacePhoto } from './server/replace-photo'
 import { deletePhoto } from './server/delete-photo'
 import { reorderPhotos } from './server/reorder-photos'
 
-async function unauthorized() {
-  // Flag the auth seam to Sentry with diagnostic tags so a future regression
-  // in proxy → Server Action cookie/header propagation is observable in
-  // production instead of surfacing only as a user-facing toast.
-  const hadHeader = (await headers()).get('x-user-id') !== null
-  void captureSentryException(new Error('Profile action unauthorized'), {
+async function unauthorized(reason: string) {
+  // Diagnostic so Sentry shows exactly which auth seam failed — header
+  // missing, session unreadable on the action's client, or DB call rejected.
+  const h = await headers()
+  void captureSentryException(new Error(`Profile action unauthorized: ${reason}`), {
     flow: 'auth.rbac',
     severity: 'warning',
-    tags: { step: 'profile_action_auth', had_x_user_id: String(hadHeader) },
+    tags: {
+      step: 'profile_action_auth',
+      reason,
+      had_x_user_id: String(h.get('x-user-id') !== null),
+    },
   })
-  // Re-route through handleActionError so the response carries the localized
-  // message ("Пожалуйста, войдите в аккаунт") instead of the bare error code.
   return handleActionError(new AppError('AUTH_UNAUTHORIZED'))
+}
+
+/**
+ * Resolves the authenticated user ID for a Server Action.
+ *
+ * Always calls `getClaims()` on the action's own supabase client so the
+ * session that authorizes downstream PostgREST calls is loaded by the
+ * same client that performs them. Falls back to `getServerUserId()`
+ * (proxy x-user-id header + helper client) only if the action's client
+ * fails to load a session — which can happen when the @supabase/ssr
+ * 0.10.2 server client does not see the proxy-refreshed cookies.
+ */
+async function resolveUserId(
+  supabase: Awaited<ReturnType<typeof createServerSupabase>>,
+): Promise<string | null> {
+  const { data: authData } = await supabase.auth.getClaims()
+  const fromAction = getUserId((authData?.claims ?? {}) as Record<string, unknown>)
+  if (fromAction) return fromAction
+  return await getServerUserId()
 }
 
 export async function saveOnboardingStep1(formData: FormData) {
   const supabase = await createServerSupabase()
-  let userId = await getServerUserId()
-  if (!userId) {
-    const { data: authData } = await supabase.auth.getClaims()
-    userId = getUserId((authData?.claims ?? {}) as Record<string, unknown>)
-  }
-  if (!userId) return unauthorized()
+  const userId = await resolveUserId(supabase)
+  if (!userId) return unauthorized('no_user_id')
 
   const raw = {
     name: formData.get('name'),
@@ -99,18 +115,25 @@ export async function saveOnboardingStep1(formData: FormData) {
     await saveBasicData(supabase, userId, parsed.data)
     return { success: true as const, message: 'Сохранено' }
   } catch (e) {
+    // Capture the raw error before handleActionError maps it. If the
+    // user-facing toast says AUTH_UNAUTHORIZED but the underlying cause is
+    // a PostgREST JWT error (PGRST301 etc.), this tag makes that visible
+    // in Sentry without another round-trip of changes.
+    const pgCode =
+      e && typeof e === 'object' && 'code' in e ? String((e as { code: unknown }).code) : 'unknown'
+    void captureSentryException(e, {
+      flow: 'action.save_onboarding_step1',
+      severity: 'error',
+      tags: { step: 'save_basic_data', pg_code: pgCode },
+    })
     return handleActionError(e)
   }
 }
 
 export async function saveOnboardingStep2(formData: FormData) {
   const supabase = await createServerSupabase()
-  let userId = await getServerUserId()
-  if (!userId) {
-    const { data: authData } = await supabase.auth.getClaims()
-    userId = getUserId((authData?.claims ?? {}) as Record<string, unknown>)
-  }
-  if (!userId) return unauthorized()
+  const userId = await resolveUserId(supabase)
+  if (!userId) return unauthorized('no_user_id')
 
   const gender = formData.get('gender') as string
 
@@ -178,12 +201,8 @@ export async function saveOnboardingStep2(formData: FormData) {
 
 export async function markPhotoUploaded(photoId: string) {
   const supabase = await createServerSupabase()
-  let userId = await getServerUserId()
-  if (!userId) {
-    const { data: authData } = await supabase.auth.getClaims()
-    userId = getUserId((authData?.claims ?? {}) as Record<string, unknown>)
-  }
-  if (!userId) return unauthorized()
+  const userId = await resolveUserId(supabase)
+  if (!userId) return unauthorized('no_user_id')
 
   try {
     // Atomic transition: only flip a pending row owned by this user. If the
@@ -216,12 +235,8 @@ export async function markPhotoUploaded(photoId: string) {
 
 export async function completeOnboardingAction() {
   const supabase = await createServerSupabase()
-  let userId = await getServerUserId()
-  if (!userId) {
-    const { data: authData } = await supabase.auth.getClaims()
-    userId = getUserId((authData?.claims ?? {}) as Record<string, unknown>)
-  }
-  if (!userId) return unauthorized()
+  const userId = await resolveUserId(supabase)
+  if (!userId) return unauthorized('no_user_id')
 
   try {
     const bio = await generateBio(supabase, userId)
@@ -234,12 +249,8 @@ export async function completeOnboardingAction() {
 
 export async function replacePhotoAction(position: number) {
   const supabase = await createServerSupabase()
-  let userId = await getServerUserId()
-  if (!userId) {
-    const { data: authData } = await supabase.auth.getClaims()
-    userId = getUserId((authData?.claims ?? {}) as Record<string, unknown>)
-  }
-  if (!userId) return unauthorized()
+  const userId = await resolveUserId(supabase)
+  if (!userId) return unauthorized('no_user_id')
 
   if (position < 1 || position > 6) {
     return {
@@ -260,12 +271,8 @@ export async function replacePhotoAction(position: number) {
 
 export async function deletePhotoAction(photoId: string) {
   const supabase = await createServerSupabase()
-  let userId = await getServerUserId()
-  if (!userId) {
-    const { data: authData } = await supabase.auth.getClaims()
-    userId = getUserId((authData?.claims ?? {}) as Record<string, unknown>)
-  }
-  if (!userId) return unauthorized()
+  const userId = await resolveUserId(supabase)
+  if (!userId) return unauthorized('no_user_id')
 
   try {
     await deletePhoto(supabase, userId, photoId)
@@ -277,12 +284,8 @@ export async function deletePhotoAction(photoId: string) {
 
 export async function reorderPhotosAction(orderedPhotoIds: string[]) {
   const supabase = await createServerSupabase()
-  let userId = await getServerUserId()
-  if (!userId) {
-    const { data: authData } = await supabase.auth.getClaims()
-    userId = getUserId((authData?.claims ?? {}) as Record<string, unknown>)
-  }
-  if (!userId) return unauthorized()
+  const userId = await resolveUserId(supabase)
+  if (!userId) return unauthorized('no_user_id')
 
   const parsed = reorderPhotosSchema.safeParse({ orderedPhotoIds })
   if (!parsed.success) {

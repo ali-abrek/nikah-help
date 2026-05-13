@@ -100,13 +100,15 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // Inject auth headers onto the same response that already carries
-    // the refreshed cookies. Building a separate response from
-    // `{ headers: requestHeaders }` previously dropped the mutated
-    // request cookies, causing AUTH_UNAUTHORIZED in Server Actions.
-    request.headers.set('x-user-id', userId)
-    request.headers.set('x-user-role', (claims.role as string) ?? 'user')
-    const final = NextResponse.next({ request })
+    // Follow the documented Next.js pattern for setting request headers:
+    // clone request.headers (which now reflects any cookie mutations from
+    // setAll because RequestCookies.set writes back to its _headers), add
+    // our auth headers, and pass via `request: { headers: requestHeaders }`.
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set('x-user-id', userId)
+    requestHeaders.set('x-user-role', (claims.role as string) ?? 'user')
+
+    const final = NextResponse.next({ request: { headers: requestHeaders } })
     supabaseResponse.cookies.getAll().forEach((cookie) => {
       final.cookies.set(cookie.name, cookie.value, cookie)
     })
