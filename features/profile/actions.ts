@@ -1,10 +1,12 @@
 'use server'
 
+import { headers } from 'next/headers'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { AppError } from '@/lib/errors/app-error'
 import { validationError } from '@/lib/errors/validation'
 import { handleActionError } from '@/lib/errors/action'
 import { getServerUserId, getUserId } from '@/lib/auth/claims'
+import { captureSentryException } from '@/lib/sentry/capture'
 import {
   onboardingStep1Schema,
   onboardingStep2MaleSchema,
@@ -19,7 +21,16 @@ import { replacePhoto } from './server/replace-photo'
 import { deletePhoto } from './server/delete-photo'
 import { reorderPhotos } from './server/reorder-photos'
 
-function unauthorized() {
+async function unauthorized() {
+  // Flag the auth seam to Sentry with diagnostic tags so a future regression
+  // in proxy → Server Action cookie/header propagation is observable in
+  // production instead of surfacing only as a user-facing toast.
+  const hadHeader = (await headers()).get('x-user-id') !== null
+  void captureSentryException(new Error('Profile action unauthorized'), {
+    flow: 'auth.rbac',
+    severity: 'warning',
+    tags: { step: 'profile_action_auth', had_x_user_id: String(hadHeader) },
+  })
   // Re-route through handleActionError so the response carries the localized
   // message ("Пожалуйста, войдите в аккаунт") instead of the bare error code.
   return handleActionError(new AppError('AUTH_UNAUTHORIZED'))

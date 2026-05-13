@@ -22,7 +22,10 @@ const PROTECTED_PATHS = [
 ]
 
 export async function proxy(request: NextRequest) {
-  const supabaseResponse = NextResponse.next({ request })
+  // Mutated below from setAll; recreating it from the (already-mutated)
+  // `request` is what guarantees Next.js forwards the refreshed cookies to
+  // the downstream Server Action / RSC. See the comment in setAll.
+  let supabaseResponse = NextResponse.next({ request })
   const url = request.nextUrl
 
   const supabase = createServerClient(
@@ -34,14 +37,20 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          // Mirror onto BOTH the incoming request and the outgoing response.
-          // Writing to `request.cookies` lets the downstream handler (Server
-          // Action, Route Handler, RSC) read the freshly refreshed JWT via
-          // `cookies()`; without this, a token refresh in middleware would
-          // not propagate to the same-request handler, which then re-reads
-          // the stale cookie and Supabase rejects the JWT as expired.
-          cookiesToSet.forEach(({ name, value, options }) => {
+          // 1. Mutate `request.cookies` so the *next* `NextResponse.next({
+          //    request })` snapshot carries the refreshed JWT through to the
+          //    downstream handler.
+          cookiesToSet.forEach(({ name, value }) => {
             request.cookies.set(name, value)
+          })
+          // 2. Recreate the response from the now-mutated request. Skipping
+          //    this step is what previously caused AUTH_UNAUTHORIZED in
+          //    Server Actions after a token refresh: the forwarded request
+          //    still carried the stale cookies.
+          supabaseResponse = NextResponse.next({ request })
+          // 3. Mirror the cookies onto the outgoing response so the browser
+          //    also receives the refreshed Set-Cookie headers.
+          cookiesToSet.forEach(({ name, value, options }) => {
             supabaseResponse.cookies.set(name, value, options)
           })
         },
@@ -83,10 +92,6 @@ export async function proxy(request: NextRequest) {
       return supabaseResponse
     }
 
-    const requestHeaders = new Headers(request.headers)
-    requestHeaders.set('x-user-id', userId)
-    requestHeaders.set('x-user-role', (claims.role as string) ?? 'user')
-
     const suspended = await isUserSuspendedCached(supabase, userId)
 
     if (suspended) {
@@ -95,16 +100,17 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url)
     }
 
-    // Build the forwarded response with injected headers, then carry
-    // over any cookies Supabase wrote on `supabaseResponse` (refreshed
-    // session tokens). Skipping this step silently drops cookie refreshes.
-    const forwarded = NextResponse.next({
-      request: { headers: requestHeaders },
-    })
+    // Inject auth headers onto the same response that already carries
+    // the refreshed cookies. Building a separate response from
+    // `{ headers: requestHeaders }` previously dropped the mutated
+    // request cookies, causing AUTH_UNAUTHORIZED in Server Actions.
+    request.headers.set('x-user-id', userId)
+    request.headers.set('x-user-role', (claims.role as string) ?? 'user')
+    const final = NextResponse.next({ request })
     supabaseResponse.cookies.getAll().forEach((cookie) => {
-      forwarded.cookies.set(cookie.name, cookie.value, cookie)
+      final.cookies.set(cookie.name, cookie.value, cookie)
     })
-    return forwarded
+    return final
   } catch (err) {
     void captureSentryException(err, {
       flow: 'edge.proxy',
