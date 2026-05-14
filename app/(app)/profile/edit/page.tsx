@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { ProfileEditForm } from '@/features/profile/components/ProfileEditForm'
+import { getUserId } from '@/lib/auth/claims'
 
 export const metadata = {
   title: 'Редактирование профиля — Nikah Help',
@@ -8,8 +9,8 @@ export const metadata = {
 
 export default async function ProfileEditPage() {
   const supabase = await createServerSupabase()
-  const { data: claims } = await supabase.auth.getClaims()
-  const userId = claims ? ((claims as Record<string, unknown>).sub as string) : null
+  const { data } = await supabase.auth.getClaims()
+  const userId = data?.claims ? getUserId(data.claims as Record<string, unknown>) : null
 
   if (!userId) {
     redirect('/auth')

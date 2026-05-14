@@ -2,6 +2,7 @@ import { notFound } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getProfile } from '@/features/profile/server/get-profile'
 import { ProfileDetail } from '@/features/profile/components/ProfileDetail'
+import { getUserId } from '@/lib/auth/claims'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -10,8 +11,8 @@ interface Props {
 export default async function ProfileDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = await createServerSupabase()
-  const { data: claims } = await supabase.auth.getClaims()
-  const viewerId = claims ? ((claims as Record<string, unknown>).sub as string) : null
+  const { data } = await supabase.auth.getClaims()
+  const viewerId = data?.claims ? getUserId(data.claims as Record<string, unknown>) : null
 
   if (!viewerId) {
     return (
