@@ -27,7 +27,7 @@ describe('feed filters schema', () => {
     const result = feedFiltersSchema.safeParse({
       gender: 'male',
       polygyny_attitude: ['positive'],
-      hijab_attitude: ['hijab_full'],
+      hijab_attitude: ['hijab'],
     })
     expect(result.success).toBe(true)
   })
@@ -36,7 +36,7 @@ describe('feed filters schema', () => {
     const result = feedFiltersSchema.safeParse({
       gender: 'female',
       income_level: ['high'],
-      housing: ['own'],
+      housing: ['apartment'],
     })
     expect(result.success).toBe(true)
   })

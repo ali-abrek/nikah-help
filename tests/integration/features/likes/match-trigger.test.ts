@@ -191,7 +191,9 @@ describe('revokeLike - cleanup', () => {
 
     const { revokeLike } = await import('@/features/likes/server/revoke-like')
     await revokeLike({ fromUserId: 'user-a', toUserId: 'user-b' })
-    expect(updateFn).toHaveBeenCalledWith(expect.objectContaining({ revoked_at: expect.any(String) }))
+    expect(updateFn).toHaveBeenCalledWith(
+      expect.objectContaining({ revoked_at: expect.any(String) }),
+    )
   })
 
   it('should throw NOT_FOUND when like does not exist', async () => {

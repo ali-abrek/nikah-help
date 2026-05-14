@@ -71,13 +71,12 @@ export function ProfileDetail({ profile, isOwnProfile }: ProfileDetailProps) {
         {profile.marital_status && (
           <DetailItem
             label="Семейное положение"
-            value={maritalStatusLabel(profile.marital_status)}
+            value={maritalStatusLabel(profile.marital_status, profile.gender)}
           />
         )}
         {profile.children_count != null && (
-          <DetailItem label="Дети" value={String(profile.children_count)} />
+          <DetailItem label="Дети" value={childrenLabel(profile.children_count)} />
         )}
-        {profile.education && <DetailItem label="Образование" value={profile.education} />}
         {profile.income_level && (
           <DetailItem label="Уровень дохода" value={incomeLabel(profile.income_level)} />
         )}
@@ -85,7 +84,7 @@ export function ProfileDetail({ profile, isOwnProfile }: ProfileDetailProps) {
         {profile.willing_to_relocate != null && (
           <DetailItem
             label="Готовность к переезду"
-            value={profile.willing_to_relocate ? 'Да' : 'Нет'}
+            value={relocationLabel(profile.willing_to_relocate)}
           />
         )}
         {profile.polygyny_attitude && (
@@ -195,33 +194,63 @@ function LikeButton({
 
 // ── Label helpers ───────────────────────────────────────────────────
 
-function maritalStatusLabel(v: string): string {
+function maritalStatusLabel(v: string, gender?: 'male' | 'female' | null): string {
+  if (gender === 'female') {
+    const map: Record<string, string> = {
+      single: 'Замужем не была',
+      divorced: 'Разведена',
+      widowed: 'Вдова',
+    }
+    return map[v] ?? v
+  }
   const map: Record<string, string> = {
-    single: 'Не в браке',
-    divorced: 'Разведён(а)',
-    widowed: 'Вдовец/Вдова',
-    married_1: 'В браке (1 жена)',
-    married_2: 'В браке (2 жены)',
-    married_3: 'В браке (3 жены)',
+    single: 'Женат не был',
+    divorced: 'Разведён',
+    widowed: 'Вдовец',
+    married_1: 'Женат на одной',
+    married_2: 'Женат на двух',
+    married_3: 'Женат на трёх',
   }
   return map[v] ?? v
 }
 
+function childrenLabel(v: number): string {
+  const map: Record<number, string> = {
+    0: 'Детей нет',
+    1: '1 ребёнок',
+    2: '2 ребёнка',
+    3: '3 ребёнка',
+    4: '4 ребёнка',
+  }
+  if (v >= 5) return '5 или более детей'
+  return map[v] ?? String(v)
+}
+
 function incomeLabel(v: string): string {
   const map: Record<string, string> = {
-    low: 'Низкий',
-    middle: 'Средний',
-    high: 'Высокий',
+    low: 'Живу скромно',
+    middle: 'Средний достаток',
+    high: 'Хорошо обеспечен',
   }
   return map[v] ?? v
 }
 
 function housingLabel(v: string): string {
   const map: Record<string, string> = {
-    own: 'Своё жильё',
-    rent: 'Аренда',
-    parents: 'С родителями',
-    shared: 'Совместное',
+    rent: 'Арендую',
+    apartment: 'Своя квартира',
+    house: 'Свой дом',
+    parents: 'Живу с родителями',
+  }
+  return map[v] ?? v
+}
+
+function relocationLabel(v: string): string {
+  const map: Record<string, string> = {
+    none: 'Не готова к переезду',
+    region: 'Внутри региона',
+    country: 'Внутри страны',
+    abroad: 'В другую страну',
   }
   return map[v] ?? v
 }
@@ -229,7 +258,6 @@ function housingLabel(v: string): string {
 function polygynyLabel(v: string): string {
   const map: Record<string, string> = {
     positive: 'Положительное',
-    neutral: 'Нейтральное',
     negative: 'Отрицательное',
   }
   return map[v] ?? v
@@ -237,10 +265,9 @@ function polygynyLabel(v: string): string {
 
 function hijabLabel(v: string): string {
   const map: Record<string, string> = {
-    niqab: 'Никаб',
-    hijab_full: 'Хиджаб полностью',
-    hijab_partial: 'Хиджаб частично',
-    no_hijab: 'Без хиджаба',
+    no_hijab: 'Не покрываюсь',
+    hijab: 'Ношу хиджаб',
+    niqab: 'Ношу никаб',
   }
   return map[v] ?? v
 }

@@ -16,44 +16,33 @@ const MARITAL_STATUSES = [
   { value: 'single', label: 'Не в браке' },
   { value: 'divorced', label: 'Разведён(а)' },
   { value: 'widowed', label: 'Вдовец/Вдова' },
-  { value: 'married_1', label: 'В браке (1 жена)' },
-  { value: 'married_2', label: 'В браке (2 жены)' },
-  { value: 'married_3', label: 'В браке (3 жены)' },
+  { value: 'married_1', label: 'Женат (1 жена)' },
+  { value: 'married_2', label: 'Женат (2 жены)' },
+  { value: 'married_3', label: 'Женат (3 жены)' },
 ]
 
 const POLYGYNY_ATTITUDES = [
   { value: 'positive', label: 'Положительное' },
-  { value: 'neutral', label: 'Нейтральное' },
   { value: 'negative', label: 'Отрицательное' },
 ]
 
 const HIJAB_ATTITUDES = [
-  { value: 'niqab', label: 'Никаб' },
-  { value: 'hijab_full', label: 'Хиджаб полностью' },
-  { value: 'hijab_partial', label: 'Хиджаб частично' },
   { value: 'no_hijab', label: 'Без хиджаба' },
+  { value: 'hijab', label: 'Хиджаб' },
+  { value: 'niqab', label: 'Никаб' },
 ]
 
 const INCOME_LEVELS = [
-  { value: 'low', label: 'Низкий' },
+  { value: 'low', label: 'Скромный' },
   { value: 'middle', label: 'Средний' },
   { value: 'high', label: 'Высокий' },
 ]
 
 const HOUSING_TYPES = [
-  { value: 'own', label: 'Своё жильё' },
   { value: 'rent', label: 'Аренда' },
+  { value: 'apartment', label: 'Квартира' },
+  { value: 'house', label: 'Дом' },
   { value: 'parents', label: 'С родителями' },
-  { value: 'shared', label: 'Совместное' },
-]
-
-const EDUCATION_LEVELS = [
-  { value: 'none', label: 'Нет образования' },
-  { value: 'school', label: 'Школа' },
-  { value: 'vocational', label: 'Среднее специальное' },
-  { value: 'bachelor', label: 'Бакалавр' },
-  { value: 'master', label: 'Магистр' },
-  { value: 'phd', label: 'PhD' },
 ]
 
 export function FilterPanel({ filters, setFilter, clearFilters, activeCount }: FilterPanelProps) {
@@ -182,14 +171,6 @@ export function FilterPanel({ filters, setFilter, clearFilters, activeCount }: F
                 options={HOUSING_TYPES}
                 selected={(f.housing as string[]) ?? []}
                 onChange={(v) => setFilter('housing', v)}
-              />
-            </FilterSection>
-
-            <FilterSection title="Образование">
-              <CheckboxGroup
-                options={EDUCATION_LEVELS}
-                selected={(f.education as string[]) ?? []}
-                onChange={(v) => setFilter('education', v)}
               />
             </FilterSection>
           </>

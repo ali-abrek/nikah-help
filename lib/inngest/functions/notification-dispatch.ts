@@ -169,15 +169,12 @@ export const notificationDispatchFn = inngest.createFunction(
         })
 
         if (!success) {
-          void captureSentryException(
-            new Error(error ?? 'email send failed'),
-            {
-              flow: 'notif.send',
-              severity: 'error',
-              tags: { step: 'send_email' },
-              extra: { channel: 'email' },
-            },
-          )
+          void captureSentryException(new Error(error ?? 'email send failed'), {
+            flow: 'notif.send',
+            severity: 'error',
+            tags: { step: 'send_email' },
+            extra: { channel: 'email' },
+          })
         }
 
         return { sent: success }

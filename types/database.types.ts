@@ -27,7 +27,7 @@ export interface Database {
           education: string | null
           income_level: string | null
           housing: string | null
-          willing_to_relocate: boolean | null
+          willing_to_relocate: string | null
           polygyny_attitude: string | null
           hijab_attitude: string | null
           about_self: string | null
@@ -63,7 +63,7 @@ export interface Database {
           education?: string | null
           income_level?: string | null
           housing?: string | null
-          willing_to_relocate?: boolean | null
+          willing_to_relocate?: string | null
           polygyny_attitude?: string | null
           hijab_attitude?: string | null
           about_self?: string | null
@@ -99,7 +99,7 @@ export interface Database {
           education?: string | null
           income_level?: string | null
           housing?: string | null
-          willing_to_relocate?: boolean | null
+          willing_to_relocate?: string | null
           polygyny_attitude?: string | null
           hijab_attitude?: string | null
           about_self?: string | null

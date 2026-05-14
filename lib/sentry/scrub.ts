@@ -21,13 +21,7 @@ const BLOCKED_BODY_FIELDS = new Set([
 ])
 
 // Query-string parameter names that must be stripped.
-const BLOCKED_QUERY_PARAMS = new Set([
-  'code',
-  'token',
-  'access_token',
-  'refresh_token',
-  'apikey',
-])
+const BLOCKED_QUERY_PARAMS = new Set(['code', 'token', 'access_token', 'refresh_token', 'apikey'])
 
 // Matches Supabase signed Storage URLs and any param name that looks sensitive.
 const SENSITIVE_PARAM_PATTERN = /(?:token|secret|key|signature)/i
@@ -73,9 +67,7 @@ function scrubQueryString(url: string | undefined): string | undefined {
   }
 }
 
-function scrubBodyFields(
-  data: unknown,
-): unknown {
+function scrubBodyFields(data: unknown): unknown {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return data
   const out: Record<string, unknown> = {}
   for (const [key, value] of Object.entries(data as Record<string, unknown>)) {
@@ -91,10 +83,7 @@ function scrubBodyFields(
 // beforeSend<ErrorEvent> and beforeSendTransaction<TransactionEvent>).
 export function scrubPii<T extends Event>(event: T): T | null {
   // Drop debug-level events in production to prevent quota drain.
-  if (
-    event.level === 'debug' &&
-    process.env.NEXT_PUBLIC_SENTRY_ENV === 'production'
-  ) {
+  if (event.level === 'debug' && process.env.NEXT_PUBLIC_SENTRY_ENV === 'production') {
     return null
   }
 

@@ -5,6 +5,7 @@ Nikah Help uses `@sentry/nextjs` for centralized error tracking, performance mon
 See `docs/14-sentry-observability.md` for the canonical requirements and operational standards (alert routing, ownership rules, severity rubric, deployment gates). This guide is the developer-facing how-to.
 
 Key sections in the canonical doc:
+
 - **Layered `lib/sentry/` Architecture** — centralized module design, boundaries, call sites
 - **Standardized Helper Patterns** — `captureSentryException`, `withSentryMonitor`, `setSentryUser`
 - **Mandatory Observability Principles** — no silent failures, centralized helpers, no ad-hoc usage, structured errors, flow taxonomy, severity normalization
@@ -18,15 +19,15 @@ Key sections in the canonical doc:
 
 ## Required Environment Variables
 
-| Variable | Required for | Description |
-|---|---|---|
-| `SENTRY_DSN` | Server + Edge runtime | Project DSN — server-only |
-| `NEXT_PUBLIC_SENTRY_DSN` | Browser client | Project DSN — safe to expose publicly |
-| `NEXT_PUBLIC_SENTRY_ENV` | All runtimes | `production` / `staging` / `development` |
-| `SENTRY_AUTH_TOKEN` | Build time only | Source map upload — never at runtime |
-| `SENTRY_ORG` | Build time only | Sentry organization slug |
-| `SENTRY_PROJECT` | Build time only | Sentry project slug |
-| `SENTRY_RELEASE` | Auto-injected by Vercel | `nikah-help@<git-sha>` |
+| Variable                     | Required for            | Description                              |
+| ---------------------------- | ----------------------- | ---------------------------------------- |
+| `SENTRY_DSN`                 | Server + Edge runtime   | Project DSN — server-only                |
+| `NEXT_PUBLIC_SENTRY_DSN`     | Browser client          | Project DSN — safe to expose publicly    |
+| `NEXT_PUBLIC_SENTRY_ENV`     | All runtimes            | `production` / `staging` / `development` |
+| `SENTRY_AUTH_TOKEN`          | Build time only         | Source map upload — never at runtime     |
+| `SENTRY_ORG`                 | Build time only         | Sentry organization slug                 |
+| `SENTRY_PROJECT`             | Build time only         | Sentry project slug                      |
+| `SENTRY_RELEASE`             | Auto-injected by Vercel | `nikah-help@<git-sha>`                   |
 | `NEXT_PUBLIC_SENTRY_RELEASE` | Auto-injected by Vercel | Same value, accessible in browser bundle |
 
 Add these to your `.env.local` (copy from `.env.example`). Leaving `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN` empty disables Sentry locally — all helpers no-op cleanly, so local development works without a project.
@@ -64,12 +65,12 @@ try {
   await doSomething()
 } catch (err) {
   void captureSentryException(err, {
-    flow: 'payments.init',       // required — pick from FlowTag union
-    severity: 'error',           // optional, default 'error'
+    flow: 'payments.init', // required — pick from FlowTag union
+    severity: 'error', // optional, default 'error'
     tags: { step: 'init_call' }, // optional key/value strings
-    extra: { provider: 'tbank' } // optional typed SentryExtra
+    extra: { provider: 'tbank' }, // optional typed SentryExtra
   })
-  throw err  // or convert to AppError
+  throw err // or convert to AppError
 }
 ```
 
@@ -122,6 +123,7 @@ Add the corresponding entry to `vercel.json` crons. The monitor slug must match 
 ### Vercel ↔ Sentry Integration
 
 Install the official Vercel ↔ Sentry integration at the project level. This:
+
 - Creates a new Sentry release on every deploy
 - Injects `SENTRY_RELEASE` and `NEXT_PUBLIC_SENTRY_RELEASE` automatically
 - Sets `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, and `NEXT_PUBLIC_SENTRY_ENV` per environment
@@ -140,11 +142,11 @@ Source maps are uploaded automatically during `next build` by `withSentryConfig`
 
 ### Environment mapping
 
-| Vercel target | `NEXT_PUBLIC_SENTRY_ENV` | Tracing | Replay |
-|---|---|---|---|
-| Production | `production` | 0.10 server / 0.05 client / 0.02 edge | 1% session / 100% on-error |
-| Preview | `staging` | 1.0 all | 10% / 100% |
-| Development (local) | `development` | 1.0 | disabled |
+| Vercel target       | `NEXT_PUBLIC_SENTRY_ENV` | Tracing                               | Replay                     |
+| ------------------- | ------------------------ | ------------------------------------- | -------------------------- |
+| Production          | `production`             | 0.10 server / 0.05 client / 0.02 edge | 1% session / 100% on-error |
+| Preview             | `staging`                | 1.0 all                               | 10% / 100%                 |
+| Development (local) | `development`            | 1.0                                   | disabled                   |
 
 ---
 
@@ -161,25 +163,30 @@ After a staging or production deploy:
 ## Troubleshooting
 
 **Tunnel returns 404 in the browser**
+
 - Verify `/monitoring` is in `tunnelRoute` in `next.config.ts`.
 - Verify `/monitoring` is excluded from the proxy matcher in `proxy.ts`.
 - The tunnel is a built-in Next.js SDK route — no custom handler needed.
 
 **No events appearing in Sentry locally**
+
 - Check that `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` are set in `.env.local`.
 - Check the browser Network tab for requests to `/monitoring` — they should return 200.
 - Verify `NEXT_PUBLIC_SENTRY_ENV` is not `production` locally (production events go to production quota).
 
 **DSN missing / events not sent**
+
 - `captureSentryException` and all helpers no-op when DSN is absent — this is intentional for local dev.
 - In production/staging, DSN should be injected by the Vercel ↔ Sentry integration.
 
 **Source maps not appearing**
+
 - Confirm `SENTRY_AUTH_TOKEN` is set as a build-time env var in Vercel (not runtime).
 - Check the Vercel build log for `[sentry]` lines.
 - `hideSourceMaps: true` means source maps are sent to Sentry only, not the browser — this is correct.
 
 **Edge runtime crash not appearing**
+
 - Edge functions must use the dynamic import pattern (`await import('@sentry/nextjs')`) — static imports of Node-only modules will break the edge bundle.
 - `sentry.edge.config.ts` has no Node-only integrations — keep it that way.
 
@@ -200,14 +207,14 @@ After a staging or production deploy:
 
 Configure these alert rules in Sentry (scope all to `environment:production`):
 
-| Trigger | Channel | Action |
-|---|---|---|
-| Any new `fatal` issue | `#alerts-prod` + PagerDuty | Page on-call |
-| Crash-free users < 99.5% over 30 min | `#alerts-prod` + PagerDuty | Page on-call |
-| `flow=payments.*` errors > 5 in 5 min | `#alerts-prod` + `#payments` | Page on-call |
-| `flow=auth.callback` error rate > 2% over 10 min | `#alerts-prod` | Notify on-call |
-| `flow=realtime.channel` error rate > 5% per minute | `#chat` | Notify channel owner |
-| `flow=ratelimit.infra` any occurrence | `#alerts-prod` | Notify on-call |
-| `flow=cron.*` missed run (Sentry Crons) | `#alerts-prod` | Notify on-call |
-| `error_code=SYSTEM_DATABASE_ERROR` > 5 in 10 min | `#alerts-prod` + `#database` | Page on-call |
-| New issue in latest release | `#release-watch` | Informational |
+| Trigger                                            | Channel                      | Action               |
+| -------------------------------------------------- | ---------------------------- | -------------------- |
+| Any new `fatal` issue                              | `#alerts-prod` + PagerDuty   | Page on-call         |
+| Crash-free users < 99.5% over 30 min               | `#alerts-prod` + PagerDuty   | Page on-call         |
+| `flow=payments.*` errors > 5 in 5 min              | `#alerts-prod` + `#payments` | Page on-call         |
+| `flow=auth.callback` error rate > 2% over 10 min   | `#alerts-prod`               | Notify on-call       |
+| `flow=realtime.channel` error rate > 5% per minute | `#chat`                      | Notify channel owner |
+| `flow=ratelimit.infra` any occurrence              | `#alerts-prod`               | Notify on-call       |
+| `flow=cron.*` missed run (Sentry Crons)            | `#alerts-prod`               | Notify on-call       |
+| `error_code=SYSTEM_DATABASE_ERROR` > 5 in 10 min   | `#alerts-prod` + `#database` | Page on-call         |
+| New issue in latest release                        | `#release-watch`             | Informational        |

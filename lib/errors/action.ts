@@ -7,12 +7,17 @@ export type ServerActionResult<T> =
   | { success: true; data: T }
   | { success: false; error: ErrorResponse }
 
-// PostgREST error codes that indicate an authentication or permission problem.
-// 42501  = SQL-standard "insufficient privilege" (missing table/schema grants)
-// PGRST301 = RLS policy violation
-// PGRST102 = Bad or missing JWT
-// PGRST104 = JWT role lacks permission
-const AUTH_POSTGREST_CODES = new Set(['42501', 'PGRST301', 'PGRST102', 'PGRST104'])
+// PostgREST/Postgres codes split by intent:
+// JWT-level (genuine auth) → AUTH_UNAUTHORIZED (401, prompts re-login).
+//   PGRST102 = Bad or missing JWT
+//   PGRST104 = JWT role lacks permission
+// Privilege-level (the user IS authenticated but RLS or a missing GRANT
+// denied the op) → AUTH_FORBIDDEN (403). Mapping these to AUTH_UNAUTHORIZED
+// previously masked a project-wide missing-GRANT bug as a session problem.
+//   42501    = SQL-standard "insufficient privilege"
+//   PGRST301 = RLS policy violation
+const AUTH_JWT_CODES = new Set(['PGRST102', 'PGRST104'])
+const AUTH_PERMISSION_CODES = new Set(['42501', 'PGRST301'])
 
 // PostgREST error codes that indicate a client input problem.
 // 23505 = unique_violation (duplicate key)
@@ -45,14 +50,19 @@ export function handleActionError(
   if (isPostgrestError(error)) {
     // Map known PostgREST error codes to application error codes so the
     // client shows a meaningful message instead of a generic 500.
-    if (AUTH_POSTGREST_CODES.has(error.code)) {
-      const appError = new AppError('AUTH_UNAUTHORIZED', {
+    const appCode = AUTH_JWT_CODES.has(error.code)
+      ? 'AUTH_UNAUTHORIZED'
+      : AUTH_PERMISSION_CODES.has(error.code)
+        ? 'AUTH_FORBIDDEN'
+        : null
+    if (appCode) {
+      const appError = new AppError(appCode, {
         details: { pg_code: error.code, pg_details: error.details },
         cause: error,
       })
       logError(appError)
       const body = appError.toResponse()
-      body.message = getErrorMessage('AUTH_UNAUTHORIZED', locale)
+      body.message = getErrorMessage(appCode, locale)
       return { success: false, error: body }
     }
 

@@ -13,12 +13,10 @@ const maritalStatuses = [
   'married_3',
 ] as const
 
-const educations = ['none', 'school', 'vocational', 'bachelor', 'master', 'phd'] as const
-
 const incomeLevels = ['low', 'middle', 'high'] as const
-const housingTypes = ['own', 'rent', 'parents', 'shared'] as const
-const polygynyAttitudes = ['positive', 'neutral', 'negative'] as const
-const hijabAttitudes = ['niqab', 'hijab_full', 'hijab_partial', 'no_hijab'] as const
+const housingTypes = ['rent', 'apartment', 'house', 'parents'] as const
+const polygynyAttitudes = ['positive', 'negative'] as const
+const hijabAttitudes = ['no_hijab', 'hijab', 'niqab'] as const
 
 // ── Base filters (both genders) ────────────────────────────────────
 
@@ -42,7 +40,6 @@ export const feedFiltersMaleSchema = feedFiltersBaseSchema.extend({
 export const feedFiltersFemaleSchema = feedFiltersBaseSchema.extend({
   income_level: z.array(z.enum(incomeLevels)).optional(),
   housing: z.array(z.enum(housingTypes)).optional(),
-  education: z.array(z.enum(educations)).optional(),
 })
 
 // ── Combined ────────────────────────────────────────────────────────
@@ -67,7 +64,6 @@ export interface FeedFilterValues {
   hijab_attitude?: string[]
   income_level?: string[]
   housing?: string[]
-  education?: string[]
 }
 
 // ── Defaults ────────────────────────────────────────────────────────

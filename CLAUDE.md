@@ -13,17 +13,17 @@
 
 ## Build & Test Commands
 
-| Command | What |
-|---------|------|
-| `pnpm dev` | Dev server with Turbopack |
-| `pnpm build` | Production build |
-| `pnpm typecheck` | TypeScript check |
-| `pnpm lint` / `pnpm lint:fix` | ESLint |
-| `pnpm format` / `pnpm format:check` | Prettier |
-| `pnpm test:unit` | Vitest unit tests |
-| `pnpm test:e2e` | Playwright E2E |
-| `pnpm verify` | All checks at once |
-| `pnpm db:typegen` | Regenerate `types/database.types.ts` |
+| Command                             | What                                 |
+| ----------------------------------- | ------------------------------------ |
+| `pnpm dev`                          | Dev server with Turbopack            |
+| `pnpm build`                        | Production build                     |
+| `pnpm typecheck`                    | TypeScript check                     |
+| `pnpm lint` / `pnpm lint:fix`       | ESLint                               |
+| `pnpm format` / `pnpm format:check` | Prettier                             |
+| `pnpm test:unit`                    | Vitest unit tests                    |
+| `pnpm test:e2e`                     | Playwright E2E                       |
+| `pnpm verify`                       | All checks at once                   |
+| `pnpm db:typegen`                   | Regenerate `types/database.types.ts` |
 
 ## Testing Locally with Supabase
 
@@ -36,16 +36,16 @@ supabase migration new  # create new migration
 
 ## Key Project Files
 
-| File | Purpose |
-|------|---------|
-| `package.json` | Dependencies, scripts |
-| `tsconfig.json` | TypeScript config (strict, paths: `@/*`) |
-| `next.config.ts` | Next.js 16 config |
-| `postcss.config.mjs` | PostCSS with `@tailwindcss/postcss` |
-| `vercel.json` | Vercel deploy, cron jobs |
-| `types/database.types.ts` | Generated Supabase types |
-| `supabase/migrations/` | DB schema migrations |
-| `supabase/config.toml` | Supabase CLI config |
+| File                      | Purpose                                  |
+| ------------------------- | ---------------------------------------- |
+| `package.json`            | Dependencies, scripts                    |
+| `tsconfig.json`           | TypeScript config (strict, paths: `@/*`) |
+| `next.config.ts`          | Next.js 16 config                        |
+| `postcss.config.mjs`      | PostCSS with `@tailwindcss/postcss`      |
+| `vercel.json`             | Vercel deploy, cron jobs                 |
+| `types/database.types.ts` | Generated Supabase types                 |
+| `supabase/migrations/`    | DB schema migrations                     |
+| `supabase/config.toml`    | Supabase CLI config                      |
 
 ## Feature Module Template
 

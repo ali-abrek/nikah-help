@@ -51,20 +51,18 @@ const maritalStatuses = [
   'married_3',
 ] as const
 
-const educations = ['none', 'school', 'vocational', 'bachelor', 'master', 'phd'] as const
-
 const incomeLevels = ['low', 'middle', 'high'] as const
-const housingTypes = ['own', 'rent', 'parents', 'shared'] as const
+const housingTypes = ['rent', 'apartment', 'house', 'parents'] as const
 
-const polygynyAttitudes = ['positive', 'neutral', 'negative'] as const
-const hijabAttitudes = ['niqab', 'hijab_full', 'hijab_partial', 'no_hijab'] as const
+const polygynyAttitudes = ['positive', 'negative'] as const
+const hijabAttitudes = ['no_hijab', 'hijab', 'niqab'] as const
+const relocationOptions = ['none', 'region', 'country', 'abroad'] as const
 
 // ── Step 2: Male variant ──────────────────────────────────────────
 
 export const onboardingStep2MaleSchema = z.object({
   marital_status: z.enum(maritalStatuses, { error: 'Выберите семейное положение' }),
-  children_count: z.number({ error: 'Укажите количество детей' }).int().min(0).max(20),
-  education: z.enum(educations, { error: 'Выберите образование' }),
+  children_count: z.coerce.number({ error: 'Укажите количество детей' }).int().min(0).max(5),
   income_level: z.enum(incomeLevels, { error: 'Выберите уровень дохода' }),
   housing: z.enum(housingTypes, { error: 'Выберите тип жилья' }),
   about_self: z
@@ -79,9 +77,8 @@ export type OnboardingStep2MaleData = z.infer<typeof onboardingStep2MaleSchema>
 
 export const onboardingStep2FemaleSchema = z.object({
   marital_status: z.enum(maritalStatuses, { error: 'Выберите семейное положение' }),
-  children_count: z.number({ error: 'Укажите количество детей' }).int().min(0).max(20),
-  education: z.enum(educations, { error: 'Выберите образование' }),
-  willing_to_relocate: z.boolean({ error: 'Укажите готовность к переезду' }),
+  children_count: z.coerce.number({ error: 'Укажите количество детей' }).int().min(0).max(5),
+  willing_to_relocate: z.enum(relocationOptions, { error: 'Укажите готовность к переезду' }),
   polygyny_attitude: z.enum(polygynyAttitudes, { error: 'Укажите отношение к многожёнству' }),
   hijab_attitude: z.enum(hijabAttitudes, { error: 'Укажите отношение к хиджабу' }),
   about_self: z

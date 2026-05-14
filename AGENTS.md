@@ -14,22 +14,22 @@ You are a specialized subagent working on the Nikah Help platform. This file giv
 
 ## Technology Stack
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 16 (App Router, Turbopack) |
-| UI | React 19, Tailwind CSS v4, shadcn/ui, Radix UI |
-| State | TanStack Query v5 (server), Zustand v5 (UI only) |
-| Forms | React Hook Form v7 + Zod v4 |
-| Backend | Route Handlers (`runtime = 'nodejs'`), Server Actions, Inngest |
-| Database | Supabase Postgres (RLS + PostGIS) |
-| Auth | Supabase Auth (Magic Link only) |
-| Realtime | Supabase Realtime v2 (Changes, Broadcast, Presence) |
-| Storage | Supabase Storage (private buckets) |
-| Payments | T-Bank Internet Acquiring |
-| Email | Resend |
-| Monitoring | Sentry (MANDATORY) |
-| Tests | Vitest + Playwright + MSW |
-| Package manager | pnpm |
+| Layer           | Technology                                                     |
+| --------------- | -------------------------------------------------------------- |
+| Framework       | Next.js 16 (App Router, Turbopack)                             |
+| UI              | React 19, Tailwind CSS v4, shadcn/ui, Radix UI                 |
+| State           | TanStack Query v5 (server), Zustand v5 (UI only)               |
+| Forms           | React Hook Form v7 + Zod v4                                    |
+| Backend         | Route Handlers (`runtime = 'nodejs'`), Server Actions, Inngest |
+| Database        | Supabase Postgres (RLS + PostGIS)                              |
+| Auth            | Supabase Auth (Magic Link only)                                |
+| Realtime        | Supabase Realtime v2 (Changes, Broadcast, Presence)            |
+| Storage         | Supabase Storage (private buckets)                             |
+| Payments        | T-Bank Internet Acquiring                                      |
+| Email           | Resend                                                         |
+| Monitoring      | Sentry (MANDATORY)                                             |
+| Tests           | Vitest + Playwright + MSW                                      |
+| Package manager | pnpm                                                           |
 
 ## Directory Structure
 
@@ -63,6 +63,7 @@ nikah-help/
 ## Critical Conventions
 
 ### Must Do
+
 - `proxy.ts` — never `middleware.ts` (Next.js 16)
 - `@import "tailwindcss"` in CSS (Tailwind v4)
 - Object syntax for TanStack Query v5: `{ queryKey: [...], queryFn: ... }`
@@ -74,6 +75,7 @@ nikah-help/
 - Run `pnpm typecheck && pnpm lint` after changes
 
 ### Must NOT
+
 - Pages Router (`pages/`, `getServerSideProps`, `getStaticProps`)
 - `middleware.ts` → use `proxy.ts`
 - `@supabase/auth-helpers-nextjs`

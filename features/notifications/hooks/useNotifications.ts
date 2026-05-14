@@ -18,7 +18,9 @@ export function useNotifications({ initialNotifications, userId }: UseNotificati
   const cursorRef = useRef<string | undefined>(last?.created_at ?? undefined)
   const channelRef = useRef<RealtimeChannel | null>(null)
   // Keep a ref to the supabase client so cleanup can call removeChannel.
-  const supabaseRef = useRef<Awaited<ReturnType<typeof import('@/lib/supabase/client').createClient>> | null>(null)
+  const supabaseRef = useRef<Awaited<
+    ReturnType<typeof import('@/lib/supabase/client').createClient>
+  > | null>(null)
 
   const { ref: sentinelRef } = useInView({
     threshold: 0,

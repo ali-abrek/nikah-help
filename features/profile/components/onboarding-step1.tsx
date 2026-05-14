@@ -155,17 +155,12 @@ export function OnboardingStep1({
 
       {/* Nationality */}
       <div>
-        <label className="mb-1 block text-sm font-medium text-foreground">
-          Национальность
-        </label>
+        <label className="mb-1 block text-sm font-medium text-foreground">Национальность</label>
         <Controller
           control={control}
           name="nationality"
           render={({ field }) => (
-            <NationalityAutocomplete
-              value={field.value ?? ''}
-              onChange={field.onChange}
-            />
+            <NationalityAutocomplete value={field.value ?? ''} onChange={field.onChange} />
           )}
         />
         {errors.nationality && (

@@ -1,5 +1,10 @@
 export type { FlowTag, SentrySeverity, SentryExtra, CaptureOptions } from './types'
-export { captureSentryException, captureSentryExceptionSync, deriveFlowFromCode, safeLogContext } from './capture'
+export {
+  captureSentryException,
+  captureSentryExceptionSync,
+  deriveFlowFromCode,
+  safeLogContext,
+} from './capture'
 export { scrubPii } from './scrub'
 export { withSentryMonitor } from './monitor'
 export { setSentryUser, clearSentryUser } from './user'

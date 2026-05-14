@@ -59,8 +59,7 @@ export async function sendLike({ fromUserId, toUserId }: SendLikeParams): Promis
       .select('id, name')
       .in('id', [fromUserId, toUserId])
 
-    const nameOf = (id: string) =>
-      profiles?.find((p) => p.id === id)?.name ?? null
+    const nameOf = (id: string) => profiles?.find((p) => p.id === id)?.name ?? null
 
     // Route through Inngest notification dispatcher so push + email delivery
     // runs with retries. Use 'match_created' — the canonical NotificationType.

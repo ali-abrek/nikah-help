@@ -113,12 +113,8 @@ export async function saveOnboardingStep1(formData: FormData) {
 
   try {
     await saveBasicData(supabase, userId, parsed.data)
-    return { success: true as const, message: 'Сохранено' }
+    return { success: true as const }
   } catch (e) {
-    // Capture the raw error before handleActionError maps it. If the
-    // user-facing toast says AUTH_UNAUTHORIZED but the underlying cause is
-    // a PostgREST JWT error (PGRST301 etc.), this tag makes that visible
-    // in Sentry without another round-trip of changes.
     const pgCode =
       e && typeof e === 'object' && 'code' in e ? String((e as { code: unknown }).code) : 'unknown'
     void captureSentryException(e, {
@@ -151,7 +147,6 @@ export async function saveOnboardingStep2(formData: FormData) {
     children_count: formData.get('children_count')
       ? Number(formData.get('children_count'))
       : undefined,
-    education: formData.get('education'),
     about_self: formData.get('about_self'),
   }
 
@@ -171,7 +166,7 @@ export async function saveOnboardingStep2(formData: FormData) {
 
     try {
       await saveExtendedData(supabase, userId, { ...parsed.data, gender })
-      return { success: true as const, message: 'Сохранено' }
+      return { success: true as const }
     } catch (e) {
       return handleActionError(e)
     }
@@ -179,7 +174,7 @@ export async function saveOnboardingStep2(formData: FormData) {
 
   const rawFemale = {
     ...base,
-    willing_to_relocate: formData.get('willing_to_relocate') === 'true',
+    willing_to_relocate: formData.get('willing_to_relocate'),
     polygyny_attitude: formData.get('polygyny_attitude'),
     hijab_attitude: formData.get('hijab_attitude'),
   }
@@ -193,7 +188,7 @@ export async function saveOnboardingStep2(formData: FormData) {
 
   try {
     await saveExtendedData(supabase, userId, { ...parsed.data, gender })
-    return { success: true as const, message: 'Сохранено' }
+    return { success: true as const }
   } catch (e) {
     return handleActionError(e)
   }

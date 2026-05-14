@@ -6,6 +6,11 @@ import { OnboardingStep1 } from './onboarding-step1'
 import { OnboardingStep2 } from './onboarding-step2'
 import { OnboardingStep3 } from './onboarding-step3'
 import { OnboardingStep4 } from './onboarding-step4'
+import type {
+  OnboardingStep1Data,
+  OnboardingStep2MaleData,
+  OnboardingStep2FemaleData,
+} from '../schemas'
 
 const STEPS = [
   { id: 1, label: 'Основное' },
@@ -21,10 +26,27 @@ export function OnboardingWizard({ locale = 'ru' }: { locale?: string }) {
   const [gender, setGender] = useState<'male' | 'female' | null>(null)
   const [result, setResult] = useState<ActionResult | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [step1Data, setStep1Data] = useState<Partial<OnboardingStep1Data> | null>(null)
+  const [step2Data, setStep2Data] = useState<Partial<
+    OnboardingStep2MaleData | OnboardingStep2FemaleData
+  > | null>(null)
 
   const handleStep1Submit = (formData: FormData) => {
     const g = formData.get('gender') as string
     if (g === 'male' || g === 'female') setGender(g)
+
+    // Capture form data before submission for back-navigation
+    const captured: Record<string, unknown> = {}
+    formData.forEach((value, key) => {
+      if (key === 'height' || key === 'weight') {
+        captured[key] = Number(value)
+      } else if (key === 'allow_geolocation') {
+        captured[key] = value === 'true' || value === 'on'
+      } else {
+        captured[key] = value
+      }
+    })
+    setStep1Data(captured as Partial<OnboardingStep1Data>)
 
     startTransition(async () => {
       const res = await saveOnboardingStep1(formData)
@@ -34,6 +56,17 @@ export function OnboardingWizard({ locale = 'ru' }: { locale?: string }) {
   }
 
   const handleStep2Submit = (formData: FormData) => {
+    // Capture form data for back-navigation
+    const captured: Record<string, unknown> = {}
+    formData.forEach((value, key) => {
+      if (key === 'children_count') {
+        captured[key] = Number(value)
+      } else {
+        captured[key] = value
+      }
+    })
+    setStep2Data(captured as Partial<OnboardingStep2MaleData | OnboardingStep2FemaleData>)
+
     startTransition(async () => {
       const res = await saveOnboardingStep2(formData)
       setResult(res)
@@ -76,7 +109,12 @@ export function OnboardingWizard({ locale = 'ru' }: { locale?: string }) {
 
       {/* Step content */}
       {step === 1 && (
-        <OnboardingStep1 onSubmit={handleStep1Submit} isPending={isPending} locale={locale} />
+        <OnboardingStep1
+          onSubmit={handleStep1Submit}
+          defaultValues={step1Data ?? undefined}
+          isPending={isPending}
+          locale={locale}
+        />
       )}
 
       {step === 2 && gender && (
@@ -84,6 +122,7 @@ export function OnboardingWizard({ locale = 'ru' }: { locale?: string }) {
           key="step2"
           gender={gender}
           onSubmit={handleStep2Submit}
+          defaultValues={step2Data ?? undefined}
           isPending={isPending}
         />
       )}
@@ -91,13 +130,16 @@ export function OnboardingWizard({ locale = 'ru' }: { locale?: string }) {
       {step === 3 && <OnboardingStep3 isPending={isPending} onComplete={() => setStep(4)} />}
 
       {step === 4 && gender && (
-        <OnboardingStep4 isPending={isPending} onResult={(res) => setResult(res)} />
+        <OnboardingStep4
+          isPending={isPending}
+          step1Data={step1Data}
+          step2Data={step2Data}
+          gender={gender}
+          onResult={(res) => setResult(res)}
+        />
       )}
 
-      {/* Feedback */}
-      {result?.success && 'message' in result && result.message && (
-        <p className="mt-4 text-center text-sm text-emerald-600">{result.message}</p>
-      )}
+      {/* Error feedback only */}
       {result && !result.success && 'error' in result && (
         <p className="mt-4 text-center text-sm text-red-600">{result.error.message}</p>
       )}

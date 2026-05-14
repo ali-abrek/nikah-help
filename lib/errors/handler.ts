@@ -4,7 +4,11 @@ import type { ErrorResponse } from './types'
 import { logError } from './logger'
 import { getErrorMessage } from './messages'
 
-const AUTH_POSTGREST_CODES = new Set(['42501', 'PGRST301', 'PGRST102', 'PGRST104'])
+// JWT-level codes → AUTH_UNAUTHORIZED (401). Privilege-level codes (RLS,
+// missing GRANT) → AUTH_FORBIDDEN (403). Keeping these separate prevents
+// a database permission issue from masquerading as a session problem.
+const AUTH_JWT_CODES = new Set(['PGRST102', 'PGRST104'])
+const AUTH_PERMISSION_CODES = new Set(['42501', 'PGRST301'])
 const VALIDATION_POSTGREST_CODES = new Set(['23505', '23514'])
 
 // Supabase JS v2 with shouldThrowOnError=false (the default) returns errors as
@@ -31,14 +35,19 @@ export function handleRouteError(
   }
 
   if (isPostgrestError(error)) {
-    if (AUTH_POSTGREST_CODES.has(error.code)) {
-      const appError = new AppError('AUTH_UNAUTHORIZED', {
+    const appCode = AUTH_JWT_CODES.has(error.code)
+      ? 'AUTH_UNAUTHORIZED'
+      : AUTH_PERMISSION_CODES.has(error.code)
+        ? 'AUTH_FORBIDDEN'
+        : null
+    if (appCode) {
+      const appError = new AppError(appCode, {
         details: { pg_code: error.code, pg_details: error.details },
         cause: error,
       })
       logError(appError)
       const body = appError.toResponse()
-      body.message = getErrorMessage('AUTH_UNAUTHORIZED', locale)
+      body.message = getErrorMessage(appCode, locale)
       return NextResponse.json(body, { status: appError.status })
     }
 

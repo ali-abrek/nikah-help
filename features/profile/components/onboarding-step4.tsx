@@ -4,18 +4,97 @@ import { useState, useTransition } from 'react'
 import { completeOnboardingAction } from '../actions'
 import { useRouter } from 'next/navigation'
 import type { ErrorResponse } from '@/lib/errors/types'
+import type {
+  OnboardingStep1Data,
+  OnboardingStep2MaleData,
+  OnboardingStep2FemaleData,
+} from '../schemas'
 
 type OnboardingResult =
   | { success: true; message: string; bio: string }
   | { success: false; error: ErrorResponse }
 
-export function OnboardingStep4({
-  isPending,
-  onResult,
-}: {
+type Props = {
   isPending?: boolean
+  step1Data: Partial<OnboardingStep1Data> | null
+  step2Data: Partial<OnboardingStep2MaleData | OnboardingStep2FemaleData> | null
+  gender: 'male' | 'female'
   onResult?: (result: OnboardingResult) => void
-}) {
+}
+
+// ── Label maps ─────────────────────────────────────────────────────
+
+const maritalLabelsMale: Record<string, string> = {
+  single: 'Женат не был',
+  divorced: 'Разведён',
+  widowed: 'Вдовец',
+  married_1: 'Женат на одной',
+  married_2: 'Женат на двух',
+  married_3: 'Женат на трёх',
+}
+
+const maritalLabelsFemale: Record<string, string> = {
+  single: 'Замужем не была',
+  divorced: 'Разведена',
+  widowed: 'Вдова',
+}
+
+const childrenLabels: Record<string, string> = {
+  '0': 'Детей нет',
+  '1': '1 ребёнок',
+  '2': '2 ребёнка',
+  '3': '3 ребёнка',
+  '4': '4 ребёнка',
+  '5': '5 или более детей',
+}
+
+const incomeLabels: Record<string, string> = {
+  low: 'Живу скромно',
+  middle: 'Средний достаток',
+  high: 'Хорошо обеспечен',
+}
+
+const housingLabels: Record<string, string> = {
+  rent: 'Арендую',
+  apartment: 'Своя квартира',
+  house: 'Свой дом',
+  parents: 'Живу с родителями',
+}
+
+const polygynyLabels: Record<string, string> = {
+  positive: 'Положительное',
+  negative: 'Отрицательное',
+}
+
+const hijabLabels: Record<string, string> = {
+  no_hijab: 'Не покрываюсь',
+  hijab: 'Ношу хиджаб',
+  niqab: 'Ношу никаб',
+}
+
+const relocationLabels: Record<string, string> = {
+  none: 'Не готова к переезду',
+  region: 'Внутри региона',
+  country: 'Внутри страны',
+  abroad: 'В другую страну',
+}
+
+const genderLabels: Record<string, string> = {
+  male: 'Мужчина',
+  female: 'Женщина',
+}
+
+function ageFromBirthDate(birthDate: string): number | null {
+  const birth = new Date(birthDate)
+  if (isNaN(birth.getTime())) return null
+  const now = new Date()
+  let age = now.getFullYear() - birth.getFullYear()
+  const m = now.getMonth() - birth.getMonth()
+  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--
+  return age
+}
+
+export function OnboardingStep4({ isPending, step1Data, step2Data, gender, onResult }: Props) {
   const [bio, setBio] = useState<string | null>(null)
   const [generating, setGenerating] = useState(false)
   const [done, setDone] = useState(false)
@@ -37,12 +116,93 @@ export function OnboardingStep4({
     })
   }
 
+  const s1 = step1Data
+  const s2 = step2Data
+  const age = s1?.birth_date ? ageFromBirthDate(s1.birth_date) : null
+
   return (
     <div className="space-y-6">
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
-        Проверьте введённые данные. После завершения AI создаст вашу биографию, и ваш профиль станет
+        Проверьте введённые данные. После завершения, ИИ создаст вашу анкету, и ваш профиль станет
         доступен в ленте.
       </p>
+
+      {/* Summary of all filled data */}
+      <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
+        <h3 className="mb-3 text-sm font-medium text-foreground">Ваши данные</h3>
+        <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+          {s1?.name && <SummaryItem label="Имя" value={s1.name} />}
+          {age != null && <SummaryItem label="Возраст" value={`${age} лет`} />}
+          {s1?.gender && <SummaryItem label="Пол" value={genderLabels[s1.gender] ?? s1.gender} />}
+          {s1?.country && <SummaryItem label="Страна" value={s1.country} />}
+          {s1?.city && <SummaryItem label="Город" value={s1.city} />}
+          {s1?.nationality && <SummaryItem label="Национальность" value={s1.nationality} />}
+          {s1?.height != null && <SummaryItem label="Рост" value={`${s1.height} см`} />}
+          {s1?.weight != null && <SummaryItem label="Вес" value={`${s1.weight} кг`} />}
+
+          {s2?.marital_status && (
+            <SummaryItem
+              label="Семейное положение"
+              value={
+                gender === 'male'
+                  ? (maritalLabelsMale[String(s2.marital_status)] ?? String(s2.marital_status))
+                  : (maritalLabelsFemale[String(s2.marital_status)] ?? String(s2.marital_status))
+              }
+            />
+          )}
+
+          {s2?.children_count != null && (
+            <SummaryItem
+              label="Дети"
+              value={childrenLabels[String(s2.children_count)] ?? String(s2.children_count)}
+            />
+          )}
+
+          {gender === 'male' && s2 && 'income_level' in s2 && s2.income_level && (
+            <SummaryItem
+              label="Уровень дохода"
+              value={incomeLabels[String(s2.income_level)] ?? String(s2.income_level)}
+            />
+          )}
+
+          {gender === 'male' && s2 && 'housing' in s2 && s2.housing && (
+            <SummaryItem
+              label="Жильё"
+              value={housingLabels[String(s2.housing)] ?? String(s2.housing)}
+            />
+          )}
+
+          {gender === 'female' && s2 && 'willing_to_relocate' in s2 && s2.willing_to_relocate && (
+            <SummaryItem
+              label="Готовность к переезду"
+              value={
+                relocationLabels[String(s2.willing_to_relocate)] ?? String(s2.willing_to_relocate)
+              }
+            />
+          )}
+
+          {gender === 'female' && s2 && 'polygyny_attitude' in s2 && s2.polygyny_attitude && (
+            <SummaryItem
+              label="Отношение к многожёнству"
+              value={polygynyLabels[String(s2.polygyny_attitude)] ?? String(s2.polygyny_attitude)}
+            />
+          )}
+
+          {gender === 'female' && s2 && 'hijab_attitude' in s2 && s2.hijab_attitude && (
+            <SummaryItem
+              label="Отношение к хиджабу"
+              value={hijabLabels[String(s2.hijab_attitude)] ?? String(s2.hijab_attitude)}
+            />
+          )}
+        </dl>
+
+        {s2 && 'about_self' in s2 && s2.about_self && (
+          <div className="mt-3">
+            <dt className="text-xs text-zinc-500">О себе</dt>
+            <dd className="mt-0.5 text-sm text-foreground">{String(s2.about_self)}</dd>
+          </div>
+        )}
+      </div>
 
       {generating && !bio && (
         <div className="flex items-center justify-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
@@ -62,7 +222,7 @@ export function OnboardingStep4({
             />
           </svg>
           <span className="text-sm text-amber-800 dark:text-amber-200">
-            AI генерирует вашу биографию...
+            ИИ генерирует вашу анкету...
           </span>
         </div>
       )}
@@ -70,7 +230,7 @@ export function OnboardingStep4({
       {bio && (
         <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950">
           <p className="mb-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
-            Ваша AI-биография
+            Ваша анкета
           </p>
           <p className="text-sm text-emerald-800 dark:text-emerald-200">{bio}</p>
         </div>
@@ -78,7 +238,7 @@ export function OnboardingStep4({
 
       {done && (
         <p className="text-center text-sm text-emerald-600">
-          Профиль заполнен! Перенаправляем в ленту...
+          Анкета заполнена! Перенаправляем в ленту...
         </p>
       )}
 
@@ -89,9 +249,18 @@ export function OnboardingStep4({
           disabled={isPending || generating}
           className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
         >
-          {generating ? 'Создание биографии...' : 'Завершить онбординг'}
+          {generating ? 'Создание анкеты...' : 'Завершить онбординг'}
         </button>
       )}
+    </div>
+  )
+}
+
+function SummaryItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs text-zinc-500">{label}</dt>
+      <dd className="mt-0.5 text-sm text-foreground">{value}</dd>
     </div>
   )
 }

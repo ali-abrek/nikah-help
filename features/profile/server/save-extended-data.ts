@@ -15,7 +15,6 @@ export async function saveExtendedData(
   const base = {
     marital_status: data.marital_status,
     children_count: data.children_count,
-    education: data.education,
     about_self: data.about_self,
   }
 

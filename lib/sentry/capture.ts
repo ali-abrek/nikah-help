@@ -55,14 +55,11 @@ export function safeLogContext(
 // tagging and PII discipline.
 //
 // No-ops cleanly when SENTRY_DSN is absent (local dev without config).
-export async function captureSentryException(
-  err: unknown,
-  opts: CaptureOptions,
-): Promise<void> {
+export async function captureSentryException(err: unknown, opts: CaptureOptions): Promise<void> {
   const dsn =
     typeof window !== 'undefined'
       ? process.env.NEXT_PUBLIC_SENTRY_DSN
-      : process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN
+      : (process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN)
 
   if (!dsn) return
 
@@ -84,14 +81,11 @@ export async function captureSentryException(
 
 // Synchronous variant for environments where async is unavailable (e.g. top-
 // level module initialization). Falls back to no-op if SDK not yet loaded.
-export function captureSentryExceptionSync(
-  err: unknown,
-  _opts: CaptureOptions,
-): void {
+export function captureSentryExceptionSync(err: unknown, _opts: CaptureOptions): void {
   const dsn =
     typeof window !== 'undefined'
       ? process.env.NEXT_PUBLIC_SENTRY_DSN
-      : process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN
+      : (process.env.SENTRY_DSN ?? process.env.NEXT_PUBLIC_SENTRY_DSN)
 
   if (!dsn) return
 

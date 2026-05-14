@@ -19,48 +19,59 @@ type Props = {
 const inputClass =
   'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-foreground placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-zinc-700 dark:bg-zinc-900'
 
-const maritalStatusOptions = [
-  { value: 'single', label: 'Не в браке' },
-  { value: 'divorced', label: 'Разведён(а)' },
-  { value: 'widowed', label: 'Вдовец/Вдова' },
-  { value: 'married_1', label: 'В браке (1 жена)' },
-  { value: 'married_2', label: 'В браке (2 жены)' },
-  { value: 'married_3', label: 'В браке (3 жены)' },
+const maritalStatusOptionsMale = [
+  { value: 'single', label: 'Женат не был' },
+  { value: 'divorced', label: 'Разведён' },
+  { value: 'widowed', label: 'Вдовец' },
+  { value: 'married_1', label: 'Женат на одной' },
+  { value: 'married_2', label: 'Женат на двух' },
+  { value: 'married_3', label: 'Женат на трёх' },
 ]
 
-const educationOptions = [
-  { value: 'none', label: 'Нет' },
-  { value: 'school', label: 'Школьное' },
-  { value: 'vocational', label: 'Среднее специальное' },
-  { value: 'bachelor', label: 'Бакалавр' },
-  { value: 'master', label: 'Магистр' },
-  { value: 'phd', label: 'Кандидат/Доктор наук' },
+const maritalStatusOptionsFemale = [
+  { value: 'single', label: 'Замужем не была' },
+  { value: 'divorced', label: 'Разведена' },
+  { value: 'widowed', label: 'Вдова' },
+]
+
+const childrenOptions = [
+  { value: '0', label: 'Детей нет' },
+  { value: '1', label: '1 ребёнок' },
+  { value: '2', label: '2 ребёнка' },
+  { value: '3', label: '3 ребёнка' },
+  { value: '4', label: '4 ребёнка' },
+  { value: '5', label: '5 или более детей' },
 ]
 
 const incomeLevelOptions = [
-  { value: 'low', label: 'Низкий' },
-  { value: 'middle', label: 'Средний' },
-  { value: 'high', label: 'Высокий' },
+  { value: 'low', label: 'Живу скромно' },
+  { value: 'middle', label: 'Средний достаток' },
+  { value: 'high', label: 'Хорошо обеспечен' },
 ]
 
 const housingOptions = [
-  { value: 'own', label: 'Своё жильё' },
-  { value: 'rent', label: 'Снимаю' },
+  { value: 'rent', label: 'Арендую' },
+  { value: 'apartment', label: 'Своя квартира' },
+  { value: 'house', label: 'Свой дом' },
   { value: 'parents', label: 'Живу с родителями' },
-  { value: 'shared', label: 'Общежитие/Комната' },
 ]
 
 const polygynyOptions = [
   { value: 'positive', label: 'Положительное' },
-  { value: 'neutral', label: 'Нейтральное' },
   { value: 'negative', label: 'Отрицательное' },
 ]
 
 const hijabOptions = [
-  { value: 'niqab', label: 'Никаб' },
-  { value: 'hijab_full', label: 'Хиджаб (полное покрытие)' },
-  { value: 'hijab_partial', label: 'Хиджаб (частичное покрытие)' },
-  { value: 'no_hijab', label: 'Без хиджаба' },
+  { value: 'no_hijab', label: 'Не покрываюсь' },
+  { value: 'hijab', label: 'Ношу хиджаб' },
+  { value: 'niqab', label: 'Ношу никаб' },
+]
+
+const relocationOptions = [
+  { value: 'none', label: 'Не готова к переезду' },
+  { value: 'region', label: 'Внутри региона' },
+  { value: 'country', label: 'Внутри страны' },
+  { value: 'abroad', label: 'В другую страну' },
 ]
 
 type FieldErrors = Record<string, { message?: string } | undefined>
@@ -122,7 +133,7 @@ export function OnboardingStep2({ gender, onSubmit, defaultValues, isPending }: 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(schema) as any,
     defaultValues: defaultValues ?? {
-      children_count: 0,
+      children_count: '0',
     },
   })
 
@@ -134,7 +145,11 @@ export function OnboardingStep2({ gender, onSubmit, defaultValues, isPending }: 
     const fd = new FormData()
     fd.append('gender', gender)
     Object.entries(data).forEach(([key, value]) => {
-      fd.append(key, String(value))
+      if (key === 'children_count') {
+        fd.append(key, String(Number(value)))
+      } else {
+        fd.append(key, String(value ?? ''))
+      }
     })
     onSubmit(fd)
   }
@@ -146,32 +161,15 @@ export function OnboardingStep2({ gender, onSubmit, defaultValues, isPending }: 
         label="Семейное положение"
         register={reg}
         error={errs.marital_status}
-        options={maritalStatusOptions}
+        options={gender === 'male' ? maritalStatusOptionsMale : maritalStatusOptionsFemale}
       />
 
-      <div>
-        <label htmlFor="children_count" className="mb-1 block text-sm font-medium text-foreground">
-          Количество детей
-        </label>
-        <input
-          type="number"
-          {...reg('children_count', { valueAsNumber: true })}
-          id="children_count"
-          className={inputClass}
-          min={0}
-          max={20}
-        />
-        {errs.children_count && (
-          <p className="mt-1 text-xs text-red-600">{errs.children_count.message}</p>
-        )}
-      </div>
-
       <SelectField
-        name="education"
-        label="Образование"
+        name="children_count"
+        label="Дети"
         register={reg}
-        error={errs.education}
-        options={educationOptions}
+        error={errs.children_count}
+        options={childrenOptions}
       />
 
       {gender === 'male' && (
@@ -195,20 +193,13 @@ export function OnboardingStep2({ gender, onSubmit, defaultValues, isPending }: 
 
       {gender === 'female' && (
         <>
-          <div className="flex items-start gap-3">
-            <input
-              type="checkbox"
-              {...reg('willing_to_relocate')}
-              id="willing_to_relocate"
-              className="mt-0.5 h-4 w-4 rounded border-zinc-300 text-emerald-600 focus:ring-emerald-500"
-            />
-            <label
-              htmlFor="willing_to_relocate"
-              className="text-sm text-zinc-600 dark:text-zinc-400"
-            >
-              Готова к переезду
-            </label>
-          </div>
+          <SelectField
+            name="willing_to_relocate"
+            label="Готовность к переезду"
+            register={reg}
+            error={errs.willing_to_relocate}
+            options={relocationOptions}
+          />
 
           <SelectField
             name="polygyny_attitude"

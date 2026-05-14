@@ -104,9 +104,6 @@ export async function queryFeed({
     if (filters.housing && filters.housing.length > 0) {
       query = query.in('housing', filters.housing)
     }
-    if (filters.education && filters.education.length > 0) {
-      query = query.in('education', filters.education)
-    }
   }
 
   // Radius search — filter by geographic distance if viewer has location

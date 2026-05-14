@@ -121,9 +121,8 @@ function validMaleStep2(overrides: Record<string, unknown> = {}) {
   return {
     marital_status: 'single',
     children_count: 0,
-    education: 'bachelor',
     income_level: 'middle',
-    housing: 'own',
+    housing: 'apartment',
     about_self: 'Мусульманин, соблюдающий, работаю в IT',
     ...overrides,
   }
@@ -166,6 +165,13 @@ describe('onboardingStep2MaleSchema', () => {
     expect(result.success).toBe(false)
   })
 
+  it('accepts all housing types', () => {
+    for (const h of ['rent', 'apartment', 'house', 'parents']) {
+      const result = onboardingStep2MaleSchema.safeParse(validMaleStep2({ housing: h }))
+      expect(result.success).toBe(true)
+    }
+  })
+
   it('rejects invalid housing', () => {
     const result = onboardingStep2MaleSchema.safeParse(validMaleStep2({ housing: 'castle' }))
     expect(result.success).toBe(false)
@@ -178,10 +184,9 @@ function validFemaleStep2(overrides: Record<string, unknown> = {}) {
   return {
     marital_status: 'single',
     children_count: 0,
-    education: 'bachelor',
-    willing_to_relocate: true,
-    polygyny_attitude: 'neutral',
-    hijab_attitude: 'hijab_partial',
+    willing_to_relocate: 'country',
+    polygyny_attitude: 'positive',
+    hijab_attitude: 'hijab',
     about_self: 'Мусульманка, изучаю ислам, люблю готовить',
     ...overrides,
   }
@@ -200,8 +205,17 @@ describe('onboardingStep2FemaleSchema', () => {
     expect(result.success).toBe(false)
   })
 
+  it('accepts all relocation options', () => {
+    for (const opt of ['none', 'region', 'country', 'abroad']) {
+      const result = onboardingStep2FemaleSchema.safeParse(
+        validFemaleStep2({ willing_to_relocate: opt }),
+      )
+      expect(result.success).toBe(true)
+    }
+  })
+
   it('accepts all hijab attitudes', () => {
-    for (const attitude of ['niqab', 'hijab_full', 'hijab_partial', 'no_hijab']) {
+    for (const attitude of ['no_hijab', 'hijab', 'niqab']) {
       const result = onboardingStep2FemaleSchema.safeParse(
         validFemaleStep2({ hijab_attitude: attitude }),
       )
@@ -210,7 +224,7 @@ describe('onboardingStep2FemaleSchema', () => {
   })
 
   it('accepts all polygyny attitudes', () => {
-    for (const attitude of ['positive', 'neutral', 'negative']) {
+    for (const attitude of ['positive', 'negative']) {
       const result = onboardingStep2FemaleSchema.safeParse(
         validFemaleStep2({ polygyny_attitude: attitude }),
       )
@@ -220,7 +234,7 @@ describe('onboardingStep2FemaleSchema', () => {
 
   it('rejects invalid polygyny attitude', () => {
     const result = onboardingStep2FemaleSchema.safeParse(
-      validFemaleStep2({ polygyny_attitude: 'maybe' }),
+      validFemaleStep2({ polygyny_attitude: 'neutral' }),
     )
     expect(result.success).toBe(false)
   })

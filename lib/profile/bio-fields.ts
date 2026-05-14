@@ -16,7 +16,6 @@ export const BIO_RELEVANT_FIELDS = [
   'country',
   'city',
   'nationality',
-  'education',
   'marital_status',
   'children_count',
   'income_level',

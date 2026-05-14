@@ -37,4 +37,3 @@ export const chatDeleteFn = inngest.createFunction(
     return { status: 'ok', chatId }
   },
 )
-

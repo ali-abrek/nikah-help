@@ -28,10 +28,11 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
   const [childrenCount, setChildrenCount] = useState(
     profile.children_count != null ? String(profile.children_count) : '',
   )
-  const [education, setEducation] = useState(String(profile.education ?? ''))
   const [incomeLevel, setIncomeLevel] = useState(String(profile.income_level ?? ''))
   const [housing, setHousing] = useState(String(profile.housing ?? ''))
-  const [willingToRelocate, setWillingToRelocate] = useState(profile.willing_to_relocate === true)
+  const [willingToRelocate, setWillingToRelocate] = useState(
+    String(profile.willing_to_relocate ?? ''),
+  )
   const [polygynyAttitude, setPolygynyAttitude] = useState(String(profile.polygyny_attitude ?? ''))
   const [hijabAttitude, setHijabAttitude] = useState(String(profile.hijab_attitude ?? ''))
   const [aboutSelf, setAboutSelf] = useState(String(profile.about_self ?? ''))
@@ -70,13 +71,12 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
         fd2.set('gender', gender)
         fd2.set('marital_status', maritalStatus)
         fd2.set('children_count', childrenCount)
-        fd2.set('education', education)
         fd2.set('about_self', aboutSelf)
         if (isMale) {
           fd2.set('income_level', incomeLevel)
           fd2.set('housing', housing)
         } else {
-          fd2.set('willing_to_relocate', String(willingToRelocate))
+          fd2.set('willing_to_relocate', willingToRelocate)
           fd2.set('polygyny_attitude', polygynyAttitude)
           fd2.set('hijab_attitude', hijabAttitude)
         }
@@ -107,7 +107,6 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
       allowGeolocation,
       maritalStatus,
       childrenCount,
-      education,
       incomeLevel,
       housing,
       willingToRelocate,
@@ -164,13 +163,13 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
             label="Семейное положение"
             value={maritalStatus}
             onChange={setMaritalStatus}
-            options={MARITAL_STATUS_OPTIONS}
+            options={isMale ? MARITAL_STATUS_OPTIONS_MALE : MARITAL_STATUS_OPTIONS_FEMALE}
           />
-          <Field
-            label="Количество детей"
+          <SelectField
+            label="Дети"
             value={childrenCount}
             onChange={setChildrenCount}
-            type="number"
+            options={CHILDREN_OPTIONS}
           />
           {!isMale && (
             <>
@@ -186,6 +185,12 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
                 onChange={setHijabAttitude}
                 options={HIJAB_OPTIONS}
               />
+              <SelectField
+                label="Готовность к переезду"
+                value={willingToRelocate}
+                onChange={setWillingToRelocate}
+                options={RELOCATION_OPTIONS}
+              />
             </>
           )}
           {isMale && (
@@ -197,19 +202,13 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
                 options={INCOME_OPTIONS}
               />
               <SelectField
-                label="Тип жилья"
+                label="Жильё"
                 value={housing}
                 onChange={setHousing}
                 options={HOUSING_OPTIONS}
               />
             </>
           )}
-          <SelectField
-            label="Образование"
-            value={education}
-            onChange={setEducation}
-            options={EDUCATION_OPTIONS}
-          />
         </div>
 
         <div className="mt-4">
@@ -224,20 +223,6 @@ export function ProfileEditForm({ profile }: ProfileEditFormProps) {
             placeholder="Расскажите о себе..."
           />
         </div>
-
-        {!isMale && (
-          <div className="mt-4">
-            <label className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={willingToRelocate}
-                onChange={(e) => setWillingToRelocate(e.target.checked)}
-                className="rounded border-zinc-300 accent-primary"
-              />
-              <span className="text-sm text-zinc-600 dark:text-zinc-400">Готова к переезду</span>
-            </label>
-          </div>
-        )}
       </section>
 
       {/* Message */}
@@ -347,46 +332,57 @@ function SelectField({
 
 // ── Option lists ────────────────────────────────────────────────────
 
-const MARITAL_STATUS_OPTIONS = [
-  { value: 'single', label: 'Не в браке' },
-  { value: 'divorced', label: 'Разведён(а)' },
-  { value: 'widowed', label: 'Вдовец/Вдова' },
-  { value: 'married_1', label: 'В браке (1 жена)' },
-  { value: 'married_2', label: 'В браке (2 жены)' },
-  { value: 'married_3', label: 'В браке (3 жены)' },
+const MARITAL_STATUS_OPTIONS_MALE = [
+  { value: 'single', label: 'Женат не был' },
+  { value: 'divorced', label: 'Разведён' },
+  { value: 'widowed', label: 'Вдовец' },
+  { value: 'married_1', label: 'Женат на одной' },
+  { value: 'married_2', label: 'Женат на двух' },
+  { value: 'married_3', label: 'Женат на трёх' },
+]
+
+const MARITAL_STATUS_OPTIONS_FEMALE = [
+  { value: 'single', label: 'Замужем не была' },
+  { value: 'divorced', label: 'Разведена' },
+  { value: 'widowed', label: 'Вдова' },
+]
+
+const CHILDREN_OPTIONS = [
+  { value: '0', label: 'Детей нет' },
+  { value: '1', label: '1 ребёнок' },
+  { value: '2', label: '2 ребёнка' },
+  { value: '3', label: '3 ребёнка' },
+  { value: '4', label: '4 ребёнка' },
+  { value: '5', label: '5 или более детей' },
 ]
 
 const POLYGYNY_OPTIONS = [
   { value: 'positive', label: 'Положительное' },
-  { value: 'neutral', label: 'Нейтральное' },
   { value: 'negative', label: 'Отрицательное' },
 ]
 
 const HIJAB_OPTIONS = [
-  { value: 'niqab', label: 'Никаб' },
-  { value: 'hijab_full', label: 'Хиджаб полностью' },
-  { value: 'hijab_partial', label: 'Хиджаб частично' },
-  { value: 'no_hijab', label: 'Без хиджаба' },
+  { value: 'no_hijab', label: 'Не покрываюсь' },
+  { value: 'hijab', label: 'Ношу хиджаб' },
+  { value: 'niqab', label: 'Ношу никаб' },
+]
+
+const RELOCATION_OPTIONS = [
+  { value: 'none', label: 'Не готова к переезду' },
+  { value: 'region', label: 'Внутри региона' },
+  { value: 'country', label: 'Внутри страны' },
+  { value: 'abroad', label: 'В другую страну' },
 ]
 
 const INCOME_OPTIONS = [
-  { value: 'low', label: 'Низкий' },
-  { value: 'middle', label: 'Средний' },
-  { value: 'high', label: 'Высокий' },
+  { value: 'low', label: 'Живу скромно' },
+  { value: 'middle', label: 'Средний достаток' },
+  { value: 'high', label: 'Хорошо обеспечен' },
 ]
 
 const HOUSING_OPTIONS = [
-  { value: 'own', label: 'Своё жильё' },
-  { value: 'rent', label: 'Аренда' },
-  { value: 'parents', label: 'С родителями' },
-  { value: 'shared', label: 'Совместное' },
-]
-
-const EDUCATION_OPTIONS = [
-  { value: 'none', label: 'Нет образования' },
-  { value: 'school', label: 'Школа' },
-  { value: 'vocational', label: 'Среднее специальное' },
-  { value: 'bachelor', label: 'Бакалавр' },
-  { value: 'master', label: 'Магистр' },
-  { value: 'phd', label: 'PhD' },
+  { value: 'rent', label: 'Арендую' },
+  { value: 'apartment', label: 'Своя квартира' },
+  { value: 'house', label: 'Свой дом' },
+  { value: 'parents', label: 'Живу с родителями' },
 ]
