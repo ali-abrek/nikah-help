@@ -9,6 +9,7 @@ import { AppError } from '@/lib/errors/app-error'
 import { withAuth } from '@/lib/api/with-auth'
 import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
 import { PHOTO_UPLOAD } from '@/lib/ratelimit/presets'
+import { inngest } from '@/lib/inngest/client'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -149,6 +150,8 @@ export const POST = withAuth(
           logContext: { photoId },
         })
       }
+
+      await inngest.send({ name: 'photo/moderate', data: { photoId } })
 
       return NextResponse.json({ success: true, photoId })
     } catch (error) {

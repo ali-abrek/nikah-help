@@ -56,14 +56,23 @@ export async function getProfile(
 
   if (error || !profile) return null
 
+  const isOwnProfile = viewerId === profileId
+
   // Run photo, like, match, and block checks in parallel
   const [photosRes, likeRes, matchRes, blockRes] = await Promise.all([
-    supabase
-      .from('photos')
-      .select('id, position, variants, moderation_status')
-      .eq('profile_id', profileId)
-      .eq('moderation_status', 'approved')
-      .order('position', { ascending: true }),
+    isOwnProfile
+      ? supabase
+          .from('photos')
+          .select('id, position, variants, moderation_status')
+          .eq('profile_id', profileId)
+          .neq('moderation_status', 'rejected')
+          .order('position', { ascending: true })
+      : supabase
+          .from('photos')
+          .select('id, position, variants, moderation_status')
+          .eq('profile_id', profileId)
+          .eq('moderation_status', 'approved')
+          .order('position', { ascending: true }),
     supabase
       .from('likes')
       .select('id')
