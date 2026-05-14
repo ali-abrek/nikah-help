@@ -169,7 +169,9 @@ export async function saveOnboardingStep2(formData: FormData) {
       return { success: true as const }
     } catch (e) {
       const pgCode =
-        e && typeof e === 'object' && 'code' in e ? String((e as { code: unknown }).code) : 'unknown'
+        e && typeof e === 'object' && 'code' in e
+          ? String((e as { code: unknown }).code)
+          : 'unknown'
       void captureSentryException(e, {
         flow: 'action.save_onboarding_step2',
         severity: 'error',
