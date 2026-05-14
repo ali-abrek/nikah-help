@@ -168,6 +168,13 @@ export async function saveOnboardingStep2(formData: FormData) {
       await saveExtendedData(supabase, userId, { ...parsed.data, gender })
       return { success: true as const }
     } catch (e) {
+      const pgCode =
+        e && typeof e === 'object' && 'code' in e ? String((e as { code: unknown }).code) : 'unknown'
+      void captureSentryException(e, {
+        flow: 'action.save_onboarding_step2',
+        severity: 'error',
+        tags: { step: 'save_extended_data', gender, pg_code: pgCode },
+      })
       return handleActionError(e)
     }
   }
@@ -190,6 +197,13 @@ export async function saveOnboardingStep2(formData: FormData) {
     await saveExtendedData(supabase, userId, { ...parsed.data, gender })
     return { success: true as const }
   } catch (e) {
+    const pgCode =
+      e && typeof e === 'object' && 'code' in e ? String((e as { code: unknown }).code) : 'unknown'
+    void captureSentryException(e, {
+      flow: 'action.save_onboarding_step2',
+      severity: 'error',
+      tags: { step: 'save_extended_data', gender, pg_code: pgCode },
+    })
     return handleActionError(e)
   }
 }
