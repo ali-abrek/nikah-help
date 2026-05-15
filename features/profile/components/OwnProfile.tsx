@@ -195,7 +195,9 @@ export function OwnProfile({ profile }: OwnProfileProps) {
                 type="button"
                 onClick={() => setPhotoIdx(i)}
                 className={`relative aspect-[4/5] overflow-hidden rounded-xl ${
-                  photoIdx === i ? 'outline outline-2 outline-offset-2 outline-[var(--primary)]' : ''
+                  photoIdx === i
+                    ? 'outline outline-2 outline-offset-2 outline-[var(--primary)]'
+                    : ''
                 }`}
               >
                 <PhotoStream

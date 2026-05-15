@@ -48,10 +48,7 @@ export function Photo({
           loading={priority ? 'eager' : 'lazy'}
           fetchPriority={priority ? 'high' : 'auto'}
           onError={() => setErrored(true)}
-          className={cn(
-            'block h-full w-full object-cover',
-            blurred && 'scale-[1.15] blur-[14px]',
-          )}
+          className={cn('block h-full w-full object-cover', blurred && 'scale-[1.15] blur-[14px]')}
           style={{ position: 'absolute', inset: 0 }}
         />
       ) : (

@@ -44,9 +44,7 @@ export function Modal({ open, onClose, title, children, primary, secondary, dang
         <div className="mb-1.5 text-[17px] font-semibold tracking-[-0.2px] text-[var(--ink)]">
           {title}
         </div>
-        {children && (
-          <div className="text-sm leading-snug text-[var(--ink-2)]">{children}</div>
-        )}
+        {children && <div className="text-sm leading-snug text-[var(--ink-2)]">{children}</div>}
         {(primary || secondary) && (
           <div className="mt-4 flex gap-2">
             {secondary && (
@@ -55,12 +53,7 @@ export function Modal({ open, onClose, title, children, primary, secondary, dang
               </Button>
             )}
             {primary && (
-              <Button
-                kind={danger ? 'danger' : 'primary'}
-                full
-                size="md"
-                onClick={primary.onClick}
-              >
+              <Button kind={danger ? 'danger' : 'primary'} full size="md" onClick={primary.onClick}>
                 {primary.label}
               </Button>
             )}

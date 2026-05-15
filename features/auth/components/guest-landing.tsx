@@ -119,8 +119,7 @@ export function GuestLanding({ callbackError }: { callbackError?: string }) {
 }
 
 function mapCallbackError(code: string): string {
-  if (code === 'auth_callback_failed')
-    return 'Не удалось подтвердить ссылку. Запросите новую.'
+  if (code === 'auth_callback_failed') return 'Не удалось подтвердить ссылку. Запросите новую.'
   if (code === 'AUTH_UNAUTHORIZED') return 'Войдите, чтобы продолжить.'
   return code
 }

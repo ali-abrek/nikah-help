@@ -25,8 +25,7 @@ const SIZES: Record<ButtonSize, { h: string; px: string; text: string; r: string
 
 const KIND_CLASSES: Record<ButtonKind, string> = {
   primary: 'bg-[var(--primary)] text-white',
-  secondary:
-    'bg-[var(--surface)] text-[var(--ink)] border border-[var(--divider-strong)]',
+  secondary: 'bg-[var(--surface)] text-[var(--ink)] border border-[var(--divider-strong)]',
   ghost: 'bg-transparent text-[var(--ink)] border border-transparent',
   danger: 'bg-[var(--danger)] text-white',
   soft: 'bg-[var(--surface-2)] text-[var(--ink)]',

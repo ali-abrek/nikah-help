@@ -15,7 +15,9 @@ export function StaticHeader({ title }: { title: string }) {
       >
         <Icon name="back" size={22} />
       </button>
-      <h1 className="m-0 flex-1 text-center text-[20px] font-semibold text-[var(--ink)]">{title}</h1>
+      <h1 className="m-0 flex-1 text-center text-[20px] font-semibold text-[var(--ink)]">
+        {title}
+      </h1>
       <div className="w-10 shrink-0" aria-hidden />
     </div>
   )

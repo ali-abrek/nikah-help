@@ -59,9 +59,7 @@ export function FeedCard({ profile, trailing }: FeedCardProps) {
             <div className="min-w-0 text-white">
               <div className="text-[17px] font-semibold leading-[1.1] tracking-[-0.2px]">
                 {profile.name}
-                {age != null && (
-                  <span className="font-semibold">, {age}</span>
-                )}
+                {age != null && <span className="font-semibold">, {age}</span>}
               </div>
               {(profile.city || profile.country) && (
                 <div className="mt-0.5 flex items-center gap-1 text-[13px] text-white/85">
@@ -81,4 +79,3 @@ export function FeedCard({ profile, trailing }: FeedCardProps) {
     </Link>
   )
 }
-

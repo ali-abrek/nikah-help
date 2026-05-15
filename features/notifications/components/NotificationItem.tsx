@@ -71,9 +71,7 @@ export function NotificationItem({ notification, onMarkAsRead }: NotificationIte
           {formatRelativeTime(notification.created_at)}
         </div>
       </div>
-      {isUnread && (
-        <span className="mt-3.5 h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]" />
-      )}
+      {isUnread && <span className="mt-3.5 h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]" />}
     </div>
   )
 

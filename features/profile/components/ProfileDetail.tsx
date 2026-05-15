@@ -133,9 +133,7 @@ export function ProfileDetail({ profile, isOwnProfile }: ProfileDetailProps) {
         onLeading={() => router.back()}
         hairline={false}
         trailing={
-          !isOwnProfile ? (
-            <IconBtn icon="more" onClick={() => setShowReport(true)} />
-          ) : undefined
+          !isOwnProfile ? <IconBtn icon="more" onClick={() => setShowReport(true)} /> : undefined
         }
       />
 
@@ -326,7 +324,10 @@ export function ProfileDetail({ profile, isOwnProfile }: ProfileDetailProps) {
                 <span
                   key={i}
                   className="h-1.5 rounded-full bg-white/40 transition-[width]"
-                  style={{ width: i === photoIdx ? 22 : 6, background: i === photoIdx ? '#fff' : undefined }}
+                  style={{
+                    width: i === photoIdx ? 22 : 6,
+                    background: i === photoIdx ? '#fff' : undefined,
+                  }}
                 />
               ))}
             </div>

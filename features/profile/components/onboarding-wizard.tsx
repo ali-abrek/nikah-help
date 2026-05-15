@@ -1,11 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import {
-  saveOnboardingStep1,
-  saveOnboardingStep2,
-  completeOnboardingAction,
-} from '../actions'
+import { saveOnboardingStep1, saveOnboardingStep2, completeOnboardingAction } from '../actions'
 import { OnboardingStep1 } from './onboarding-step1'
 import { OnboardingStep2 } from './onboarding-step2'
 import { OnboardingStep3 } from './onboarding-step3'
@@ -139,9 +135,7 @@ export function OnboardingWizard({ locale = 'ru' }: { locale?: string }) {
             isPending={isPending && submittingStep === 2}
           />
         )}
-        {step === 3 && (
-          <OnboardingStep3 isPending={isPending} onComplete={() => setStep(4)} />
-        )}
+        {step === 3 && <OnboardingStep3 isPending={isPending} onComplete={() => setStep(4)} />}
         {step === 4 && gender && (
           <OnboardingStep4
             isPending={isPending}

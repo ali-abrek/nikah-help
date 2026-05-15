@@ -33,9 +33,7 @@ export function FeedClient({ viewerGender, filters, initialData }: FeedClientPro
   }, [inView, loadMore])
 
   if (status === 'error') {
-    return (
-      <EmptyState icon="alert" title={t('feed_empty')} sub={t('feed_empty_sub')} />
-    )
+    return <EmptyState icon="alert" title={t('feed_empty')} sub={t('feed_empty_sub')} />
   }
 
   const profiles = data?.pages.flatMap((page) => page.profiles) ?? []

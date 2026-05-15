@@ -45,22 +45,14 @@ export function SettingsRow({
       )}
       <div className="min-w-0 flex-1">
         <div className="text-[14.5px] font-medium">{label}</div>
-        {sub && (
-          <div className="mt-0.5 text-xs leading-snug text-[var(--ink-3)]">{sub}</div>
-        )}
+        {sub && <div className="mt-0.5 text-xs leading-snug text-[var(--ink-3)]">{sub}</div>}
       </div>
       {trailing ?? (onClick && <Icon name="next" size={16} className="text-[var(--ink-3)]" />)}
     </Tag>
   )
 }
 
-export function SettingsGroup({
-  label,
-  children,
-}: {
-  label?: ReactNode
-  children: ReactNode
-}) {
+export function SettingsGroup({ label, children }: { label?: ReactNode; children: ReactNode }) {
   return (
     <div className="mt-[18px]">
       {label && (

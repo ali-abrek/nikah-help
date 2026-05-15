@@ -13,7 +13,15 @@ interface AvatarProps {
   className?: string
 }
 
-export function Avatar({ src, alt = '', size = 44, online, ring, fallback, className }: AvatarProps) {
+export function Avatar({
+  src,
+  alt = '',
+  size = 44,
+  online,
+  ring,
+  fallback,
+  className,
+}: AvatarProps) {
   const [errored, setErrored] = useState(false)
   const showImg = !!src && !errored
 

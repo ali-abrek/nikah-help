@@ -161,11 +161,7 @@ export function ChatDetail({ chatInfo, initialMessages, userId }: ChatDetailProp
         </button>
       </Sheet>
 
-      <Sheet
-        open={showReport}
-        onClose={() => setShowReport(false)}
-        title={t('chat_report_title')}
-      >
+      <Sheet open={showReport} onClose={() => setShowReport(false)} title={t('chat_report_title')}>
         <div className="grid gap-3">
           <Textarea
             value={reportText}

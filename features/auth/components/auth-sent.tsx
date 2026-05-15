@@ -46,11 +46,7 @@ export function AuthSent({ initialEmail }: AuthSentProps) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex justify-center px-5 pb-2 pt-3.5">
-        <button
-          type="button"
-          onClick={() => router.push('/')}
-          className="bg-transparent p-0"
-        >
+        <button type="button" onClick={() => router.push('/')} className="bg-transparent p-0">
           <h1 className="m-0 text-[22px] font-bold tracking-[1px] text-[var(--ink)]">
             {t('app_name')}
           </h1>
@@ -66,9 +62,7 @@ export function AuthSent({ initialEmail }: AuthSentProps) {
         <p className="mx-auto mb-3 max-w-[300px] text-[14.5px] leading-relaxed text-[var(--ink-2)] [text-wrap:pretty]">
           {t('auth_sent_sub')}
         </p>
-        {email && (
-          <p className="mb-2 text-[13.5px] font-medium text-[var(--ink)]">{email}</p>
-        )}
+        {email && <p className="mb-2 text-[13.5px] font-medium text-[var(--ink)]">{email}</p>}
         <p className="mx-auto mb-8 max-w-[300px] text-[13px] leading-snug text-[var(--ink-3)] [text-wrap:pretty]">
           {t('auth_sent_spam')}
         </p>

@@ -34,8 +34,7 @@ export function Skeleton({
         width: w,
         height: h,
         borderRadius: r,
-        background:
-          'linear-gradient(90deg, var(--surface-2), var(--divider), var(--surface-2))',
+        background: 'linear-gradient(90deg, var(--surface-2), var(--divider), var(--surface-2))',
         backgroundSize: '200% 100%',
       }}
     />

@@ -129,7 +129,11 @@ export function SettingsScreen({
         )}
 
         <SettingsGroup label={t('set_section_about')}>
-          <SettingsRow icon="sparkle" label={t('set_education')} onClick={() => router.push('/guide')} />
+          <SettingsRow
+            icon="sparkle"
+            label={t('set_education')}
+            onClick={() => router.push('/guide')}
+          />
           <SettingsRow icon="help" label={t('set_faq')} onClick={() => router.push('/faq')} />
           <SettingsRow
             icon="shield"
@@ -142,7 +146,11 @@ export function SettingsScreen({
         {isStaff && (
           <SettingsGroup label={t('set_section_staff')}>
             {role === 'admin' && (
-              <SettingsRow icon="gear" label={t('set_admin')} onClick={() => router.push('/admin')} />
+              <SettingsRow
+                icon="gear"
+                label={t('set_admin')}
+                onClick={() => router.push('/admin')}
+              />
             )}
             <SettingsRow
               icon="shield"
@@ -165,9 +173,7 @@ export function SettingsScreen({
           </SettingsGroup>
         )}
 
-        <div className="mt-4 text-center text-[11px] text-[var(--ink-3)]">
-          NIKAH HELP · v1.0
-        </div>
+        <div className="mt-4 text-center text-[11px] text-[var(--ink-3)]">NIKAH HELP · v1.0</div>
       </div>
 
       <Modal

@@ -94,10 +94,7 @@ export function FiltersScreen({ viewerGender }: FiltersScreenProps) {
   const [showHousing, setShowHousing] = useState(false)
 
   const maritalOptions = useMemo(
-    () =>
-      viewerGender === 'male'
-        ? MARITAL_MALE_VIEWING_FEMALES
-        : MARITAL_FEMALE_VIEWING_MALES,
+    () => (viewerGender === 'male' ? MARITAL_MALE_VIEWING_FEMALES : MARITAL_FEMALE_VIEWING_MALES),
     [viewerGender],
   )
 
@@ -138,13 +135,7 @@ export function FiltersScreen({ viewerGender }: FiltersScreenProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <Header
-        title={t('filters_title')}
-        leading="back"
-        onLeading={close}
-        centerTitle
-        hairline
-      />
+      <Header title={t('filters_title')} leading="back" onLeading={close} centerTitle hairline />
 
       <div className="scroll-area flex-1 overflow-auto px-5 pb-5 pt-4">
         <div className="mb-[18px] overflow-hidden rounded-2xl border border-[var(--divider)] bg-[var(--surface)]">
@@ -214,9 +205,7 @@ export function FiltersScreen({ viewerGender }: FiltersScreenProps) {
                 min={AGE_RANGE.min}
                 max={60}
                 value={ageMin}
-                onChange={(e) =>
-                  setAgeMin(Math.min(Number(e.target.value), ageMax - 1))
-                }
+                onChange={(e) => setAgeMin(Math.min(Number(e.target.value), ageMax - 1))}
                 className="flex-1"
               />
               <input
@@ -224,9 +213,7 @@ export function FiltersScreen({ viewerGender }: FiltersScreenProps) {
                 min={AGE_RANGE.min}
                 max={60}
                 value={ageMax}
-                onChange={(e) =>
-                  setAgeMax(Math.max(Number(e.target.value), ageMin + 1))
-                }
+                onChange={(e) => setAgeMax(Math.max(Number(e.target.value), ageMin + 1))}
                 className="flex-1"
               />
             </div>
@@ -317,11 +304,7 @@ export function FiltersScreen({ viewerGender }: FiltersScreenProps) {
         </Button>
       </StickyActions>
 
-      <Sheet
-        open={showCountry}
-        onClose={() => setShowCountry(false)}
-        title={t('filters_country')}
-      >
+      <Sheet open={showCountry} onClose={() => setShowCountry(false)} title={t('filters_country')}>
         <ListPicker
           items={[
             { value: '', label: t('filters_any') },

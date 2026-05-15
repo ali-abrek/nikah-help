@@ -96,8 +96,14 @@ export function MatchModal({ open, onClose, myProfile, theirProfile }: MatchModa
             style={{ animation: 'pulse-soft 3s ease-in-out infinite .4s' }}
           />
           <div className="flex">
-            <AvatarCircle profile={theirProfile} className="h-[110px] w-[110px] relative z-[2] translate-x-3.5 -rotate-3" />
-            <AvatarCircle profile={myProfile} className="h-[110px] w-[110px] -translate-x-3.5 rotate-3" />
+            <AvatarCircle
+              profile={theirProfile}
+              className="h-[110px] w-[110px] relative z-[2] translate-x-3.5 -rotate-3"
+            />
+            <AvatarCircle
+              profile={myProfile}
+              className="h-[110px] w-[110px] -translate-x-3.5 rotate-3"
+            />
           </div>
         </div>
 
@@ -149,10 +155,7 @@ function AvatarCircle({
   if (!profile) {
     return (
       <div
-        className={cn(
-          'overflow-hidden rounded-full bg-white/20',
-          className,
-        )}
+        className={cn('overflow-hidden rounded-full bg-white/20', className)}
         style={{ boxShadow: '0 0 0 4px rgba(255,255,255,0.2)' }}
       />
     )

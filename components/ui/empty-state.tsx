@@ -14,9 +14,7 @@ export function EmptyState({ icon, title, sub }: EmptyStateProps) {
         <Icon name={icon} size={32} />
       </div>
       <div className="mb-1.5 text-[17px] font-semibold text-[var(--ink)]">{title}</div>
-      {sub && (
-        <div className="text-[13.5px] leading-snug text-[var(--ink-3)]">{sub}</div>
-      )}
+      {sub && <div className="text-[13.5px] leading-snug text-[var(--ink-3)]">{sub}</div>}
     </div>
   )
 }

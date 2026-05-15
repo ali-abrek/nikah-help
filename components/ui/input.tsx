@@ -1,6 +1,11 @@
 'use client'
 
-import { forwardRef, type InputHTMLAttributes, type ReactNode, type TextareaHTMLAttributes } from 'react'
+import {
+  forwardRef,
+  type InputHTMLAttributes,
+  type ReactNode,
+  type TextareaHTMLAttributes,
+} from 'react'
 import { cn } from '@/lib/utils/cn'
 import { Icon, type IconName } from './icon'
 
@@ -22,9 +27,7 @@ export function Field({ label, optional, hint, error, suffix, children, classNam
           {label && (
             <span className="text-[12.5px] font-medium tracking-[0.1px] text-[var(--ink-2)]">
               {label}
-              {optional && (
-                <span className="font-normal text-[var(--ink-3)]"> · {optional}</span>
-              )}
+              {optional && <span className="font-normal text-[var(--ink-3)]"> · {optional}</span>}
             </span>
           )}
           {suffix}

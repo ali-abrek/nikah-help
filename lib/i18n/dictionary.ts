@@ -90,8 +90,7 @@ const RU = {
   ob_height: 'Рост, см',
   ob_weight: 'Вес, кг',
   ob_geo_consent: 'Разрешить определение местоположения',
-  ob_geo_help:
-    'Используется только для расчёта расстояния. Точные координаты не показываются.',
+  ob_geo_help: 'Используется только для расчёта расстояния. Точные координаты не показываются.',
   ob_2_title: 'Профиль',
   ob_about_me: 'О себе',
   ob_about_me_ph: 'Несколько слов о себе и о том, какую семью вы ищете.',
@@ -107,10 +106,8 @@ const RU = {
   ob_avatar: 'Аватар',
   ob_private_mode: 'Приватный режим',
   ob_private_public: 'Ваши фотографии могут видеть все пользователи',
-  ob_private_private:
-    'Ваши фотографии видны только тем, кому вы выразили симпатию',
-  ob_private_help:
-    'Все фото, кроме основной, будут скрыты до взаимной симпатии.',
+  ob_private_private: 'Ваши фотографии видны только тем, кому вы выразили симпатию',
+  ob_private_help: 'Все фото, кроме основной, будут скрыты до взаимной симпатии.',
   ob_4_title: 'Проверка',
   ob_4_sub: 'Проверьте данные перед сохранением.',
   ob_edit: 'Изменить',
@@ -176,8 +173,7 @@ const RU = {
   own_publish_off_title: 'Скрыть анкету?',
   own_publish_off_sub: 'Вас перестанут видеть в ленте. Чаты сохранятся.',
   own_publish_off_confirm: 'Скрыть',
-  own_no_photos:
-    'Загрузите хотя бы одно одобренное фото, чтобы опубликовать анкету.',
+  own_no_photos: 'Загрузите хотя бы одно одобренное фото, чтобы опубликовать анкету.',
   own_delete: 'Удалить анкету',
   own_delete_title: 'Удалить анкету?',
   own_delete_sub: 'Все данные, фото и чаты будут удалены навсегда.',
@@ -221,8 +217,7 @@ const RU = {
   notif_mark_all: 'Отметить прочитанным',
   notif_empty: 'Здесь пока тихо',
 
-  match_sub:
-    'Чат уже открыт. Пожалуйста, будьте корректны, тактичны и уважительны при общении!',
+  match_sub: 'Чат уже открыт. Пожалуйста, будьте корректны, тактичны и уважительны при общении!',
   match_open_chat: 'Открыть чат',
   match_later: 'Позже',
   match_badge: 'Взаимная симпатия',
@@ -257,11 +252,9 @@ const RU = {
   sub_plan_save: 'Экономия 33%',
   sub_continue: 'Продолжить',
   sub_pay: 'Оплатить',
-  sub_free_women:
-    'Для женщин — бессрочная бесплатная подписка без ограничений. Навсегда.',
+  sub_free_women: 'Для женщин — бессрочная бесплатная подписка без ограничений. Навсегда.',
   sub_men_limit_title: 'Лимит исчерпан',
-  sub_men_limit_sub:
-    'Бесплатно доступно 3 симпатии. Оформите подписку для безлимита.',
+  sub_men_limit_sub: 'Бесплатно доступно 3 симпатии. Оформите подписку для безлимита.',
 
   agreements_title: 'Соглашения',
   agreements_intro:
@@ -334,8 +327,7 @@ const RU = {
   faq_a4:
     'Мужчинам доступно 3 бесплатные симпатии. После этого для продолжения необходима подписка: 1 месяц за 1 000 ₽ или 3 месяца за 2 000 ₽ (экономия 33%).',
   faq_q5: 'Нужна ли подписка женщинам?',
-  faq_a5:
-    'Нет. Для женщин действует бессрочная бесплатная подписка без ограничений.',
+  faq_a5: 'Нет. Для женщин действует бессрочная бесплатная подписка без ограничений.',
   faq_q6: 'Как пожаловаться на пользователя?',
   faq_a6:
     'Откройте анкету пользователя или чат с ним. Нажмите кнопку «...» (три точки) в правом верхнем углу и выберите «Пожаловаться». Опишите суть жалобы — модераторы рассмотрят её в течение 24 часов.',
@@ -357,8 +349,7 @@ const EN: Record<keyof typeof RU, string> = {
   auth_sent_title: 'Check your email',
   auth_sent_sub:
     'We sent a sign-in link. Open the email and click the link on this device to continue.',
-  auth_sent_spam:
-    'If you don’t see the email, please check your Promotions and Spam folders.',
+  auth_sent_spam: 'If you don’t see the email, please check your Promotions and Spam folders.',
   auth_resend: 'Send again',
   auth_change_email: 'Change email',
   auth_change_email_title: 'Enter new email',
@@ -428,8 +419,7 @@ const EN: Record<keyof typeof RU, string> = {
   ob_height: 'Height, cm',
   ob_weight: 'Weight, kg',
   ob_geo_consent: 'Allow location access',
-  ob_geo_help:
-    'Used only to compute distance. Exact coordinates are never shown.',
+  ob_geo_help: 'Used only to compute distance. Exact coordinates are never shown.',
   ob_2_title: 'Profile details',
   ob_about_me: 'About me',
   ob_about_me_ph: 'A few words about yourself and the family you’re looking for.',
@@ -446,8 +436,7 @@ const EN: Record<keyof typeof RU, string> = {
   ob_private_mode: 'Private mode',
   ob_private_public: 'All users can see your photos',
   ob_private_private: 'Only users you liked can see your photos',
-  ob_private_help:
-    'All photos except the avatar will be hidden until a mutual like.',
+  ob_private_help: 'All photos except the avatar will be hidden until a mutual like.',
   ob_4_title: 'Review',
   ob_4_sub: 'Review your details before saving.',
   ob_edit: 'Edit',
@@ -593,8 +582,7 @@ const EN: Record<keyof typeof RU, string> = {
   sub_plan_save: 'Save 33%',
   sub_continue: 'Continue',
   sub_pay: 'Pay',
-  sub_free_women:
-    'For women — a permanent free subscription with no limits. Forever.',
+  sub_free_women: 'For women — a permanent free subscription with no limits. Forever.',
   sub_men_limit_title: 'Free limit reached',
   sub_men_limit_sub: '3 free likes for men. Upgrade for unlimited.',
 
@@ -604,8 +592,7 @@ const EN: Record<keyof typeof RU, string> = {
   agreements_doc1: 'Public offer for paid services',
   agreements_doc2: 'Personal data processing policy',
   agreements_doc3: 'Consent to personal data processing',
-  agreements_doc4:
-    'Consent to personal data processing approved by the subject for distribution',
+  agreements_doc4: 'Consent to personal data processing approved by the subject for distribution',
   agreements_footer:
     'If you disagree with these documents — please do not fill out a profile or use our nikah service.',
 

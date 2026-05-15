@@ -58,9 +58,7 @@ export function Header({
             {title}
           </div>
         )}
-        {subtitle && (
-          <div className="truncate text-xs text-[var(--ink-3)]">{subtitle}</div>
-        )}
+        {subtitle && <div className="truncate text-xs text-[var(--ink-3)]">{subtitle}</div>}
       </div>
       {trailing}
       {centerTitle && !trailing && <div className="w-10 shrink-0" aria-hidden />}

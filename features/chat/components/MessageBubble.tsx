@@ -98,8 +98,7 @@ export function MessageBubble({ message, isOwn, onQuote, onEdit, onDelete }: Mes
 }
 
 function StatusIcon({ status }: { status: string }) {
-  if (status === 'read')
-    return <Icon name="check2" size={13} className="text-[#9DD6FF]" />
+  if (status === 'read') return <Icon name="check2" size={13} className="text-[#9DD6FF]" />
   if (status === 'delivered') return <Icon name="check2" size={13} />
   return <Icon name="check" size={13} />
 }

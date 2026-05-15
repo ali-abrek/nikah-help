@@ -14,13 +14,7 @@ import { cn } from '@/lib/utils/cn'
  * The frame is the scroll container for screen content; bottom nav and sticky
  * action bars sit inside it.
  */
-export function DeviceFrame({
-  children,
-  className,
-}: {
-  children: ReactNode
-  className?: string
-}) {
+export function DeviceFrame({ children, className }: { children: ReactNode; className?: string }) {
   return (
     <div
       className={cn(

@@ -76,9 +76,7 @@ export function BottomNav({ badges }: { badges?: BottomNavBadges }) {
             className={cn(
               'relative flex flex-col items-center gap-0.5 py-1.5 text-[10.5px] tracking-[0.1px]',
               '[-webkit-tap-highlight-color:transparent]',
-              active
-                ? 'font-semibold text-[var(--primary)]'
-                : 'font-medium text-[var(--ink-3)]',
+              active ? 'font-semibold text-[var(--primary)]' : 'font-medium text-[var(--ink-3)]',
             )}
           >
             <span className="relative">
