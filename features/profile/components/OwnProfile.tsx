@@ -11,6 +11,7 @@ import { Photo as PhotoStream } from '@/features/photos/components/Photo'
 import { useToast } from '@/components/ui/toast'
 import { useLang } from '@/lib/i18n/use-lang'
 import { localizePlace } from '@/lib/i18n/dictionary'
+import { deletePhotoAction } from '../actions'
 import type { ProfileDetailData } from '../server/get-profile'
 
 interface OwnProfileProps {
@@ -33,13 +34,14 @@ export function OwnProfile({ profile }: OwnProfileProps) {
   const router = useRouter()
   const toast = useToast()
   const [photoIdx, setPhotoIdx] = useState(0)
+  const [photos, setPhotos] = useState(profile.photos)
   const [published, setPublished] = useState(!!profile.is_published)
   const [privateMode, setPrivateMode] = useState(false)
   const [showOff, setShowOff] = useState(false)
   const [showDel, setShowDel] = useState(false)
+  const [photoPendingDel, setPhotoPendingDel] = useState<string | null>(null)
+  const [deletingPhoto, setDeletingPhoto] = useState(false)
   const [pending, startTransition] = useTransition()
-
-  const photos = profile.photos
   const age = calcAge(profile.birth_date)
   const photo = photos[photoIdx]
 
@@ -69,6 +71,23 @@ export function OwnProfile({ profile }: OwnProfileProps) {
       })
       if (res.ok) setPublished(false)
     })
+  }
+
+  const confirmDeletePhoto = async () => {
+    if (!photoPendingDel) return
+    setDeletingPhoto(true)
+    const result = await deletePhotoAction(photoPendingDel)
+    setDeletingPhoto(false)
+    if (!('success' in result) || !result.success) {
+      toast.show(t('own_photo_del_error'))
+    } else {
+      setPhotos((prev) => {
+        const next = prev.filter((p) => p.id !== photoPendingDel)
+        setPhotoIdx((idx) => Math.min(idx, Math.max(0, next.length - 1)))
+        return next
+      })
+    }
+    setPhotoPendingDel(null)
   }
 
   return (
@@ -185,38 +204,50 @@ export function OwnProfile({ profile }: OwnProfileProps) {
           </div>
           <div className="grid grid-cols-3 gap-2">
             {photos.map((p, i) => (
-              <button
+              <div
                 key={p.id}
-                type="button"
-                onClick={() => setPhotoIdx(i)}
                 className={`relative aspect-[4/5] overflow-hidden rounded-xl ${
                   photoIdx === i
                     ? 'outline outline-2 outline-offset-2 outline-[var(--primary)]'
                     : ''
                 }`}
               >
-                <PhotoStream
-                  photoId={p.id}
-                  variant="cover"
-                  alt={`photo ${i}`}
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-                {i === 0 && (
-                  <span className="absolute left-1.5 top-1.5 rounded-md bg-[var(--primary)] px-1.5 py-0.5 text-[10px] text-white">
-                    {t('ob_avatar')}
-                  </span>
-                )}
-                {p.moderation_status === 'pending' && (
-                  <span className="absolute bottom-1 left-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-center text-[9.5px] text-white">
-                    {t('mod_pending')}
-                  </span>
-                )}
-                {p.moderation_status === 'rejected' && (
-                  <span className="absolute bottom-1 left-1 right-1 rounded bg-[var(--danger)] px-1.5 py-0.5 text-center text-[9.5px] text-white">
-                    {t('mod_rejected')}
-                  </span>
-                )}
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setPhotoIdx(i)}
+                  className="absolute inset-0"
+                >
+                  <PhotoStream
+                    photoId={p.id}
+                    variant="cover"
+                    alt={`photo ${i}`}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  {i === 0 && (
+                    <span className="absolute left-1.5 top-1.5 rounded-md bg-[var(--primary)] px-1.5 py-0.5 text-[10px] text-white">
+                      {t('ob_avatar')}
+                    </span>
+                  )}
+                  {p.moderation_status === 'pending' && (
+                    <span className="absolute bottom-1 left-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-center text-[9.5px] text-white">
+                      {t('mod_pending')}
+                    </span>
+                  )}
+                  {p.moderation_status === 'rejected' && (
+                    <span className="absolute bottom-1 left-1 right-1 rounded bg-[var(--danger)] px-1.5 py-0.5 text-center text-[9.5px] text-white">
+                      {t('mod_rejected')}
+                    </span>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPhotoPendingDel(p.id)}
+                  aria-label={t('own_photo_del_confirm')}
+                  className="absolute right-1 top-1 z-10 grid h-5 w-5 place-items-center rounded-full bg-black/60 text-white"
+                >
+                  <Icon name="close" size={10} />
+                </button>
+              </div>
             ))}
             {photos.length < 6 && (
               <button
@@ -297,6 +328,20 @@ export function OwnProfile({ profile }: OwnProfileProps) {
         danger
       >
         {t('own_delete_sub')}
+      </Modal>
+
+      <Modal
+        open={!!photoPendingDel}
+        onClose={() => setPhotoPendingDel(null)}
+        title={t('own_photo_del_title')}
+        primary={{
+          label: deletingPhoto ? '…' : t('own_photo_del_confirm'),
+          onClick: confirmDeletePhoto,
+        }}
+        secondary={{ label: t('cancel'), onClick: () => setPhotoPendingDel(null) }}
+        danger
+      >
+        {t('own_photo_del_sub')}
       </Modal>
 
       {pending && <div aria-hidden className="sr-only" />}
