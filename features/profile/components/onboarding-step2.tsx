@@ -232,7 +232,6 @@ export function OnboardingStep2({ gender, onSubmit, defaultValues }: Props) {
         />
         {errs.about_self && <p className="mt-1 text-xs text-red-600">{errs.about_self.message}</p>}
       </div>
-
     </form>
   )
 }

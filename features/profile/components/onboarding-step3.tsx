@@ -125,9 +125,7 @@ export function OnboardingStep3({ photos, setPhotos }: Props) {
 
     setPhotos((prev) =>
       prev.map((p) =>
-        p.id === tempId
-          ? { ...p, id: result.photoId, uploading: false, isExisting: true }
-          : p,
+        p.id === tempId ? { ...p, id: result.photoId, uploading: false, isExisting: true } : p,
       ),
     )
   }
@@ -189,11 +187,7 @@ export function OnboardingStep3({ photos, setPhotos }: Props) {
               )}
               {photo.uploading ? (
                 <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                  <svg
-                    className="h-6 w-6 animate-spin text-white"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
+                  <svg className="h-6 w-6 animate-spin text-white" fill="none" viewBox="0 0 24 24">
                     <circle
                       className="opacity-25"
                       cx="12"

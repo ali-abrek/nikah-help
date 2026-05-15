@@ -227,7 +227,6 @@ export function OnboardingStep1({
           )}
         />
       </div>
-
     </form>
   )
 }
