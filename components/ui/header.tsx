@@ -54,9 +54,9 @@ export function Header({
         )}
       >
         {title && (
-          <div className="truncate text-base font-semibold tracking-[-0.2px] text-[var(--ink)]">
+          <h1 className="m-0 truncate text-base font-semibold uppercase tracking-[-0.2px] text-[var(--ink)]">
             {title}
-          </div>
+          </h1>
         )}
         {subtitle && <div className="truncate text-xs text-[var(--ink-3)]">{subtitle}</div>}
       </div>
@@ -70,7 +70,7 @@ export function Header({
 export function BigHeader({ title, actions }: { title: ReactNode; actions?: ReactNode }) {
   return (
     <div className="flex items-end justify-between gap-3 px-5 pb-3 pt-1.5">
-      <h1 className="m-0 text-[28px] font-semibold leading-[1.1] tracking-[-0.5px] text-[var(--ink)]">
+      <h1 className="m-0 text-[28px] font-semibold uppercase leading-[1.1] tracking-[-0.5px] text-[var(--ink)]">
         {title}
       </h1>
       {actions && <div className="flex gap-1">{actions}</div>}

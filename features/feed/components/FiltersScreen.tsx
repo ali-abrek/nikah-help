@@ -135,7 +135,7 @@ export function FiltersScreen({ viewerGender }: FiltersScreenProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <Header title={t('filters_title')} leading="back" onLeading={close} centerTitle hairline />
+      <Header title={t('filters_title')} leading="back" onLeading={close} hairline />
 
       <div className="scroll-area flex-1 overflow-auto px-5 pb-5 pt-4">
         <div className="mb-[18px] overflow-hidden rounded-2xl border border-[var(--divider)] bg-[var(--surface)]">

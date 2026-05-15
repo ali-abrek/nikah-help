@@ -83,7 +83,7 @@ export function OwnProfile({ profile }: OwnProfileProps) {
         >
           <Icon name="back" size={22} />
         </button>
-        <h1 className="m-0 flex-1 text-center text-[18px] font-semibold text-[var(--ink)]">
+        <h1 className="m-0 flex-1 text-[18px] font-semibold uppercase text-[var(--ink)]">
           {t('own_title')}
         </h1>
         <Link
