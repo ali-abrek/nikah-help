@@ -64,7 +64,7 @@ export function OnboardingStep1({
     'w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-foreground placeholder:text-zinc-400 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-zinc-700 dark:bg-zinc-900'
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-5">
+    <form id="ob-step-1" onSubmit={handleSubmit(onFormSubmit)} className="space-y-5">
       {/* Name */}
       <div>
         <label htmlFor="name" className="mb-1 block text-sm font-medium text-foreground">

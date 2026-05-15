@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useId, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils/cn'
+import { Icon } from '@/components/ui/icon'
+import { Button } from '@/components/ui/button'
+import { useLang } from '@/lib/i18n/use-lang'
 
 interface MatchProfile {
   id: string
@@ -20,6 +23,7 @@ interface MatchModalProps {
 
 export function MatchModal({ open, onClose, myProfile, theirProfile }: MatchModalProps) {
   const router = useRouter()
+  const { t } = useLang()
   const titleId = useId()
   const descId = useId()
   const dialogRef = useRef<HTMLDivElement | null>(null)
@@ -30,11 +34,9 @@ export function MatchModal({ open, onClose, myProfile, theirProfile }: MatchModa
     onClose()
   }, [router, onClose])
 
-  // ESC closes; tab focus stays inside the dialog while it's open.
   useEffect(() => {
     if (!open) return
     const previouslyFocused = document.activeElement as HTMLElement | null
-
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault()
@@ -59,7 +61,6 @@ export function MatchModal({ open, onClose, myProfile, theirProfile }: MatchModa
     }
     document.addEventListener('keydown', onKey)
     closeButtonRef.current?.focus()
-
     return () => {
       document.removeEventListener('keydown', onKey)
       previouslyFocused?.focus?.()
@@ -70,9 +71,11 @@ export function MatchModal({ open, onClose, myProfile, theirProfile }: MatchModa
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      className="anim-fade fixed inset-0 z-[100] flex flex-col items-center justify-center p-7 text-white"
+      style={{
+        background: 'linear-gradient(180deg, var(--primary) 0%, var(--primary-deep) 100%)',
+      }}
       onClick={onClose}
-      aria-hidden="false"
     >
       <div
         ref={dialogRef}
@@ -80,49 +83,57 @@ export function MatchModal({ open, onClose, myProfile, theirProfile }: MatchModa
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descId}
-        className="mx-4 w-full max-w-sm rounded-3xl bg-white p-8 text-center shadow-2xl dark:bg-zinc-900"
+        className="flex w-full max-w-[340px] flex-col items-center"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 id={titleId} className="text-2xl font-bold text-rose-500">
-          Это мэтч!
-        </h2>
-        <p id={descId} className="mt-2 text-zinc-500">
-          У вас взаимная симпатия. Начните общение прямо сейчас.
+        <div className="relative mb-9 flex items-center justify-center">
+          <div
+            className="absolute h-[250px] w-[250px] rounded-full bg-white/[0.06]"
+            style={{ animation: 'pulse-soft 3s ease-in-out infinite' }}
+          />
+          <div
+            className="absolute h-[180px] w-[180px] rounded-full bg-white/[0.08]"
+            style={{ animation: 'pulse-soft 3s ease-in-out infinite .4s' }}
+          />
+          <div className="flex">
+            <AvatarCircle profile={theirProfile} className="h-[110px] w-[110px] relative z-[2] translate-x-3.5 -rotate-3" />
+            <AvatarCircle profile={myProfile} className="h-[110px] w-[110px] -translate-x-3.5 rotate-3" />
+          </div>
+        </div>
+
+        <div
+          id={titleId}
+          className="mb-5 inline-flex items-center gap-2 rounded-full bg-white/15 px-3.5 py-1.5 text-xs font-medium uppercase tracking-[0.4px] backdrop-blur-md"
+        >
+          <Icon name="heart-fill" size={12} />
+          {t('match_badge')}
+        </div>
+
+        <p
+          id={descId}
+          className="m-0 mb-8 max-w-[300px] text-center text-base font-medium leading-relaxed text-white/90"
+        >
+          {t('match_sub')}
         </p>
 
-        <div className="mt-8 flex items-center justify-center gap-4" aria-hidden="true">
-          <AvatarCircle profile={myProfile} className="w-20 h-20" />
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-rose-100 text-lg">
-            &#10084;
-          </div>
-          <AvatarCircle profile={theirProfile} className="w-20 h-20" />
-        </div>
-
-        <div className="mt-4 flex items-center justify-center gap-6 text-sm font-medium">
-          <span className="text-foreground">{myProfile?.name ?? 'Вы'}</span>
-          <span className="text-foreground">{theirProfile?.name ?? '...'}</span>
-        </div>
-
-        <div className="mt-8 flex flex-col gap-3">
-          <button
-            ref={closeButtonRef}
-            type="button"
-            onClick={handleGoToChat}
-            className={cn(
-              'w-full rounded-xl bg-primary px-6 py-3 text-sm font-medium text-white',
-              'hover:bg-primary-hover transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary',
-            )}
-          >
-            Перейти в чат
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-sm text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-          >
-            Продолжить поиск
-          </button>
-        </div>
+        <Button
+          kind="secondary"
+          size="lg"
+          full
+          icon="chat"
+          onClick={handleGoToChat}
+          className="!border-none !bg-white !text-[var(--primary)]"
+        >
+          {t('match_open_chat')}
+        </Button>
+        <button
+          ref={closeButtonRef}
+          type="button"
+          onClick={onClose}
+          className="mt-3 bg-transparent p-2 text-sm font-medium text-white/85"
+        >
+          {t('match_later')}
+        </button>
       </div>
     </div>
   )
@@ -136,23 +147,31 @@ function AvatarCircle({
   className?: string
 }) {
   if (!profile) {
-    return <div className={cn('rounded-full bg-zinc-200 dark:bg-zinc-700', className)} />
+    return (
+      <div
+        className={cn(
+          'overflow-hidden rounded-full bg-white/20',
+          className,
+        )}
+        style={{ boxShadow: '0 0 0 4px rgba(255,255,255,0.2)' }}
+      />
+    )
   }
-
-  const firstPhoto = profile.photos?.[0]
-  const src = firstPhoto?.variants?.thumbnail_sm?.webp
-
+  const src = profile.photos?.[0]?.variants?.thumbnail_sm?.webp
   return (
-    <div className={cn('overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700', className)}>
+    <div
+      className={cn('overflow-hidden rounded-full bg-white/20', className)}
+      style={{ boxShadow: '0 0 0 4px rgba(255,255,255,0.2)' }}
+    >
       {src ? (
-        // eslint-disable-next-line @next/next/no-img-element
+        /* eslint-disable-next-line @next/next/no-img-element */
         <img
           src={`/api/photos/stream/${profile.id}/${src}`}
           alt={profile.name ?? ''}
           className="h-full w-full object-cover"
         />
       ) : (
-        <div className="flex h-full w-full items-center justify-center text-2xl text-zinc-400">
+        <div className="flex h-full w-full items-center justify-center text-3xl text-white/70">
           {profile.name?.charAt(0)?.toUpperCase() ?? '?'}
         </div>
       )}

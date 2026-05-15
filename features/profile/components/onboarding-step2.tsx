@@ -155,7 +155,7 @@ export function OnboardingStep2({ gender, onSubmit, defaultValues, isPending }: 
   }
 
   return (
-    <form onSubmit={handleSubmit(onFormSubmit)} className="space-y-5">
+    <form id="ob-step-2" onSubmit={handleSubmit(onFormSubmit)} className="space-y-5">
       <SelectField
         name="marital_status"
         label="Семейное положение"

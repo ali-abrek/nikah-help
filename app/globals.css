@@ -1,42 +1,226 @@
 @import 'tailwindcss';
 
-@theme {
-  --color-primary: #ff8c42;
-  --color-primary-hover: #fcaf58;
-  --color-accent: #f9c784;
-  --font-sans: 'Inter', sans-serif;
-}
-
-/* `inline` keeps the resolution at use-site so utilities like
-   `text-foreground` / `bg-background` follow the .dark override below
-   instead of freezing the light-mode value at build time. */
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-}
-
+/* ───────────────────────────────────────────────────────────
+ * Forest palette — single source of truth, mirrors the design.
+ * Light/dark sets live on :root and .dark; manual override wins,
+ * otherwise we follow the system preference.
+ * ─────────────────────────────────────────────────────────── */
 @layer base {
   :root {
-    --background: #ffffff;
-    --foreground: #111111;
+    --bg: #f5f3ee;
+    --surface: #ffffff;
+    --surface-2: #fbfaf6;
+    --ink: #0f1a1f;
+    --ink-2: #4a5258;
+    --ink-3: #8b8e8f;
+    --divider: rgba(15, 26, 31, 0.07);
+    --divider-strong: rgba(15, 26, 31, 0.14);
+    --primary: #2c4a3e;
+    --primary-deep: #1f3a2f;
+    --primary-soft: #e4ece6;
+    --primary-faint: #f1f5f1;
+    --accent: #8c6f4a;
+    --accent-soft: #f3ebdf;
+    --danger: #a04545;
+    --success: #3daa6f;
+    --chat-bg: #f0ede5;
+    --bubble-me: #2c4a3e;
+    --bubble-me-fg: #ffffff;
+    --bubble-them: #ffffff;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
   }
+
   .dark {
-    --background: #4e598c;
-    --foreground: #f5f5f5;
+    --bg: #0e1714;
+    --surface: #15201c;
+    --surface-2: #1b2823;
+    --ink: #e8e5dd;
+    --ink-2: #9fa9a2;
+    --ink-3: #6e7672;
+    --divider: rgba(255, 255, 255, 0.06);
+    --divider-strong: rgba(255, 255, 255, 0.12);
+    --primary: #5c8e78;
+    --primary-deep: #3d6e58;
+    --primary-soft: rgba(92, 142, 120, 0.18);
+    --primary-faint: rgba(92, 142, 120, 0.08);
+    --accent: #b89466;
+    --accent-soft: rgba(184, 148, 102, 0.18);
+    --danger: #c76a6a;
+    --success: #4abf80;
+    --chat-bg: #0b1410;
+    --bubble-me: #3d6e58;
+    --bubble-me-fg: #ffffff;
+    --bubble-them: #1b2823;
   }
-  /* Tailwind v4's `dark:` variant compiles to `@media (prefers-color-scheme: dark)`,
-     so when there's no explicit `.dark` toggle (current setup), --foreground must
-     also follow the OS preference — otherwise text-foreground stays dark on dark. */
+
   @media (prefers-color-scheme: dark) {
     :root:not(.light) {
-      --background: #4e598c;
-      --foreground: #f5f5f5;
+      --bg: #0e1714;
+      --surface: #15201c;
+      --surface-2: #1b2823;
+      --ink: #e8e5dd;
+      --ink-2: #9fa9a2;
+      --ink-3: #6e7672;
+      --divider: rgba(255, 255, 255, 0.06);
+      --divider-strong: rgba(255, 255, 255, 0.12);
+      --primary: #5c8e78;
+      --primary-deep: #3d6e58;
+      --primary-soft: rgba(92, 142, 120, 0.18);
+      --primary-faint: rgba(92, 142, 120, 0.08);
+      --accent: #b89466;
+      --accent-soft: rgba(184, 148, 102, 0.18);
+      --danger: #c76a6a;
+      --success: #4abf80;
+      --chat-bg: #0b1410;
+      --bubble-me: #3d6e58;
+      --bubble-me-fg: #ffffff;
+      --bubble-them: #1b2823;
     }
   }
 }
 
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-divider: var(--divider);
+  --color-divider-strong: var(--divider-strong);
+  --color-primary: var(--primary);
+  --color-primary-deep: var(--primary-deep);
+  --color-primary-soft: var(--primary-soft);
+  --color-primary-faint: var(--primary-faint);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-chat-bg: var(--chat-bg);
+  --color-bubble-me: var(--bubble-me);
+  --color-bubble-me-fg: var(--bubble-me-fg);
+  --color-bubble-them: var(--bubble-them);
+
+  --font-sans:
+    var(--font-rubik), system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* ───────────────────────────────────────────────────────────
+ * Base
+ * ─────────────────────────────────────────────────────────── */
+html,
 body {
-  background: var(--background);
-  color: var(--foreground);
+  height: 100%;
+  background: var(--bg);
+  color: var(--ink);
   font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  /* Block native pull-to-refresh — the app is a PWA, not a browser. */
+  overscroll-behavior-y: none;
+}
+
+input,
+textarea,
+button {
+  font-family: inherit;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--ink-3);
+}
+
+/* Hide scrollbars inside scroll containers but keep the scroll. */
+.scroll-area::-webkit-scrollbar {
+  display: none;
+}
+.scroll-area {
+  scrollbar-width: none;
+}
+
+/* ───────────────────────────────────────────────────────────
+ * Keyframes used across primitives & screens
+ * ─────────────────────────────────────────────────────────── */
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes slideUp {
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+@keyframes pop {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+@keyframes pulse-soft {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.06);
+    opacity: 1;
+  }
+}
+@keyframes typing-dot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.anim-fade {
+  animation: fade 0.18s ease;
+}
+.anim-slide-up {
+  animation: slideUp 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.anim-pop {
+  animation: pop 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* Range inputs follow the Forest primary by default. */
+input[type='range'] {
+  accent-color: var(--primary);
 }

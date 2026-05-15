@@ -1,19 +1,28 @@
 'use client'
 
-import { useState } from 'react'
-import { cn } from '@/lib/utils/cn'
-import { PhotoSlider } from './PhotoSlider'
+import { useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Header, IconBtn, StickyActions } from '@/components/ui/header'
+import { Button } from '@/components/ui/button'
+import { Icon } from '@/components/ui/icon'
+import { Modal } from '@/components/ui/modal'
+import { Sheet } from '@/components/ui/sheet'
+import { Tag } from '@/components/ui/chip'
+import { useToast } from '@/components/ui/toast'
+import { Photo as PhotoStream } from '@/features/photos/components/Photo'
 import { useMatch } from '@/features/likes/hooks/MatchProvider'
+import { useLang } from '@/lib/i18n/use-lang'
+import { localizePlace, localizeNationality, type Lang } from '@/lib/i18n/dictionary'
 import type { ProfileDetailData } from '../server/get-profile'
 
-function calcAge(birthDate: string): number {
-  const birth = new Date(birthDate)
+function calcAge(birthDate: string | null): number | null {
+  if (!birthDate) return null
+  const b = new Date(birthDate)
+  if (Number.isNaN(b.getTime())) return null
   const now = new Date()
-  let age = now.getFullYear() - birth.getFullYear()
-  const m = now.getMonth() - birth.getMonth()
-  if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) {
-    age--
-  }
+  let age = now.getFullYear() - b.getFullYear()
+  const m = now.getMonth() - b.getMonth()
+  if (m < 0 || (m === 0 && now.getDate() < b.getDate())) age--
   return age
 }
 
@@ -23,251 +32,362 @@ interface ProfileDetailProps {
 }
 
 export function ProfileDetail({ profile, isOwnProfile }: ProfileDetailProps) {
-  const age = profile.birth_date ? calcAge(profile.birth_date) : null
-  const showFull = isOwnProfile || profile.viewer_is_match
-
-  return (
-    <div className="mx-auto max-w-2xl">
-      {/* Photos */}
-      <PhotoSlider photos={profile.photos} showFull={showFull} />
-
-      {/* Basic info */}
-      <div className="mt-6">
-        <div className="flex items-baseline gap-3">
-          <h1 className="text-2xl font-bold text-foreground">{profile.name}</h1>
-          {age != null && <span className="text-xl text-zinc-500">{age} лет</span>}
-        </div>
-
-        {(profile.city || profile.country) && (
-          <p className="mt-1 text-zinc-500">
-            {[profile.city, profile.country].filter(Boolean).join(', ')}
-          </p>
-        )}
-      </div>
-
-      {/* AI Bio */}
-      {profile.ai_bio && (
-        <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-          <h3 className="mb-2 text-sm font-medium text-zinc-500">О себе</h3>
-          <p className="whitespace-pre-wrap text-foreground">{profile.ai_bio}</p>
-        </div>
-      )}
-
-      {/* About self (raw text) */}
-      {profile.about_self && (
-        <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-          <h3 className="mb-2 text-sm font-medium text-zinc-500">Подробнее</h3>
-          <p className="whitespace-pre-wrap text-sm text-zinc-600 dark:text-zinc-400">
-            {profile.about_self}
-          </p>
-        </div>
-      )}
-
-      {/* Details grid */}
-      <div className="mt-6 grid grid-cols-2 gap-4">
-        {profile.nationality && <DetailItem label="Национальность" value={profile.nationality} />}
-        {profile.height != null && <DetailItem label="Рост" value={`${profile.height} см`} />}
-        {profile.weight != null && <DetailItem label="Вес" value={`${profile.weight} кг`} />}
-        {profile.marital_status && (
-          <DetailItem
-            label="Семейное положение"
-            value={maritalStatusLabel(profile.marital_status, profile.gender)}
-          />
-        )}
-        {profile.children_count != null && (
-          <DetailItem label="Дети" value={childrenLabel(profile.children_count)} />
-        )}
-        {profile.income_level && (
-          <DetailItem label="Уровень дохода" value={incomeLabel(profile.income_level)} />
-        )}
-        {profile.housing && <DetailItem label="Жильё" value={housingLabel(profile.housing)} />}
-        {profile.willing_to_relocate != null && (
-          <DetailItem
-            label="Готовность к переезду"
-            value={relocationLabel(profile.willing_to_relocate)}
-          />
-        )}
-        {profile.polygyny_attitude && (
-          <DetailItem
-            label="Отношение к многожёнству"
-            value={polygynyLabel(profile.polygyny_attitude)}
-          />
-        )}
-        {profile.hijab_attitude && (
-          <DetailItem label="Хиджаб" value={hijabLabel(profile.hijab_attitude)} />
-        )}
-      </div>
-
-      {/* Action buttons */}
-      {!isOwnProfile && (
-        <div className="mt-8 flex gap-3">
-          <LikeButton
-            profileId={profile.id}
-            hasLiked={profile.viewer_has_liked}
-            profile={profile}
-          />
-          <button
-            type="button"
-            className={cn(
-              'rounded-xl border border-zinc-200 px-6 py-3 text-sm font-medium',
-              'text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800',
-            )}
-          >
-            Пожаловаться
-          </button>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ── Sub-components ──────────────────────────────────────────────────
-
-function DetailItem({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <dt className="text-xs text-zinc-500">{label}</dt>
-      <dd className="mt-0.5 text-sm text-foreground">{value}</dd>
-    </div>
-  )
-}
-
-function LikeButton({
-  profileId,
-  hasLiked,
-  profile,
-}: {
-  profileId: string
-  hasLiked: boolean
-  profile: ProfileDetailData
-}) {
-  const [liked, setLiked] = useState(hasLiked)
-  const [loading, setLoading] = useState(false)
+  const { t, lang } = useLang()
+  const router = useRouter()
+  const toast = useToast()
   const { triggerMatch } = useMatch()
+  const [photoIdx, setPhotoIdx] = useState(0)
+  const [fullscreen, setFullscreen] = useState(false)
+  const [showReport, setShowReport] = useState(false)
+  const [showUnlike, setShowUnlike] = useState(false)
+  const [liked, setLiked] = useState(profile.viewer_has_liked)
+  const [matched, setMatched] = useState(profile.viewer_is_match)
+  const [pending, setPending] = useState(false)
 
-  const handleLike = async () => {
-    setLoading(true)
+  const photos = profile.photos
+  const age = calcAge(profile.birth_date)
+  const touchStart = useRef<number | null>(null)
+  const fsTouchStart = useRef<number | null>(null)
+
+  const goNext = () => setPhotoIdx((i) => Math.min(i + 1, photos.length - 1))
+  const goPrev = () => setPhotoIdx((i) => Math.max(i - 1, 0))
+
+  const swipe = (touch: typeof touchStart, end: number, openFs: () => void) => {
+    if (touch.current === null) return
+    const diff = touch.current - end
+    if (Math.abs(diff) > 40) (diff > 0 ? goNext : goPrev)()
+    else openFs()
+    touch.current = null
+  }
+
+  const sendLike = async () => {
+    if (pending || matched) return
+    if (liked) {
+      setShowUnlike(true)
+      return
+    }
+    setPending(true)
     try {
       const res = await fetch('/api/likes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to_user_id: profileId, action: liked ? 'unlike' : 'like' }),
+        body: JSON.stringify({ to_user_id: profile.id, action: 'like' }),
       })
       if (res.ok) {
+        setLiked(true)
         const data = await res.json()
-        setLiked(!liked)
-
-        // If match was created, show match modal
         if (data.matched) {
+          setMatched(true)
           triggerMatch({
             myProfile: null,
             theirProfile: {
               id: profile.id,
-              name: profile.name,
-              gender: profile.gender,
-              photos: profile.photos,
+              name: profile.name ?? '',
+              gender: profile.gender ?? 'male',
+              photos: photos as never,
             },
           })
+        } else {
+          toast.show(t('prof_liked_toast'))
         }
+      } else {
+        const err = await res.json().catch(() => null)
+        toast.show(err?.message ?? t('prof_liked_toast'))
       }
     } finally {
-      setLoading(false)
+      setPending(false)
     }
   }
 
+  const confirmUnlike = async () => {
+    setShowUnlike(false)
+    setPending(true)
+    try {
+      const res = await fetch('/api/likes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to_user_id: profile.id, action: 'unlike' }),
+      })
+      if (res.ok) {
+        setLiked(false)
+        setMatched(false)
+        toast.show(t('prof_unlike_done'))
+      }
+    } finally {
+      setPending(false)
+    }
+  }
+
+  const openChat = () => {
+    router.push(`/chats?with=${profile.id}`)
+  }
+
+  const photo = photos[photoIdx]
+  const showFull = isOwnProfile || matched
+
   return (
-    <button
-      type="button"
-      disabled={loading}
-      onClick={handleLike}
-      className={cn(
-        'rounded-xl px-6 py-3 text-sm font-medium transition-colors',
-        liked
-          ? 'bg-red-50 text-red-600 hover:bg-red-100 dark:bg-red-900/20 dark:text-red-400'
-          : 'bg-primary text-white hover:bg-primary-hover',
+    <div className="flex h-full flex-col bg-[var(--bg)]">
+      <Header
+        title=""
+        leading="back"
+        onLeading={() => router.back()}
+        hairline={false}
+        trailing={
+          !isOwnProfile ? (
+            <IconBtn icon="more" onClick={() => setShowReport(true)} />
+          ) : undefined
+        }
+      />
+
+      <div className="scroll-area flex-1 overflow-auto pb-[120px]">
+        <div
+          className="relative mx-4 aspect-[4/5] cursor-pointer overflow-hidden rounded-[22px]"
+          onTouchStart={(e) => {
+            touchStart.current = e.touches[0]?.clientX ?? null
+          }}
+          onTouchEnd={(e) => {
+            const x = e.changedTouches[0]?.clientX ?? 0
+            swipe(touchStart, x, () => setFullscreen(true))
+          }}
+          onClick={() => setFullscreen(true)}
+        >
+          {photo ? (
+            <PhotoStream
+              photoId={photo.id}
+              variant={showFull ? 'full' : 'cover'}
+              alt={`${profile.name ?? ''} ${photoIdx + 1}`}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            <div className="absolute inset-0 grid place-items-center bg-[var(--surface-2)] text-[var(--ink-3)]">
+              <Icon name="user" size={48} />
+            </div>
+          )}
+          <div className="pointer-events-none absolute left-3 right-3 top-3 flex gap-1">
+            {photos.map((_, i) => (
+              <span
+                key={i}
+                className={`h-[3px] flex-1 rounded-full ${
+                  i === photoIdx ? 'bg-white/95' : 'bg-white/35'
+                }`}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="px-[22px] pt-5">
+          <div className="flex items-end justify-between gap-3">
+            <div>
+              <h1 className="m-0 text-[26px] font-semibold tracking-[-0.5px] text-[var(--ink)]">
+                {profile.name ?? ''}
+                {age != null && <span className="font-semibold">, {age}</span>}
+              </h1>
+              {(profile.city || profile.country) && (
+                <div className="mt-1 flex items-center gap-1.5 text-sm text-[var(--ink-2)]">
+                  <Icon name="pin" size={13} className="text-[var(--ink-3)]" />
+                  <span>
+                    {profile.city ? localizePlace(profile.city, lang) : ''}
+                    {profile.city && profile.country ? ', ' : ''}
+                    {profile.country ? localizePlace(profile.country, lang) : ''}
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="mt-3.5 flex flex-wrap gap-[7px]">
+            {profile.marital_status && (
+              <Tag>{maritalLabel(profile.marital_status, profile.gender, lang)}</Tag>
+            )}
+            {profile.children_count !== null && (
+              <Tag>
+                {(profile.children_count ?? 0) > 0
+                  ? lang === 'ru'
+                    ? 'Есть дети'
+                    : 'Has children'
+                  : lang === 'ru'
+                    ? 'Детей нет'
+                    : 'No children'}
+              </Tag>
+            )}
+            {profile.nationality && (
+              <Tag>{localizeNationality(profile.nationality, lang, profile.gender)}</Tag>
+            )}
+            {profile.height != null && (
+              <Tag>
+                {profile.height} {lang === 'ru' ? 'см' : 'cm'}
+              </Tag>
+            )}
+          </div>
+
+          {(profile.ai_bio || profile.about_self) && (
+            <div className="mt-[18px]">
+              <p className="m-0 whitespace-pre-wrap text-[15px] leading-relaxed text-[var(--ink)] [text-wrap:pretty]">
+                {profile.ai_bio ?? profile.about_self}
+              </p>
+            </div>
+          )}
+
+          {photos.length > 1 && (
+            <div className="mt-[22px]">
+              <div className="mb-2.5 text-xs font-semibold uppercase tracking-[0.6px] text-[var(--ink-3)]">
+                {t('prof_photos')}
+              </div>
+              <div className="grid grid-cols-2 gap-2.5">
+                {photos.slice(1).map((p, i) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => setPhotoIdx(i + 1)}
+                    className={`overflow-hidden rounded-[14px] ${
+                      photoIdx === i + 1
+                        ? 'outline outline-2 outline-offset-2 outline-[var(--primary)]'
+                        : ''
+                    }`}
+                  >
+                    <div className="relative aspect-[4/5]">
+                      <PhotoStream
+                        photoId={p.id}
+                        variant={showFull ? 'full' : 'cover'}
+                        alt={`${profile.name ?? ''} ${i + 2}`}
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {!showFull && (
+                <div className="mt-2.5 flex gap-1.5 text-xs text-[var(--ink-3)]">
+                  <Icon name="lock" size={14} />
+                  <span>
+                    {t('prof_blurred')} · {t('prof_blurred_sub')}
+                  </span>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {!isOwnProfile && (
+        <StickyActions>
+          {matched ? (
+            <Button kind="primary" size="lg" full icon="chat" onClick={openChat}>
+              {t('prof_message')}
+            </Button>
+          ) : (
+            <Button
+              kind="primary"
+              size="lg"
+              full
+              icon={liked ? 'heart-fill' : 'heart'}
+              onClick={sendLike}
+              disabled={pending}
+            >
+              {t(liked ? 'prof_liked' : 'prof_like')}
+            </Button>
+          )}
+        </StickyActions>
       )}
-    >
-      {liked ? 'Убрать лайк' : 'Лайк'}
-    </button>
+
+      {fullscreen && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95"
+          onTouchStart={(e) => {
+            fsTouchStart.current = e.touches[0]?.clientX ?? null
+          }}
+          onTouchEnd={(e) => {
+            const x = e.changedTouches[0]?.clientX ?? 0
+            swipe(fsTouchStart, x, () => setFullscreen(false))
+          }}
+          onClick={() => setFullscreen(false)}
+        >
+          {photo && (
+            <PhotoStream
+              photoId={photo.id}
+              variant={showFull ? 'full' : 'cover'}
+              alt={profile.name ?? ''}
+              className="pointer-events-none max-h-full max-w-full object-contain"
+            />
+          )}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation()
+              setFullscreen(false)
+            }}
+            className="fixed right-5 top-5 grid h-10 w-10 place-items-center rounded-full bg-white/20 text-white"
+          >
+            <Icon name="close" size={20} />
+          </button>
+          {photos.length > 1 && (
+            <div className="fixed bottom-6 left-0 right-0 flex justify-center gap-1.5">
+              {photos.map((_, i) => (
+                <span
+                  key={i}
+                  className="h-1.5 rounded-full bg-white/40 transition-[width]"
+                  style={{ width: i === photoIdx ? 22 : 6, background: i === photoIdx ? '#fff' : undefined }}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <Sheet open={showReport} onClose={() => setShowReport(false)}>
+        <button
+          type="button"
+          onClick={() => {
+            setShowReport(false)
+            toast.show(t('prof_report'))
+          }}
+          className="flex h-[50px] w-full items-center gap-3 rounded-xl bg-transparent px-4 text-left text-[15px] text-[var(--danger)]"
+        >
+          <Icon name="flag" size={18} />
+          {t('prof_report')}
+        </button>
+        <Button kind="ghost" full onClick={() => setShowReport(false)}>
+          {t('cancel')}
+        </Button>
+      </Sheet>
+
+      <Modal
+        open={showUnlike}
+        onClose={() => setShowUnlike(false)}
+        title={t('prof_unlike_title')}
+        primary={{ label: t('prof_unlike_confirm'), onClick: confirmUnlike }}
+        secondary={{ label: t('cancel'), onClick: () => setShowUnlike(false) }}
+        danger
+      >
+        {t('prof_unlike_sub')}
+      </Modal>
+    </div>
   )
 }
 
-// ── Label helpers ───────────────────────────────────────────────────
-
-function maritalStatusLabel(v: string, gender?: 'male' | 'female' | null): string {
-  if (gender === 'female') {
-    const map: Record<string, string> = {
-      single: 'Замужем не была',
-      divorced: 'Разведена',
-      widowed: 'Вдова',
-    }
-    return map[v] ?? v
+function maritalLabel(
+  status: string,
+  gender: 'male' | 'female' | null | undefined,
+  lang: Lang,
+): string {
+  const ru: Record<string, [string, string]> = {
+    single: ['Не был женат', 'Не была замужем'],
+    divorced: ['Разведён', 'Разведена'],
+    widowed: ['Вдовец', 'Вдова'],
+    married_1: ['Женат на одной', 'Замужем'],
+    married_2: ['Женат на двоих', 'Замужем'],
+    married_3: ['Женат на троих', 'Замужем'],
   }
-  const map: Record<string, string> = {
-    single: 'Женат не был',
-    divorced: 'Разведён',
-    widowed: 'Вдовец',
-    married_1: 'Женат на одной',
-    married_2: 'Женат на двух',
-    married_3: 'Женат на трёх',
+  const en: Record<string, string> = {
+    single: 'Never married',
+    divorced: 'Divorced',
+    widowed: gender === 'female' ? 'Widow' : 'Widower',
+    married_1: 'Married to one wife',
+    married_2: 'Married to two wives',
+    married_3: 'Married to three wives',
   }
-  return map[v] ?? v
-}
-
-function childrenLabel(v: number): string {
-  const map: Record<number, string> = {
-    0: 'Детей нет',
-    1: '1 ребёнок',
-    2: '2 ребёнка',
-    3: '3 ребёнка',
-    4: '4 ребёнка',
-  }
-  if (v >= 5) return '5 или более детей'
-  return map[v] ?? String(v)
-}
-
-function incomeLabel(v: string): string {
-  const map: Record<string, string> = {
-    low: 'Живу скромно',
-    middle: 'Средний достаток',
-    high: 'Хорошо обеспечен',
-  }
-  return map[v] ?? v
-}
-
-function housingLabel(v: string): string {
-  const map: Record<string, string> = {
-    rent: 'Арендую',
-    apartment: 'Своя квартира',
-    house: 'Свой дом',
-    parents: 'Живу с родителями',
-  }
-  return map[v] ?? v
-}
-
-function relocationLabel(v: string): string {
-  const map: Record<string, string> = {
-    none: 'Не готова к переезду',
-    region: 'Внутри региона',
-    country: 'Внутри страны',
-    abroad: 'В другую страну',
-  }
-  return map[v] ?? v
-}
-
-function polygynyLabel(v: string): string {
-  const map: Record<string, string> = {
-    positive: 'Положительное',
-    negative: 'Отрицательное',
-  }
-  return map[v] ?? v
-}
-
-function hijabLabel(v: string): string {
-  const map: Record<string, string> = {
-    no_hijab: 'Не покрываюсь',
-    hijab: 'Ношу хиджаб',
-    niqab: 'Ношу никаб',
-  }
-  return map[v] ?? v
+  if (lang === 'en') return en[status] ?? status
+  const pair = ru[status]
+  if (!pair) return status
+  return gender === 'female' ? pair[1] : pair[0]
 }

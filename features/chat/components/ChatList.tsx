@@ -1,8 +1,13 @@
 'use client'
 
 import Link from 'next/link'
-import { MessageCircle } from 'lucide-react'
-import { cn } from '@/lib/utils/cn'
+import { useMemo, useState } from 'react'
+import { TextInput } from '@/components/ui/input'
+import { BigHeader } from '@/components/ui/header'
+import { Icon } from '@/components/ui/icon'
+import { Avatar } from '@/components/ui/avatar'
+import { EmptyState } from '@/components/ui/empty-state'
+import { useLang } from '@/lib/i18n/use-lang'
 
 interface ChatPreview {
   chat_id: string
@@ -28,92 +33,119 @@ interface ChatListProps {
 }
 
 export function ChatList({ chats, userId }: ChatListProps) {
-  if (chats.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-zinc-500">
-        <MessageCircle className="mb-4 h-12 w-12 text-zinc-300" />
-        <p className="text-lg font-medium">Нет активных чатов</p>
-        <p className="mt-1 text-sm">Здесь появятся чаты с вашими мэтчами</p>
-      </div>
-    )
-  }
+  const { t } = useLang()
+  const [search, setSearch] = useState('')
+
+  const filtered = useMemo(() => {
+    if (!search.trim()) return chats
+    const q = search.toLowerCase()
+    return chats.filter((c) => {
+      if (c.other_user.name?.toLowerCase().includes(q)) return true
+      if (c.last_message?.content.toLowerCase().includes(q)) return true
+      return false
+    })
+  }, [chats, search])
 
   return (
-    <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-      {chats.map((chat) => (
-        <Link
-          key={chat.chat_id}
-          href={`/chats/${chat.chat_id}`}
-          className="flex items-center gap-4 px-4 py-3 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors"
-        >
-          {/* Avatar */}
-          <div className="relative shrink-0">
-            <div className="h-12 w-12 rounded-full bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
-              {chat.other_user.photo_url ? (
-                // eslint-disable-next-line @next/next/no-img-element -- streamed via auth-aware route
-                <img
-                  src={`/api/photos/stream/${chat.other_user.id}/${chat.other_user.photo_url}`}
-                  alt={chat.other_user.name ?? ''}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center text-lg text-zinc-400">
-                  {chat.other_user.name?.charAt(0)?.toUpperCase() ?? '?'}
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Content */}
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-foreground truncate">
-                {chat.other_user.name ?? 'Пользователь'}
-              </span>
-              {chat.last_message && (
-                <span className="shrink-0 text-xs text-zinc-400">
-                  {formatTime(chat.last_message.created_at)}
-                </span>
-              )}
-            </div>
-            <div className="flex items-center justify-between mt-0.5">
-              <span className="text-sm text-zinc-500 truncate">
-                {chat.last_message ? formatPreview(chat.last_message, userId) : 'Начните общение'}
-              </span>
-              {chat.unread_count > 0 && (
-                <span
-                  className={cn(
-                    'ml-2 shrink-0 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-white',
-                    chat.unread_count > 99 && 'px-1.5',
+    <div className="flex h-full flex-col">
+      <BigHeader title={t('chats_title')} />
+      <div className="px-5 pb-2 pt-1">
+        <TextInput
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={t('chats_search')}
+          icon="search"
+        />
+      </div>
+      <div className="scroll-area flex-1 overflow-auto pb-24">
+        {filtered.length === 0 ? (
+          <EmptyState icon="chat" title={t('chats_empty')} sub={t('chats_empty_sub')} />
+        ) : (
+          filtered.map((c) => (
+            <Link
+              key={c.chat_id}
+              href={`/chats/${c.chat_id}`}
+              className="flex items-center gap-3 border-b border-[var(--divider)] px-5 py-3"
+            >
+              <Avatar
+                src={c.other_user.photo_url ?? null}
+                alt={c.other_user.name ?? ''}
+                size={52}
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="truncate text-[15.5px] font-semibold text-[var(--ink)]">
+                    {c.other_user.name ?? 'Пользователь'}
+                  </span>
+                  {c.last_message && (
+                    <span
+                      className={`shrink-0 text-xs ${
+                        c.unread_count > 0
+                          ? 'font-semibold text-[var(--primary)]'
+                          : 'text-[var(--ink-3)]'
+                      }`}
+                    >
+                      {formatTime(c.last_message.created_at)}
+                    </span>
                   )}
-                >
-                  {chat.unread_count > 99 ? '99+' : chat.unread_count}
-                </span>
-              )}
-            </div>
-          </div>
-        </Link>
-      ))}
+                </div>
+                <div className="mt-1 flex items-center justify-between gap-2">
+                  <span className="flex-1 truncate text-[13.5px] text-[var(--ink-2)]">
+                    {c.last_message ? (
+                      <PreviewText msg={c.last_message} userId={userId} t={t} />
+                    ) : (
+                      t('chat_input_ph')
+                    )}
+                  </span>
+                  {c.unread_count > 0 && (
+                    <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--primary)] px-1.5 text-[11.5px] font-semibold text-white">
+                      {c.unread_count > 99 ? '99+' : c.unread_count}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </Link>
+          ))
+        )}
+      </div>
     </div>
   )
 }
 
-function formatPreview(
-  msg: { type: string; content: string; sender_id: string },
-  userId: string,
-): string {
-  const prefix = msg.sender_id === userId ? 'Вы: ' : ''
-  if (msg.type === 'image') return prefix + '📷 Фото'
-  if (msg.type === 'voice') return prefix + '🎤 Голосовое'
-  return prefix + (msg.content.length > 60 ? msg.content.slice(0, 60) + '...' : msg.content)
+function PreviewText({
+  msg,
+  userId,
+  t,
+}: {
+  msg: { type: string; content: string; sender_id: string }
+  userId: string
+  t: (k: 'chat_you' | 'chat_voice') => string
+}) {
+  const isMine = msg.sender_id === userId
+  const prefix = isMine ? (
+    <span className="inline-flex items-center gap-1">
+      <Icon name="check2" size={14} className="text-[var(--ink-3)]" />
+      {t('chat_you')}:{' '}
+    </span>
+  ) : null
+  let content: string
+  if (msg.type === 'image') content = '📷'
+  else if (msg.type === 'voice') content = `🎙 ${t('chat_voice')}`
+  else content = msg.content.length > 60 ? msg.content.slice(0, 60) + '…' : msg.content
+  return (
+    <>
+      {prefix}
+      {content}
+    </>
+  )
 }
 
 function formatTime(iso: string): string {
-  const date = new Date(iso)
+  const d = new Date(iso)
   const now = new Date()
-  const isToday = date.toDateString() === now.toDateString()
-  if (isToday) {
-    return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
+  const sameDay = d.toDateString() === now.toDateString()
+  if (sameDay) {
+    return d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
   }
-  return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
+  return d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })
 }

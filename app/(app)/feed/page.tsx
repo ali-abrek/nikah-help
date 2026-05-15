@@ -1,32 +1,24 @@
+import Link from 'next/link'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getUserId } from '@/lib/auth/claims'
 import { queryFeed } from '@/features/feed/server/query-feed'
 import { FeedClient } from '@/features/feed/components/FeedClient'
-import Link from 'next/link'
+import { FeedHeader } from '@/features/feed/components/FeedHeader'
+import { EmptyState } from '@/components/ui/empty-state'
 
-export const metadata = {
-  title: 'Лента — Nikah Help',
-}
+export const metadata = { title: 'Лента — Nikah Help' }
 
 export default async function FeedPage() {
   const supabase = await createServerSupabase()
   const { data } = await supabase.auth.getClaims()
 
   if (!data?.claims) {
-    return (
-      <div className="py-16 text-center">
-        <p className="text-zinc-500">Требуется авторизация</p>
-      </div>
-    )
+    return <EmptyState icon="user" title="Требуется авторизация" />
   }
 
   const userId = getUserId(data.claims as Record<string, unknown>)
   if (!userId) {
-    return (
-      <div className="py-16 text-center">
-        <p className="text-zinc-500">Требуется авторизация</p>
-      </div>
-    )
+    return <EmptyState icon="user" title="Требуется авторизация" />
   }
 
   const { data: viewer } = await supabase
@@ -37,10 +29,10 @@ export default async function FeedPage() {
 
   if (!viewer?.gender) {
     return (
-      <div className="py-16 text-center">
-        <p className="text-zinc-500">
+      <div className="px-5 py-16 text-center">
+        <p className="text-sm text-[var(--ink-2)]">
           Завершите{' '}
-          <Link href="/onboarding" className="underline">
+          <Link href="/onboarding" className="text-[var(--primary)] underline">
             регистрацию
           </Link>{' '}
           для доступа к ленте.
@@ -50,7 +42,6 @@ export default async function FeedPage() {
   }
 
   const viewerGender = viewer.gender as 'male' | 'female'
-
   const initialData = await queryFeed({
     supabase,
     viewerId: userId,
@@ -59,14 +50,15 @@ export default async function FeedPage() {
   })
 
   return (
-    <div>
-      <h1 className="mb-6 text-2xl font-bold text-foreground">Лента</h1>
-
-      <FeedClient
-        viewerGender={viewerGender}
-        filters={{ gender: viewerGender }}
-        initialData={initialData}
-      />
-    </div>
+    <>
+      <FeedHeader />
+      <div className="px-5 pb-24">
+        <FeedClient
+          viewerGender={viewerGender}
+          filters={{ gender: viewerGender }}
+          initialData={initialData}
+        />
+      </div>
+    </>
   )
 }

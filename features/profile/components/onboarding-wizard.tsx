@@ -1,27 +1,35 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { saveOnboardingStep1, saveOnboardingStep2 } from '../actions'
+import {
+  saveOnboardingStep1,
+  saveOnboardingStep2,
+  completeOnboardingAction,
+} from '../actions'
 import { OnboardingStep1 } from './onboarding-step1'
 import { OnboardingStep2 } from './onboarding-step2'
 import { OnboardingStep3 } from './onboarding-step3'
 import { OnboardingStep4 } from './onboarding-step4'
+import { Button } from '@/components/ui/button'
+import { StickyActions } from '@/components/ui/header'
+import { Logo } from '@/components/ui/logo'
+import { useLang } from '@/lib/i18n/use-lang'
 import type {
   OnboardingStep1Data,
   OnboardingStep2MaleData,
   OnboardingStep2FemaleData,
 } from '../schemas'
 
-const STEPS = [
-  { id: 1, label: 'Основное' },
-  { id: 2, label: 'Детали' },
-  { id: 3, label: 'Фото' },
-  { id: 4, label: 'Обзор' },
-]
-
 type ActionResult = Awaited<ReturnType<typeof saveOnboardingStep1>>
 
+/**
+ * Re-skinned onboarding shell using the Forest design's chrome:
+ * a step counter + progress bar at the top, sticky Back/Next actions at the
+ * bottom. The internal step forms keep using react-hook-form + the existing
+ * Server Actions so the data flow is untouched.
+ */
 export function OnboardingWizard({ locale = 'ru' }: { locale?: string }) {
+  const { t } = useLang()
   const [step, setStep] = useState(1)
   const [gender, setGender] = useState<'male' | 'female' | null>(null)
   const [result, setResult] = useState<ActionResult | null>(null)
@@ -30,131 +38,133 @@ export function OnboardingWizard({ locale = 'ru' }: { locale?: string }) {
   const [step2Data, setStep2Data] = useState<Partial<
     OnboardingStep2MaleData | OnboardingStep2FemaleData
   > | null>(null)
+  const [submittingStep, setSubmittingStep] = useState<number | null>(null)
 
   const handleStep1Submit = (formData: FormData) => {
     const g = formData.get('gender') as string
     if (g === 'male' || g === 'female') setGender(g)
-
-    // Capture form data before submission for back-navigation
     const captured: Record<string, unknown> = {}
     formData.forEach((value, key) => {
-      if (key === 'height' || key === 'weight') {
-        captured[key] = Number(value)
-      } else if (key === 'allow_geolocation') {
-        captured[key] = value === 'true' || value === 'on'
-      } else {
-        captured[key] = value
-      }
+      if (key === 'height' || key === 'weight') captured[key] = Number(value)
+      else if (key === 'allow_geolocation') captured[key] = value === 'true' || value === 'on'
+      else captured[key] = value
     })
     setStep1Data(captured as Partial<OnboardingStep1Data>)
-
+    setSubmittingStep(1)
     startTransition(async () => {
       const res = await saveOnboardingStep1(formData)
       setResult(res)
+      setSubmittingStep(null)
       if (res.success) setStep(2)
     })
   }
 
   const handleStep2Submit = (formData: FormData) => {
-    // Capture form data for back-navigation
     const captured: Record<string, unknown> = {}
     formData.forEach((value, key) => {
-      if (key === 'children_count') {
-        captured[key] = Number(value)
-      } else {
-        captured[key] = value
-      }
+      if (key === 'children_count') captured[key] = Number(value)
+      else captured[key] = value
     })
     setStep2Data(captured as Partial<OnboardingStep2MaleData | OnboardingStep2FemaleData>)
-
+    setSubmittingStep(2)
     startTransition(async () => {
       const res = await saveOnboardingStep2(formData)
       setResult(res)
+      setSubmittingStep(null)
       if (res.success) setStep(3)
     })
   }
 
+  const submitStepForm = (n: number) => {
+    const form = document.getElementById(`ob-step-${n}`) as HTMLFormElement | null
+    form?.requestSubmit()
+  }
+
+  const handleNext = () => {
+    if (step === 1) submitStepForm(1)
+    else if (step === 2) submitStepForm(2)
+    else if (step === 3) setStep(4)
+    else if (step === 4) {
+      setSubmittingStep(4)
+      startTransition(async () => {
+        await completeOnboardingAction()
+        setSubmittingStep(null)
+        // redirect handled server-side by completeOnboarding
+        window.location.href = '/feed'
+      })
+    }
+  }
+
+  const handleBack = () => {
+    if (step > 1) setStep((s) => s - 1)
+  }
+
+  const progressPct = (step / 4) * 100
+
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
-      {/* Step indicators */}
-      <div className="mb-8 flex items-center justify-center gap-2">
-        {STEPS.map((s, i) => (
-          <div key={s.id} className="flex items-center gap-2">
-            <div
-              className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
-                step >= s.id
-                  ? 'bg-emerald-600 text-white'
-                  : 'border border-zinc-300 text-zinc-500 dark:border-zinc-700'
-              }`}
-            >
-              {step > s.id ? '✓' : s.id}
-            </div>
-            <span
-              className={`text-sm ${
-                step >= s.id ? 'text-foreground font-medium' : 'text-zinc-400'
-              }`}
-            >
-              {s.label}
-            </span>
-            {i < STEPS.length - 1 && (
-              <div
-                className={`mx-2 h-px w-8 ${
-                  step > s.id ? 'bg-emerald-600' : 'bg-zinc-300 dark:bg-zinc-700'
-                }`}
-              />
-            )}
-          </div>
-        ))}
+    <div className="flex h-full flex-col">
+      <div className="px-5 pb-2 pt-3.5">
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-[12.5px] font-medium uppercase tracking-[0.4px] text-[var(--ink-3)]">
+            {t('ob_step', { n: step })}
+          </span>
+          <Logo size={20} />
+        </div>
+        <div className="h-1 overflow-hidden rounded-full bg-[var(--divider)]">
+          <div
+            className="h-full bg-[var(--primary)] transition-[width] duration-300"
+            style={{
+              width: `${progressPct}%`,
+              transitionTimingFunction: 'cubic-bezier(.2,.8,.2,1)',
+            }}
+          />
+        </div>
       </div>
 
-      {/* Step content */}
-      {step === 1 && (
-        <OnboardingStep1
-          onSubmit={handleStep1Submit}
-          defaultValues={step1Data ?? undefined}
-          isPending={isPending}
-          locale={locale}
-        />
-      )}
+      <div className="scroll-area flex-1 overflow-auto px-5 pb-5 pt-3">
+        {step === 1 && (
+          <OnboardingStep1
+            onSubmit={handleStep1Submit}
+            defaultValues={step1Data ?? undefined}
+            isPending={isPending && submittingStep === 1}
+            locale={locale}
+          />
+        )}
+        {step === 2 && gender && (
+          <OnboardingStep2
+            key="step2"
+            gender={gender}
+            onSubmit={handleStep2Submit}
+            defaultValues={step2Data ?? undefined}
+            isPending={isPending && submittingStep === 2}
+          />
+        )}
+        {step === 3 && (
+          <OnboardingStep3 isPending={isPending} onComplete={() => setStep(4)} />
+        )}
+        {step === 4 && gender && (
+          <OnboardingStep4
+            isPending={isPending}
+            step1Data={step1Data}
+            step2Data={step2Data}
+            gender={gender}
+            onResult={(res) => setResult(res)}
+          />
+        )}
 
-      {step === 2 && gender && (
-        <OnboardingStep2
-          key="step2"
-          gender={gender}
-          onSubmit={handleStep2Submit}
-          defaultValues={step2Data ?? undefined}
-          isPending={isPending}
-        />
-      )}
-
-      {step === 3 && <OnboardingStep3 isPending={isPending} onComplete={() => setStep(4)} />}
-
-      {step === 4 && gender && (
-        <OnboardingStep4
-          isPending={isPending}
-          step1Data={step1Data}
-          step2Data={step2Data}
-          gender={gender}
-          onResult={(res) => setResult(res)}
-        />
-      )}
-
-      {/* Error feedback only */}
-      {result && !result.success && 'error' in result && (
-        <p className="mt-4 text-center text-sm text-red-600">{result.error.message}</p>
-      )}
-
-      {/* Navigation */}
-      <div className="mt-8 flex justify-between">
-        <button
-          type="button"
-          onClick={() => setStep((s) => Math.max(1, s - 1))}
-          disabled={step === 1}
-          className="rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-30 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
-        >
-          Назад
-        </button>
+        {result && !result.success && 'error' in result && (
+          <p className="mt-4 text-center text-sm text-[var(--danger)]">{result.error.message}</p>
+        )}
       </div>
+
+      <StickyActions>
+        <Button kind="soft" size="lg" full onClick={handleBack} disabled={step === 1 || isPending}>
+          {t('ob_back')}
+        </Button>
+        <Button kind="primary" size="lg" full onClick={handleNext} disabled={isPending}>
+          {step === 4 ? t('ob_save') : t('ob_next')}
+        </Button>
+      </StickyActions>
     </div>
   )
 }

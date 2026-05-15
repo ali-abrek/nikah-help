@@ -50,14 +50,14 @@ export function MessageList({
 
   if (messages.length === 0) {
     return (
-      <div className="flex flex-1 items-center justify-center py-20 text-zinc-400">
+      <div className="flex flex-1 items-center justify-center py-20 text-[var(--ink-3)]">
         <p className="text-sm">Напишите первое сообщение</p>
       </div>
     )
   }
 
   return (
-    <div className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+    <div className="scroll-area flex-1 space-y-1 overflow-y-auto bg-[var(--chat-bg)] px-3 py-3">
       {messages.map((msg) => (
         <MessageRowWithObserver
           key={msg.id}
