@@ -1,7 +1,9 @@
 'use client'
 
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
+import { IconBtn } from '@/components/ui/header'
 import { Spinner } from '@/components/ui/spinner'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useLang } from '@/lib/i18n/use-lang'
@@ -34,6 +36,9 @@ export function NotificationList({ initialNotifications, userId }: NotificationL
         <h1 className="m-0 flex-1 text-[22px] font-bold uppercase tracking-[0.5px] text-[var(--ink)]">
           {t('notif_title')}
         </h1>
+        <Link href="/settings" aria-label={t('settings')}>
+          <IconBtn icon="gear" ariaLabel={t('settings')} />
+        </Link>
         <button
           type="button"
           onClick={markAllAsRead}

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
 import { TextInput } from '@/components/ui/input'
-import { BigHeader } from '@/components/ui/header'
+import { BigHeader, IconBtn } from '@/components/ui/header'
 import { Icon } from '@/components/ui/icon'
 import { Avatar } from '@/components/ui/avatar'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -48,7 +48,14 @@ export function ChatList({ chats, userId }: ChatListProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <BigHeader title={t('chats_title')} />
+      <BigHeader
+        title={t('chats_title')}
+        actions={
+          <Link href="/settings" aria-label={t('settings')}>
+            <IconBtn icon="gear" ariaLabel={t('settings')} />
+          </Link>
+        }
+      />
       <div className="px-5 pb-2 pt-1">
         <TextInput
           value={search}

@@ -1,8 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Header, StickyActions } from '@/components/ui/header'
+import { Header, IconBtn, StickyActions } from '@/components/ui/header'
 import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/input'
 import { Sheet } from '@/components/ui/sheet'
@@ -135,7 +136,17 @@ export function FiltersScreen({ viewerGender }: FiltersScreenProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <Header title={t('filters_title')} leading="back" onLeading={close} hairline />
+      <Header
+        title={t('filters_title')}
+        leading="back"
+        onLeading={close}
+        hairline
+        trailing={
+          <Link href="/settings" aria-label={t('settings')}>
+            <IconBtn icon="gear" ariaLabel={t('settings')} />
+          </Link>
+        }
+      />
 
       <div className="scroll-area flex-1 overflow-auto px-5 pb-5 pt-4">
         <div className="mb-[18px] overflow-hidden rounded-2xl border border-[var(--divider)] bg-[var(--surface)]">

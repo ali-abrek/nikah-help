@@ -2,12 +2,13 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { BigHeader } from '@/components/ui/header'
+import { BigHeader, IconBtn } from '@/components/ui/header'
 import { PillSegmented } from '@/components/ui/segmented'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Icon } from '@/components/ui/icon'
 import { useLang } from '@/lib/i18n/use-lang'
 import { localizePlace } from '@/lib/i18n/dictionary'
+import { generateSeoSlug } from '@/lib/seo'
 
 type Tab = 'incoming' | 'outgoing' | 'matches'
 
@@ -17,6 +18,7 @@ interface LikeProfileData {
   gender: string | null
   age: number | null
   city: string | null
+  country: string | null
   photo_url: string | null
   liked_at?: string | null
   match_id?: string
@@ -37,7 +39,14 @@ export function LikesTabs({ incoming, outgoing, matches }: LikesTabsProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <BigHeader title={t('likes_title')} />
+      <BigHeader
+        title={t('likes_title')}
+        actions={
+          <Link href="/settings" aria-label={t('settings')}>
+            <IconBtn icon="gear" ariaLabel={t('settings')} />
+          </Link>
+        }
+      />
       <div className="px-5 pb-3.5">
         <PillSegmented
           value={tab}
@@ -57,7 +66,7 @@ export function LikesTabs({ incoming, outgoing, matches }: LikesTabsProps) {
             {data.map((p) => (
               <Link
                 key={p.id}
-                href={`/profile/${p.id}`}
+                href={`/profile/${p.id}-${generateSeoSlug(p)}`}
                 className="relative block aspect-[4/5] overflow-hidden rounded-2xl"
               >
                 {p.photo_url ? (
