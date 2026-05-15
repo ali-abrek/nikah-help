@@ -11,7 +11,9 @@ export interface TogglePublishResult {
 
 /**
  * Toggles the profile publish state.
- * On publish: requires at least one approved photo.
+ * On publish: requires at least one non-rejected photo (queued, approved, or
+ * manual_review). The feed itself filters by `approved`, so a profile with
+ * only queued photos is published but won't surface until moderation finishes.
  * On unpublish: always allowed.
  */
 export async function togglePublish(
@@ -40,7 +42,7 @@ export async function togglePublish(
       .from('photos')
       .select('id', { count: 'exact', head: true })
       .eq('profile_id', userId)
-      .eq('moderation_status', 'approved')
+      .neq('moderation_status', 'rejected')
 
     if (countErr) throw countErr
 

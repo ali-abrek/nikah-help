@@ -1,25 +1,16 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { completeOnboardingAction } from '../actions'
-import { useRouter } from 'next/navigation'
-import type { ErrorResponse } from '@/lib/errors/types'
 import type {
   OnboardingStep1Data,
   OnboardingStep2MaleData,
   OnboardingStep2FemaleData,
 } from '../schemas'
 
-type OnboardingResult =
-  | { success: true; message: string; bio: string }
-  | { success: false; error: ErrorResponse }
-
 type Props = {
   isPending?: boolean
   step1Data: Partial<OnboardingStep1Data> | null
   step2Data: Partial<OnboardingStep2MaleData | OnboardingStep2FemaleData> | null
   gender: 'male' | 'female'
-  onResult?: (result: OnboardingResult) => void
 }
 
 // ── Label maps ─────────────────────────────────────────────────────
@@ -94,28 +85,7 @@ function ageFromBirthDate(birthDate: string): number | null {
   return age
 }
 
-export function OnboardingStep4({ isPending, step1Data, step2Data, gender, onResult }: Props) {
-  const [bio, setBio] = useState<string | null>(null)
-  const [generating, setGenerating] = useState(false)
-  const [done, setDone] = useState(false)
-  const [, startTransition] = useTransition()
-  const router = useRouter()
-
-  const handleSubmit = () => {
-    setGenerating(true)
-    startTransition(async () => {
-      const res = await completeOnboardingAction()
-      onResult?.(res as OnboardingResult)
-      if (res.success) {
-        setDone(true)
-        if (res.bio) setBio(res.bio)
-        router.push('/feed')
-      } else {
-        setGenerating(false)
-      }
-    })
-  }
-
+export function OnboardingStep4({ isPending, step1Data, step2Data, gender }: Props) {
   const s1 = step1Data
   const s2 = step2Data
   const age = s1?.birth_date ? ageFromBirthDate(s1.birth_date) : null
@@ -127,7 +97,6 @@ export function OnboardingStep4({ isPending, step1Data, step2Data, gender, onRes
         доступен в ленте.
       </p>
 
-      {/* Summary of all filled data */}
       <div className="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-900">
         <h3 className="mb-3 text-sm font-medium text-foreground">Ваши данные</h3>
         <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
@@ -204,7 +173,7 @@ export function OnboardingStep4({ isPending, step1Data, step2Data, gender, onRes
         )}
       </div>
 
-      {generating && !bio && (
+      {isPending && (
         <div className="flex items-center justify-center gap-3 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950">
           <svg className="h-5 w-5 animate-spin text-amber-600" fill="none" viewBox="0 0 24 24">
             <circle
@@ -225,32 +194,6 @@ export function OnboardingStep4({ isPending, step1Data, step2Data, gender, onRes
             ИИ генерирует вашу анкету...
           </span>
         </div>
-      )}
-
-      {bio && (
-        <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950">
-          <p className="mb-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
-            Ваша анкета
-          </p>
-          <p className="text-sm text-emerald-800 dark:text-emerald-200">{bio}</p>
-        </div>
-      )}
-
-      {done && (
-        <p className="text-center text-sm text-emerald-600">
-          Анкета заполнена! Перенаправляем в ленту...
-        </p>
-      )}
-
-      {!done && (
-        <button
-          type="button"
-          onClick={handleSubmit}
-          disabled={isPending || generating}
-          className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-        >
-          {generating ? 'Создание анкеты...' : 'Завершить онбординг'}
-        </button>
       )}
     </div>
   )

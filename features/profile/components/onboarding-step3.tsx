@@ -1,44 +1,18 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useRef, useState } from 'react'
 import { markPhotoUploaded, deletePhotoAction } from '../actions'
 import { Photo as PhotoStream } from '@/features/photos/components/Photo'
 import { useLang } from '@/lib/i18n/use-lang'
 
 const MAX_PHOTOS = 6
 
-type PhotoSlot = {
+export type WizardPhoto = {
+  id: string
   position: number
-  preview: string | null
-  photoId: string | null
-  path: string | null
+  localPreview: string | null
   uploading: boolean
   isExisting: boolean
-}
-
-function createSlots(initial: { id: string; position: number }[]): PhotoSlot[] {
-  const slots: PhotoSlot[] = Array.from({ length: MAX_PHOTOS }, (_, i) => ({
-    position: i + 1,
-    preview: null,
-    photoId: null,
-    path: null,
-    uploading: false,
-    isExisting: false,
-  }))
-  for (const p of initial) {
-    const idx = p.position - 1
-    if (idx >= 0 && idx < MAX_PHOTOS) {
-      slots[idx] = {
-        position: p.position,
-        preview: null,
-        photoId: p.id,
-        path: null,
-        uploading: false,
-        isExisting: true,
-      }
-    }
-  }
-  return slots
 }
 
 async function uploadFile(
@@ -87,34 +61,29 @@ async function uploadFile(
   return { photoId, path }
 }
 
-export function OnboardingStep3({
-  isPending,
-  onComplete,
-  initialPhotos = [],
-}: {
-  isPending?: boolean
-  onComplete?: () => void
-  initialPhotos?: { id: string; position: number; moderation_status: string }[]
-}) {
+interface Props {
+  photos: WizardPhoto[]
+  setPhotos: React.Dispatch<React.SetStateAction<WizardPhoto[]>>
+}
+
+export function OnboardingStep3({ photos, setPhotos }: Props) {
   const { t } = useLang()
-  const [slots, setSlots] = useState<PhotoSlot[]>(() => createSlots(initialPhotos))
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const [activeSlot, setActiveSlot] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [pendingDelPhotoId, setPendingDelPhotoId] = useState<string | null>(null)
   const [deletingPhoto, setDeletingPhoto] = useState(false)
 
-  const filledCount = slots.filter((s) => s.preview || s.isExisting).length
+  const hasAddSlot = photos.length < MAX_PHOTOS
+  const nextPosition = photos.length + 1
 
-  const handleSlotClick = (position: number) => {
-    if (slots[position - 1]?.uploading) return
-    setActiveSlot(position)
+  const handleAddClick = () => {
     fileInputRef.current?.click()
   }
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (!file || !activeSlot) return
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (!file) return
 
     const validTypes = [
       'image/jpeg',
@@ -129,73 +98,62 @@ export function OnboardingStep3({
       return
     }
 
+    setError(null)
+    const position = nextPosition
+    const tempId = `__pending_${position}_${Date.now()}`
     const preview = URL.createObjectURL(file)
 
-    setSlots((prev) => prev.map((s) => (s.position === activeSlot ? { ...s, uploading: true } : s)))
-    setError(null)
+    setPhotos((prev) => [
+      ...prev,
+      {
+        id: tempId,
+        position,
+        localPreview: preview,
+        uploading: true,
+        isExisting: false,
+      },
+    ])
 
-    const result = await uploadFile(file, activeSlot)
+    const result = await uploadFile(file, position)
 
     if ('error' in result) {
-      setSlots((prev) =>
-        prev.map((s) =>
-          s.position === activeSlot
-            ? { ...s, uploading: false, preview: null, photoId: null, path: null }
-            : s,
-        ),
-      )
+      setPhotos((prev) => prev.filter((p) => p.id !== tempId))
       setError(result.error)
-    } else {
-      setSlots((prev) =>
-        prev.map((s) =>
-          s.position === activeSlot
-            ? {
-                ...s,
-                uploading: false,
-                preview,
-                photoId: result.photoId,
-                path: result.path,
-                isExisting: false,
-              }
-            : s,
-        ),
-      )
+      URL.revokeObjectURL(preview)
+      return
     }
 
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
-
-  const handleRemoveNew = (position: number) => {
-    setSlots((prev) =>
-      prev.map((s) =>
-        s.position === position
-          ? { ...s, preview: null, photoId: null, path: null, isExisting: false }
-          : s,
+    setPhotos((prev) =>
+      prev.map((p) =>
+        p.id === tempId
+          ? { ...p, id: result.photoId, uploading: false, isExisting: true }
+          : p,
       ),
     )
   }
 
-  const handleRemoveExistingRequest = (photoId: string) => {
+  const handleRemoveRequest = (photoId: string) => {
     setPendingDelPhotoId(photoId)
   }
 
-  const confirmDeleteExisting = async () => {
+  const confirmDelete = async () => {
     if (!pendingDelPhotoId) return
+    const photoId = pendingDelPhotoId
     setDeletingPhoto(true)
-    const result = await deletePhotoAction(pendingDelPhotoId)
+    const result = await deletePhotoAction(photoId)
     setDeletingPhoto(false)
+    setPendingDelPhotoId(null)
+
     if ('success' in result && result.success) {
-      setSlots((prev) =>
-        prev.map((s) =>
-          s.photoId === pendingDelPhotoId
-            ? { ...s, preview: null, photoId: null, path: null, isExisting: false }
-            : s,
-        ),
+      setPhotos((prev) =>
+        prev
+          .filter((p) => p.id !== photoId)
+          .sort((a, b) => a.position - b.position)
+          .map((p, i) => ({ ...p, position: i + 1 })),
       )
     } else {
       setError(t('own_photo_del_error'))
     }
-    setPendingDelPhotoId(null)
   }
 
   return (
@@ -206,60 +164,33 @@ export function OnboardingStep3({
       </p>
 
       <div className="grid grid-cols-3 gap-3">
-        {slots.map((slot) => (
-          <div key={slot.position}>
-            {slot.isExisting && slot.photoId ? (
-              <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
-                <PhotoStream
-                  photoId={slot.photoId}
-                  variant="cover"
-                  alt={`Фото ${slot.position}`}
-                  className="h-full w-full object-cover"
-                />
-                {slot.position === 1 && (
-                  <span className="absolute left-2 top-2 rounded-md bg-emerald-600 px-1.5 py-0.5 text-xs font-medium text-white">
-                    Аватар
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleRemoveExistingRequest(slot.photoId!)}
-                  className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
-                >
-                  ×
-                </button>
-              </div>
-            ) : slot.preview ? (
-              <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
-                {/* eslint-disable-next-line @next/next/no-img-element -- preview is an object URL */}
+        {photos.map((photo) => (
+          <div key={photo.id}>
+            <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
+              {photo.localPreview ? (
+                // eslint-disable-next-line @next/next/no-img-element -- object URL preview
                 <img
-                  src={slot.preview}
-                  alt={`Фото ${slot.position}`}
+                  src={photo.localPreview}
+                  alt={`Фото ${photo.position}`}
                   className="h-full w-full object-cover"
                 />
-                {slot.position === 1 && (
-                  <span className="absolute left-2 top-2 rounded-md bg-emerald-600 px-1.5 py-0.5 text-xs font-medium text-white">
-                    Аватар
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => handleRemoveNew(slot.position)}
-                  className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
-                >
-                  ×
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleSlotClick(slot.position)}
-                disabled={slot.uploading}
-                className="flex aspect-[4/5] w-full items-center justify-center rounded-xl border-2 border-dashed border-zinc-300 text-zinc-400 transition-colors hover:border-emerald-400 hover:text-emerald-500 disabled:opacity-50 dark:border-zinc-700 dark:hover:border-emerald-500"
-              >
-                {slot.uploading ? (
+              ) : (
+                <PhotoStream
+                  photoId={photo.id}
+                  variant="cover"
+                  alt={`Фото ${photo.position}`}
+                  className="h-full w-full object-cover"
+                />
+              )}
+              {photo.position === 1 && (
+                <span className="absolute left-2 top-2 rounded-md bg-emerald-600 px-1.5 py-0.5 text-xs font-medium text-white">
+                  Аватар
+                </span>
+              )}
+              {photo.uploading ? (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
                   <svg
-                    className="h-6 w-6 animate-spin text-emerald-500"
+                    className="h-6 w-6 animate-spin text-white"
                     fill="none"
                     viewBox="0 0 24 24"
                   >
@@ -277,13 +208,31 @@ export function OnboardingStep3({
                       d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
                     />
                   </svg>
-                ) : (
-                  <span className="text-3xl">+</span>
-                )}
-              </button>
-            )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleRemoveRequest(photo.id)}
+                  className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           </div>
         ))}
+
+        {hasAddSlot && (
+          <div>
+            <button
+              type="button"
+              onClick={handleAddClick}
+              className="flex aspect-[4/5] w-full items-center justify-center rounded-xl border-2 border-dashed border-zinc-300 text-zinc-400 transition-colors hover:border-emerald-400 hover:text-emerald-500 dark:border-zinc-700 dark:hover:border-emerald-500"
+            >
+              <span className="text-3xl">+</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
@@ -296,19 +245,6 @@ export function OnboardingStep3({
         className="hidden"
       />
 
-      <button
-        type="button"
-        onClick={() => onComplete?.()}
-        disabled={isPending || filledCount === 0}
-        className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-      >
-        {isPending
-          ? 'Сохранение...'
-          : filledCount > 0
-            ? 'Продолжить'
-            : 'Загрузите хотя бы одно фото'}
-      </button>
-
       {pendingDelPhotoId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-5">
           <div className="w-full max-w-sm rounded-2xl bg-[var(--surface)] p-5">
@@ -320,13 +256,14 @@ export function OnboardingStep3({
               <button
                 type="button"
                 onClick={() => setPendingDelPhotoId(null)}
-                className="flex-1 rounded-xl bg-[var(--surface-2)] py-2.5 text-sm font-medium text-[var(--ink)]"
+                disabled={deletingPhoto}
+                className="flex-1 rounded-xl bg-[var(--surface-2)] py-2.5 text-sm font-medium text-[var(--ink)] disabled:opacity-50"
               >
                 {t('cancel')}
               </button>
               <button
                 type="button"
-                onClick={confirmDeleteExisting}
+                onClick={confirmDelete}
                 disabled={deletingPhoto}
                 className="flex-1 rounded-xl bg-[var(--danger)] py-2.5 text-sm font-medium text-white disabled:opacity-50"
               >

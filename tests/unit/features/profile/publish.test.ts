@@ -9,7 +9,7 @@ describe('togglePublish', () => {
     mockSupabase = { from: vi.fn() }
   })
 
-  it('publishes when profile has at least one approved photo', async () => {
+  it('publishes when profile has at least one non-rejected photo', async () => {
     mockSupabase.from.mockImplementation((table: string) => {
       if (table === 'profiles') {
         return {
@@ -32,7 +32,7 @@ describe('togglePublish', () => {
         return {
           select: () => ({
             eq: () => ({
-              eq: () => ({
+              neq: () => ({
                 count: 2,
                 error: null,
               }),
@@ -48,7 +48,7 @@ describe('togglePublish', () => {
     expect(result.is_published).toBe(true)
   })
 
-  it('rejects publish when profile has no approved photos', async () => {
+  it('rejects publish when profile has no non-rejected photos', async () => {
     mockSupabase.from.mockImplementation((table: string) => {
       if (table === 'profiles') {
         return {
@@ -71,7 +71,7 @@ describe('togglePublish', () => {
         return {
           select: () => ({
             eq: () => ({
-              eq: () => ({
+              neq: () => ({
                 count: 0,
                 error: null,
               }),

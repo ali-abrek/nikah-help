@@ -1,16 +1,24 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
 import { AppError } from '@/lib/errors/app-error'
+import {
+  PHOTO_VARIANTS,
+  STORAGE,
+  FORMATS,
+  buildStoragePath,
+} from '@/lib/image-processing/photo-variants'
+import { callReorderProfilePhotos } from '@/lib/supabase/rpc'
+import { captureSentryException } from '@/lib/sentry/capture'
 
 export async function deletePhoto(
   supabase: SupabaseClient<Database>,
   userId: string,
   photoId: string,
 ): Promise<void> {
-  // 1. Fetch photo to verify ownership and get position
+  // 1. Fetch photo to verify ownership and capture file metadata for cleanup
   const { data: photo, error: findError } = await supabase
     .from('photos')
-    .select('id, position, profile_id, moderation_status')
+    .select('id, position, profile_id, moderation_status, storage_path')
     .eq('id', photoId)
     .single()
 
@@ -27,23 +35,19 @@ export async function deletePhoto(
     })
   }
 
-  // 2. If deleting position 1 (avatar), find the next approved photo to promote.
-  //    We must resolve the candidate BEFORE deleting, but actually delete FIRST
-  //    to avoid a UNIQUE(profile_id, position) violation when we then set the
-  //    candidate's position to 1.
-  if (photo.position === 1) {
+  // 2. Block deleting the only approved photo while profile is published.
+  if (photo.position === 1 && photo.moderation_status === 'approved') {
     const { data: nextApproved } = await supabase
       .from('photos')
-      .select('id, position')
+      .select('id')
       .eq('profile_id', userId)
       .eq('moderation_status', 'approved')
       .neq('id', photoId)
       .order('position', { ascending: true })
       .limit(1)
-      .single()
+      .maybeSingle()
 
     if (!nextApproved) {
-      // No other approved photo — block deletion if profile is published.
       const { data: profile } = await supabase
         .from('profiles')
         .select('is_published')
@@ -57,24 +61,65 @@ export async function deletePhoto(
         })
       }
     }
-
-    // Delete the photo row first so the unique position constraint is released,
-    // then promote the next approved photo to position 1.
-    const { error: deleteError } = await supabase.from('photos').delete().eq('id', photoId)
-    if (deleteError) throw deleteError
-
-    if (nextApproved) {
-      await supabase
-        .from('photos')
-        .update({ position: 1, updated_at: new Date().toISOString() })
-        .eq('id', nextApproved.id)
-    }
-
-    return
   }
 
-  // 3. Delete the photo row (non-position-1 case)
+  // 3. Delete the photo row first to release the UNIQUE(profile_id, position)
+  //    constraint, so the subsequent reorder can renumber the remaining rows.
   const { error: deleteError } = await supabase.from('photos').delete().eq('id', photoId)
-
   if (deleteError) throw deleteError
+
+  // 4. Delete files from Storage — original (if processing hadn't dropped it)
+  //    and every variant file. Best-effort: a Storage failure here leaves
+  //    orphaned bytes but the DB is authoritative for what the user sees, so
+  //    we log and continue rather than failing the user-facing delete.
+  try {
+    const paths: string[] = []
+    if (photo.storage_path) paths.push(photo.storage_path)
+    for (const variant of Object.values(PHOTO_VARIANTS)) {
+      for (const format of FORMATS) {
+        paths.push(buildStoragePath(userId, photoId, variant, format))
+      }
+    }
+    if (paths.length > 0) {
+      const { error: removeErr } = await supabase.storage.from(STORAGE.bucket).remove(paths)
+      if (removeErr) {
+        void captureSentryException(removeErr, {
+          flow: 'action.delete_photo',
+          severity: 'warning',
+          tags: { step: 'storage_remove' },
+          extra: { photoId, logContext: { userId, pathsCount: paths.length } },
+        })
+      }
+    }
+  } catch (e) {
+    void captureSentryException(e, {
+      flow: 'action.delete_photo',
+      severity: 'warning',
+      tags: { step: 'storage_remove_exception' },
+      extra: { photoId, logContext: { userId } },
+    })
+  }
+
+  // 5. Renumber remaining photos so positions stay sequential 1..N — no gaps.
+  const { data: remaining } = await supabase
+    .from('photos')
+    .select('id')
+    .eq('profile_id', userId)
+    .order('position', { ascending: true })
+
+  if (remaining && remaining.length > 0) {
+    const { error: reorderErr } = await callReorderProfilePhotos(supabase, {
+      p_profile_id: userId,
+      p_photo_ids: remaining.map((r) => r.id),
+      p_expected_signature: null,
+    })
+    if (reorderErr) {
+      void captureSentryException(new Error(reorderErr.message), {
+        flow: 'action.delete_photo',
+        severity: 'warning',
+        tags: { step: 'reorder_after_delete' },
+        extra: { photoId, logContext: { userId } },
+      })
+    }
+  }
 }

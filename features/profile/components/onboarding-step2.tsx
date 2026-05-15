@@ -121,7 +121,7 @@ function SelectField({
   )
 }
 
-export function OnboardingStep2({ gender, onSubmit, defaultValues, isPending }: Props) {
+export function OnboardingStep2({ gender, onSubmit, defaultValues }: Props) {
   const schema = gender === 'male' ? onboardingStep2MaleSchema : onboardingStep2FemaleSchema
 
   const {
@@ -233,13 +233,6 @@ export function OnboardingStep2({ gender, onSubmit, defaultValues, isPending }: 
         {errs.about_self && <p className="mt-1 text-xs text-red-600">{errs.about_self.message}</p>}
       </div>
 
-      <button
-        type="submit"
-        disabled={isPending}
-        className="w-full rounded-lg bg-emerald-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
-      >
-        {isPending ? 'Сохранение...' : 'Сохранить'}
-      </button>
     </form>
   )
 }

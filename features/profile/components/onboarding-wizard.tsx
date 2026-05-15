@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { saveOnboardingStep1, saveOnboardingStep2, completeOnboardingAction } from '../actions'
 import { OnboardingStep1 } from './onboarding-step1'
 import { OnboardingStep2 } from './onboarding-step2'
-import { OnboardingStep3 } from './onboarding-step3'
+import { OnboardingStep3, type WizardPhoto } from './onboarding-step3'
 import { OnboardingStep4 } from './onboarding-step4'
 import { Button } from '@/components/ui/button'
 import { StickyActions } from '@/components/ui/header'
@@ -18,12 +18,6 @@ import type {
 
 type ActionResult = Awaited<ReturnType<typeof saveOnboardingStep1>>
 
-/**
- * Re-skinned onboarding shell using the Forest design's chrome:
- * a step counter + progress bar at the top, sticky Back/Next actions at the
- * bottom. The internal step forms keep using react-hook-form + the existing
- * Server Actions so the data flow is untouched.
- */
 interface OnboardingWizardProps {
   locale?: string
   isEditMode?: boolean
@@ -53,6 +47,20 @@ export function OnboardingWizard({
     OnboardingStep2MaleData | OnboardingStep2FemaleData
   > | null>(initialStep2Data ?? null)
   const [submittingStep, setSubmittingStep] = useState<number | null>(null)
+
+  // Photos state lives at the wizard level so it survives step navigation —
+  // step 3 → 4 → back to 3 would otherwise drop newly uploaded photos.
+  const [photos, setPhotos] = useState<WizardPhoto[]>(() =>
+    [...initialPhotos]
+      .sort((a, b) => a.position - b.position)
+      .map((p, i) => ({
+        id: p.id,
+        position: i + 1,
+        localPreview: null,
+        uploading: false,
+        isExisting: true,
+      })),
+  )
 
   const handleStep1Submit = (formData: FormData) => {
     const g = formData.get('gender') as string
@@ -101,9 +109,12 @@ export function OnboardingWizard({
     else if (step === 4) {
       setSubmittingStep(4)
       startTransition(async () => {
-        await completeOnboardingAction()
+        const res = await completeOnboardingAction()
+        setResult(res)
         setSubmittingStep(null)
-        window.location.href = isEditMode ? '/profile' : '/feed'
+        if (res.success) {
+          window.location.href = isEditMode ? '/profile' : '/feed'
+        }
       })
     }
   }
@@ -113,6 +124,8 @@ export function OnboardingWizard({
   }
 
   const progressPct = (step / 4) * 100
+  const isStep3Empty = step === 3 && photos.length === 0
+  const isStep4Pending = step === 4 && isPending && submittingStep === 4
 
   return (
     <div className="flex h-full flex-col">
@@ -152,20 +165,13 @@ export function OnboardingWizard({
             isPending={isPending && submittingStep === 2}
           />
         )}
-        {step === 3 && (
-          <OnboardingStep3
-            isPending={isPending}
-            onComplete={() => setStep(4)}
-            initialPhotos={initialPhotos}
-          />
-        )}
+        {step === 3 && <OnboardingStep3 photos={photos} setPhotos={setPhotos} />}
         {step === 4 && gender && (
           <OnboardingStep4
-            isPending={isPending}
+            isPending={isStep4Pending}
             step1Data={step1Data}
             step2Data={step2Data}
             gender={gender}
-            onResult={(res) => setResult(res)}
           />
         )}
 
@@ -178,7 +184,13 @@ export function OnboardingWizard({
         <Button kind="soft" size="lg" full onClick={handleBack} disabled={step === 1 || isPending}>
           {t('ob_back')}
         </Button>
-        <Button kind="primary" size="lg" full onClick={handleNext} disabled={isPending}>
+        <Button
+          kind="primary"
+          size="lg"
+          full
+          onClick={handleNext}
+          disabled={isPending || isStep3Empty}
+        >
           {step === 4 ? t('ob_save') : t('ob_next')}
         </Button>
       </StickyActions>
