@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { onboardingStep1Schema, type OnboardingStep1Data } from '../schemas'
@@ -47,8 +47,12 @@ export function OnboardingStep1({
   // eslint-disable-next-line react-hooks/incompatible-library -- see comment above
   const selectedCountry = watch('country')
 
-  // Clear city when country changes
+  const isFirstCountryRender = useRef(true)
   useEffect(() => {
+    if (isFirstCountryRender.current) {
+      isFirstCountryRender.current = false
+      return
+    }
     setValue('city', '')
   }, [selectedCountry, setValue])
 

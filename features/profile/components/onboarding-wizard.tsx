@@ -24,16 +24,34 @@ type ActionResult = Awaited<ReturnType<typeof saveOnboardingStep1>>
  * bottom. The internal step forms keep using react-hook-form + the existing
  * Server Actions so the data flow is untouched.
  */
-export function OnboardingWizard({ locale = 'ru' }: { locale?: string }) {
+interface OnboardingWizardProps {
+  locale?: string
+  isEditMode?: boolean
+  initialStep1Data?: Partial<OnboardingStep1Data>
+  initialStep2Data?: Partial<OnboardingStep2MaleData | OnboardingStep2FemaleData>
+  initialPhotos?: { id: string; position: number; moderation_status: string }[]
+}
+
+export function OnboardingWizard({
+  locale = 'ru',
+  isEditMode = false,
+  initialStep1Data,
+  initialStep2Data,
+  initialPhotos = [],
+}: OnboardingWizardProps) {
   const { t } = useLang()
   const [step, setStep] = useState(1)
-  const [gender, setGender] = useState<'male' | 'female' | null>(null)
+  const [gender, setGender] = useState<'male' | 'female' | null>(
+    (initialStep1Data?.gender as 'male' | 'female' | null) ?? null,
+  )
   const [result, setResult] = useState<ActionResult | null>(null)
   const [isPending, startTransition] = useTransition()
-  const [step1Data, setStep1Data] = useState<Partial<OnboardingStep1Data> | null>(null)
+  const [step1Data, setStep1Data] = useState<Partial<OnboardingStep1Data> | null>(
+    initialStep1Data ?? null,
+  )
   const [step2Data, setStep2Data] = useState<Partial<
     OnboardingStep2MaleData | OnboardingStep2FemaleData
-  > | null>(null)
+  > | null>(initialStep2Data ?? null)
   const [submittingStep, setSubmittingStep] = useState<number | null>(null)
 
   const handleStep1Submit = (formData: FormData) => {
@@ -85,8 +103,7 @@ export function OnboardingWizard({ locale = 'ru' }: { locale?: string }) {
       startTransition(async () => {
         await completeOnboardingAction()
         setSubmittingStep(null)
-        // redirect handled server-side by completeOnboarding
-        window.location.href = '/feed'
+        window.location.href = isEditMode ? '/profile' : '/feed'
       })
     }
   }
@@ -135,7 +152,13 @@ export function OnboardingWizard({ locale = 'ru' }: { locale?: string }) {
             isPending={isPending && submittingStep === 2}
           />
         )}
-        {step === 3 && <OnboardingStep3 isPending={isPending} onComplete={() => setStep(4)} />}
+        {step === 3 && (
+          <OnboardingStep3
+            isPending={isPending}
+            onComplete={() => setStep(4)}
+            initialPhotos={initialPhotos}
+          />
+        )}
         {step === 4 && gender && (
           <OnboardingStep4
             isPending={isPending}

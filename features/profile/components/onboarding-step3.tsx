@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { markPhotoUploaded } from '../actions'
+import { markPhotoUploaded, deletePhotoAction } from '../actions'
+import { Photo as PhotoStream } from '@/features/photos/components/Photo'
+import { useLang } from '@/lib/i18n/use-lang'
 
 const MAX_PHOTOS = 6
 
@@ -11,16 +13,34 @@ type PhotoSlot = {
   photoId: string | null
   path: string | null
   uploading: boolean
+  isExisting: boolean
 }
 
-function createSlots(): PhotoSlot[] {
-  return Array.from({ length: MAX_PHOTOS }, (_, i) => ({
+function createSlots(
+  initial: { id: string; position: number }[],
+): PhotoSlot[] {
+  const slots: PhotoSlot[] = Array.from({ length: MAX_PHOTOS }, (_, i) => ({
     position: i + 1,
     preview: null,
     photoId: null,
     path: null,
     uploading: false,
+    isExisting: false,
   }))
+  for (const p of initial) {
+    const idx = p.position - 1
+    if (idx >= 0 && idx < MAX_PHOTOS) {
+      slots[idx] = {
+        position: p.position,
+        preview: null,
+        photoId: p.id,
+        path: null,
+        uploading: false,
+        isExisting: true,
+      }
+    }
+  }
+  return slots
 }
 
 async function uploadFile(
@@ -60,14 +80,11 @@ async function uploadFile(
     return { error: result.error?.message ?? 'Ошибка сохранения' }
   }
 
-  // Trigger server-side processing (sharp variants + moderation pipeline).
   await fetch('/api/photos/process', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ photoId }),
-  }).catch(() => {
-    // Non-fatal — photo-abandon-cleanup will reap if processing never starts.
-  })
+  }).catch(() => {})
 
   return { photoId, path }
 }
@@ -75,16 +92,21 @@ async function uploadFile(
 export function OnboardingStep3({
   isPending,
   onComplete,
+  initialPhotos = [],
 }: {
   isPending?: boolean
   onComplete?: () => void
+  initialPhotos?: { id: string; position: number; moderation_status: string }[]
 }) {
-  const [slots, setSlots] = useState<PhotoSlot[]>(createSlots)
+  const { t } = useLang()
+  const [slots, setSlots] = useState<PhotoSlot[]>(() => createSlots(initialPhotos))
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [activeSlot, setActiveSlot] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [pendingDelPhotoId, setPendingDelPhotoId] = useState<string | null>(null)
+  const [deletingPhoto, setDeletingPhoto] = useState(false)
 
-  const filledCount = slots.filter((s) => s.preview).length
+  const filledCount = slots.filter((s) => s.preview || s.isExisting).length
 
   const handleSlotClick = (position: number) => {
     if (slots[position - 1]?.uploading) return
@@ -96,7 +118,6 @@ export function OnboardingStep3({
     const file = e.target.files?.[0]
     if (!file || !activeSlot) return
 
-    // Validate type
     const validTypes = [
       'image/jpeg',
       'image/png',
@@ -110,7 +131,6 @@ export function OnboardingStep3({
       return
     }
 
-    // Create preview
     const preview = URL.createObjectURL(file)
 
     setSlots((prev) => prev.map((s) => (s.position === activeSlot ? { ...s, uploading: true } : s)))
@@ -131,22 +151,53 @@ export function OnboardingStep3({
       setSlots((prev) =>
         prev.map((s) =>
           s.position === activeSlot
-            ? { ...s, uploading: false, preview, photoId: result.photoId, path: result.path }
+            ? {
+                ...s,
+                uploading: false,
+                preview,
+                photoId: result.photoId,
+                path: result.path,
+                isExisting: false,
+              }
             : s,
         ),
       )
     }
 
-    // Reset file input
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
-  const handleRemove = (position: number) => {
+  const handleRemoveNew = (position: number) => {
     setSlots((prev) =>
       prev.map((s) =>
-        s.position === position ? { ...s, preview: null, photoId: null, path: null } : s,
+        s.position === position
+          ? { ...s, preview: null, photoId: null, path: null, isExisting: false }
+          : s,
       ),
     )
+  }
+
+  const handleRemoveExistingRequest = (photoId: string) => {
+    setPendingDelPhotoId(photoId)
+  }
+
+  const confirmDeleteExisting = async () => {
+    if (!pendingDelPhotoId) return
+    setDeletingPhoto(true)
+    const result = await deletePhotoAction(pendingDelPhotoId)
+    setDeletingPhoto(false)
+    if ('success' in result && result.success) {
+      setSlots((prev) =>
+        prev.map((s) =>
+          s.photoId === pendingDelPhotoId
+            ? { ...s, preview: null, photoId: null, path: null, isExisting: false }
+            : s,
+        ),
+      )
+    } else {
+      setError(t('own_photo_del_error'))
+    }
+    setPendingDelPhotoId(null)
   }
 
   return (
@@ -159,9 +210,30 @@ export function OnboardingStep3({
       <div className="grid grid-cols-3 gap-3">
         {slots.map((slot) => (
           <div key={slot.position}>
-            {slot.preview ? (
+            {slot.isExisting && slot.photoId ? (
               <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
-                {/* eslint-disable-next-line @next/next/no-img-element -- preview is an object URL, next/image does not handle blobs */}
+                <PhotoStream
+                  photoId={slot.photoId}
+                  variant="cover"
+                  alt={`Фото ${slot.position}`}
+                  className="h-full w-full object-cover"
+                />
+                {slot.position === 1 && (
+                  <span className="absolute left-2 top-2 rounded-md bg-emerald-600 px-1.5 py-0.5 text-xs font-medium text-white">
+                    Аватар
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => handleRemoveExistingRequest(slot.photoId!)}
+                  className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+                >
+                  ×
+                </button>
+              </div>
+            ) : slot.preview ? (
+              <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
+                {/* eslint-disable-next-line @next/next/no-img-element -- preview is an object URL */}
                 <img
                   src={slot.preview}
                   alt={`Фото ${slot.position}`}
@@ -174,7 +246,7 @@ export function OnboardingStep3({
                 )}
                 <button
                   type="button"
-                  onClick={() => handleRemove(slot.position)}
+                  onClick={() => handleRemoveNew(slot.position)}
                   className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
                 >
                   ×
@@ -238,6 +310,34 @@ export function OnboardingStep3({
             ? 'Продолжить'
             : 'Загрузите хотя бы одно фото'}
       </button>
+
+      {pendingDelPhotoId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-5">
+          <div className="w-full max-w-sm rounded-2xl bg-[var(--surface)] p-5">
+            <h2 className="mb-2 text-[17px] font-semibold text-[var(--ink)]">
+              {t('own_photo_del_title')}
+            </h2>
+            <p className="mb-5 text-[14px] text-[var(--ink-2)]">{t('own_photo_del_sub')}</p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={() => setPendingDelPhotoId(null)}
+                className="flex-1 rounded-xl bg-[var(--surface-2)] py-2.5 text-sm font-medium text-[var(--ink)]"
+              >
+                {t('cancel')}
+              </button>
+              <button
+                type="button"
+                onClick={confirmDeleteExisting}
+                disabled={deletingPhoto}
+                className="flex-1 rounded-xl bg-[var(--danger)] py-2.5 text-sm font-medium text-white disabled:opacity-50"
+              >
+                {deletingPhoto ? '…' : t('own_photo_del_confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
