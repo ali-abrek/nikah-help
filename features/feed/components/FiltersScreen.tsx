@@ -12,6 +12,8 @@ import { Segmented } from '@/components/ui/segmented'
 import { useLang } from '@/lib/i18n/use-lang'
 import { localizePlace } from '@/lib/i18n/dictionary'
 import { AGE_RANGE, RADIUS_RANGE } from '@/features/feed/schemas'
+import { saveFilterPreferencesAction } from '@/features/feed/actions'
+import type { FilterPreferences } from '@/features/feed/schemas'
 
 type LocMode = 'place' | 'radius'
 
@@ -67,25 +69,29 @@ const HOUSING_OPTIONS = [
 
 interface FiltersScreenProps {
   viewerGender: 'male' | 'female'
+  initialFilters?: FilterPreferences | null
 }
 
-export function FiltersScreen({ viewerGender }: FiltersScreenProps) {
+export function FiltersScreen({ viewerGender, initialFilters }: FiltersScreenProps) {
   const router = useRouter()
   const { t, lang } = useLang()
 
-  // Local state — applied on confirm by writing to query params on /feed.
-  const [locMode, setLocMode] = useState<LocMode>('place')
-  const [country, setCountry] = useState<string>('')
-  const [city, setCity] = useState<string>('')
-  const [radiusKm, setRadiusKm] = useState<number>(RADIUS_RANGE.min)
-  const [ageMin, setAgeMin] = useState<number>(AGE_RANGE.min)
-  const [ageMax, setAgeMax] = useState<number>(50)
-  const [marital, setMarital] = useState<string | null>(null)
-  const [children, setChildren] = useState<'any' | 'none' | 'has'>('any')
-  const [polygamy, setPolygamy] = useState<'any' | 'mono' | 'open'>('any')
-  const [hijab, setHijab] = useState<string | null>(null)
-  const [income, setIncome] = useState<string | null>(null)
-  const [housing, setHousing] = useState<string | null>(null)
+  const [locMode, setLocMode] = useState<LocMode>(initialFilters?.locMode ?? 'place')
+  const [country, setCountry] = useState<string>(initialFilters?.country ?? '')
+  const [city, setCity] = useState<string>(initialFilters?.city ?? '')
+  const [radiusKm, setRadiusKm] = useState<number>(initialFilters?.radiusKm ?? RADIUS_RANGE.min)
+  const [ageMin, setAgeMin] = useState<number>(initialFilters?.ageMin ?? AGE_RANGE.min)
+  const [ageMax, setAgeMax] = useState<number>(initialFilters?.ageMax ?? 50)
+  const [marital, setMarital] = useState<string | null>(initialFilters?.marital ?? null)
+  const [children, setChildren] = useState<'any' | 'none' | 'has'>(
+    initialFilters?.children ?? 'any',
+  )
+  const [polygamy, setPolygamy] = useState<'any' | 'mono' | 'open'>(
+    initialFilters?.polygamy ?? 'any',
+  )
+  const [hijab, setHijab] = useState<string | null>(initialFilters?.hijab ?? null)
+  const [income, setIncome] = useState<string | null>(initialFilters?.income ?? null)
+  const [housing, setHousing] = useState<string | null>(initialFilters?.housing ?? null)
 
   const [showCountry, setShowCountry] = useState(false)
   const [showCity, setShowCity] = useState(false)
@@ -98,6 +104,21 @@ export function FiltersScreen({ viewerGender }: FiltersScreenProps) {
     () => (viewerGender === 'male' ? MARITAL_MALE_VIEWING_FEMALES : MARITAL_FEMALE_VIEWING_MALES),
     [viewerGender],
   )
+
+  const buildPrefs = (): FilterPreferences => ({
+    locMode,
+    country,
+    city,
+    radiusKm,
+    ageMin,
+    ageMax,
+    marital,
+    children,
+    polygamy,
+    hijab,
+    income,
+    housing,
+  })
 
   const apply = () => {
     const params = new URLSearchParams()
@@ -114,22 +135,38 @@ export function FiltersScreen({ viewerGender }: FiltersScreenProps) {
       if (income) params.set('income_level', income)
       if (housing) params.set('housing', housing)
     }
+    void saveFilterPreferencesAction(buildPrefs())
     router.replace(`/feed${params.toString() ? `?${params.toString()}` : ''}`)
   }
 
   const reset = () => {
-    setLocMode('place')
-    setCountry('')
-    setCity('')
-    setRadiusKm(RADIUS_RANGE.min)
-    setAgeMin(AGE_RANGE.min)
-    setAgeMax(50)
+    const empty: FilterPreferences = {
+      locMode: 'place',
+      country: '',
+      city: '',
+      radiusKm: RADIUS_RANGE.min,
+      ageMin: AGE_RANGE.min,
+      ageMax: 50,
+      marital: null,
+      children: 'any',
+      polygamy: 'any',
+      hijab: null,
+      income: null,
+      housing: null,
+    }
+    setLocMode(empty.locMode!)
+    setCountry(empty.country!)
+    setCity(empty.city!)
+    setRadiusKm(empty.radiusKm!)
+    setAgeMin(empty.ageMin!)
+    setAgeMax(empty.ageMax!)
     setMarital(null)
     setChildren('any')
     setPolygamy('any')
     setHijab(null)
     setIncome(null)
     setHousing(null)
+    void saveFilterPreferencesAction(empty)
   }
 
   const close = () => router.back()
