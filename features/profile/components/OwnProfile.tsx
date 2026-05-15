@@ -33,7 +33,6 @@ export function OwnProfile({ profile }: OwnProfileProps) {
   const router = useRouter()
   const toast = useToast()
   const [photoIdx, setPhotoIdx] = useState(0)
-  const [fullscreen, setFullscreen] = useState(false)
   const [published, setPublished] = useState(!!profile.is_published)
   const [privateMode, setPrivateMode] = useState(false)
   const [showOff, setShowOff] = useState(false)
@@ -96,11 +95,7 @@ export function OwnProfile({ profile }: OwnProfileProps) {
       </div>
 
       <div className="scroll-area flex-1 overflow-auto pb-10">
-        <button
-          type="button"
-          onClick={() => setFullscreen(true)}
-          className="relative block aspect-[4/5] w-full cursor-pointer overflow-hidden"
-        >
+        <div className="relative aspect-[4/5] w-full overflow-hidden">
           {photo ? (
             <PhotoStream
               photoId={photo.id}
@@ -135,7 +130,7 @@ export function OwnProfile({ profile }: OwnProfileProps) {
               {t('mod_rejected')}
             </span>
           )}
-        </button>
+        </div>
 
         <div className="px-5 pt-4 text-center">
           <div className="text-[22px] font-semibold tracking-[-0.2px] text-[var(--ink)]">
@@ -263,39 +258,25 @@ export function OwnProfile({ profile }: OwnProfileProps) {
           </div>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setShowDel(true)}
-          className="mx-5 mt-4 flex h-12 w-[calc(100%-40px)] items-center justify-center gap-2 rounded-xl bg-transparent text-[14.5px] font-medium text-[var(--danger)]"
-        >
-          <Icon name="trash" size={16} />
-          {t('own_delete')}
-        </button>
-      </div>
-
-      {fullscreen && photo && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95"
-          onClick={() => setFullscreen(false)}
-        >
-          <PhotoStream
-            photoId={photo.id}
-            variant="full"
-            alt={profile.name ?? ''}
-            className="pointer-events-none max-h-full max-w-full object-contain"
-          />
+        <div className="mx-5 mt-4 flex flex-col gap-2">
           <button
             type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              setFullscreen(false)
-            }}
-            className="fixed right-5 top-5 grid h-10 w-10 place-items-center rounded-full bg-white/20 text-white"
+            onClick={() => router.push('/onboarding')}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-[var(--surface-2)] text-[14.5px] font-medium text-[var(--ink)]"
           >
-            <Icon name="close" size={20} />
+            <Icon name="edit" size={16} />
+            {t('own_edit')}
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowDel(true)}
+            className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-transparent text-[14.5px] font-medium text-[var(--danger)]"
+          >
+            <Icon name="trash" size={16} />
+            {t('own_delete')}
           </button>
         </div>
-      )}
+      </div>
 
       <Modal
         open={showOff}
