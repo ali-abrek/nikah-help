@@ -21,54 +21,54 @@ The platform MUST use the following technologies at their latest stable versions
 
 ### Version Table
 
-| Layer | Technology | Constraint |
-|---|---|---|
-| Frontend framework | **Next.js 16** (App Router) | `latest` |
-| UI runtime | **React 19** + `react-dom` | `latest` |
-| Styling | **Tailwind CSS v4** | `latest` |
-| Tailwind PostCSS plugin | `@tailwindcss/postcss` | `latest` |
-| Client cache / server state | **TanStack Query v5** | `latest` |
-| Local UI state | **Zustand v5** | `latest` |
-| Forms | **React Hook Form v7** | `latest` |
-| Validation resolver | `@hookform/resolvers` | `latest` |
-| Schema validation | **Zod v4** | `latest` |
-| Supabase JS client | `@supabase/supabase-js` | `latest` |
-| Supabase SSR helper | `@supabase/ssr` | `latest` |
-| Backend | **Next.js Route Handlers** (`runtime = 'nodejs'`) | built-in |
-| Server actions | **Server Actions** | built-in |
-| Database | **Supabase Postgres** (RLS + PostGIS) | cloud |
-| Authentication | **Supabase Auth** (Magic Link only) | cloud |
-| Realtime | **Supabase Realtime v2** (Changes + Broadcast + Presence) | cloud |
-| File storage | **Supabase Storage** (private buckets) | cloud |
-| Background jobs | **Inngest** | `latest` |
-| DB triggers → jobs | **Supabase Database Webhooks** | cloud |
-| Cron | **Vercel Cron Jobs** + `pg_cron` | built-in |
-| Image processing | **sharp** | `latest` |
-| AI: bio generation | **OpenAI Node.js SDK** | `latest` |
-| AI: moderation | **OpenAI Vision (gpt-4o)** or **Sightengine** | API |
-| Payments | **T-Bank Internet Acquiring** (iframe + REST API) | — |
-| Web Push | `web-push` | `latest` |
-| Email | **Resend** | `latest` |
-| Rate limiting | **Upstash Redis** + `@upstash/ratelimit` | `latest` |
-| CDN / DNS / WAF | **Cloudflare** | — |
-| Deployment / CI/CD | **Vercel** (GitHub integration) | — |
-| Monitoring | **Sentry** (Next.js SDK) — **MANDATORY**, see [14-sentry-observability.md](14-sentry-observability.md) | `latest` |
-| Analytics | **Vercel Analytics** + **PostHog** | `latest` |
-| i18n | **next-intl** | `latest` |
-| Themes | **next-themes** | `latest` |
-| Headless UI | **shadcn/ui** + **Radix UI** | `latest` |
-| Icons | **lucide-react** | `latest` |
-| Toast notifications | **sonner** | `latest` |
-| Audio waveform | **wavesurfer.js** | `latest` |
-| E2E tests | **Playwright** (`@playwright/test`) | `latest` |
-| Unit/component tests | **Vitest** + `@testing-library/react` | `latest` |
-| HTTP mocks in tests | **MSW (Mock Service Worker)** | `latest` |
-| Type system | **TypeScript** (strict mode) | `latest` |
-| Linter | **ESLint** (`next/core-web-vitals` config) | `latest` |
-| Formatter | **Prettier** | `latest` |
-| Package manager | **pnpm** | `latest` |
-| DB migrations | **Supabase CLI** | `latest` |
-| Node.js | LTS (Active) | `22.x` |
+| Layer                       | Technology                                                                                             | Constraint |
+| --------------------------- | ------------------------------------------------------------------------------------------------------ | ---------- |
+| Frontend framework          | **Next.js 16** (App Router)                                                                            | `latest`   |
+| UI runtime                  | **React 19** + `react-dom`                                                                             | `latest`   |
+| Styling                     | **Tailwind CSS v4**                                                                                    | `latest`   |
+| Tailwind PostCSS plugin     | `@tailwindcss/postcss`                                                                                 | `latest`   |
+| Client cache / server state | **TanStack Query v5**                                                                                  | `latest`   |
+| Local UI state              | **Zustand v5**                                                                                         | `latest`   |
+| Forms                       | **React Hook Form v7**                                                                                 | `latest`   |
+| Validation resolver         | `@hookform/resolvers`                                                                                  | `latest`   |
+| Schema validation           | **Zod v4**                                                                                             | `latest`   |
+| Supabase JS client          | `@supabase/supabase-js`                                                                                | `latest`   |
+| Supabase SSR helper         | `@supabase/ssr`                                                                                        | `latest`   |
+| Backend                     | **Next.js Route Handlers** (`runtime = 'nodejs'`)                                                      | built-in   |
+| Server actions              | **Server Actions**                                                                                     | built-in   |
+| Database                    | **Supabase Postgres** (RLS + PostGIS)                                                                  | cloud      |
+| Authentication              | **Supabase Auth** (Magic Link only)                                                                    | cloud      |
+| Realtime                    | **Supabase Realtime v2** (Changes + Broadcast + Presence)                                              | cloud      |
+| File storage                | **Supabase Storage** (private buckets)                                                                 | cloud      |
+| Background jobs             | **Inngest**                                                                                            | `latest`   |
+| DB triggers → jobs          | **Supabase Database Webhooks**                                                                         | cloud      |
+| Cron                        | **Vercel Cron Jobs** + `pg_cron`                                                                       | built-in   |
+| Image processing            | **sharp**                                                                                              | `latest`   |
+| AI: bio generation          | **OpenAI Node.js SDK**                                                                                 | `latest`   |
+| AI: moderation              | **OpenAI Vision (gpt-4o)** or **Sightengine**                                                          | API        |
+| Payments                    | **T-Bank Internet Acquiring** (iframe + REST API)                                                      | —          |
+| Web Push                    | `web-push`                                                                                             | `latest`   |
+| Email                       | **Resend**                                                                                             | `latest`   |
+| Rate limiting               | **Upstash Redis** + `@upstash/ratelimit`                                                               | `latest`   |
+| CDN / DNS / WAF             | **Cloudflare**                                                                                         | —          |
+| Deployment / CI/CD          | **Vercel** (GitHub integration)                                                                        | —          |
+| Monitoring                  | **Sentry** (Next.js SDK) — **MANDATORY**, see [14-sentry-observability.md](14-sentry-observability.md) | `latest`   |
+| Analytics                   | **Vercel Analytics** + **PostHog**                                                                     | `latest`   |
+| i18n                        | **next-intl**                                                                                          | `latest`   |
+| Themes                      | **next-themes**                                                                                        | `latest`   |
+| Headless UI                 | **shadcn/ui** + **Radix UI**                                                                           | `latest`   |
+| Icons                       | **lucide-react**                                                                                       | `latest`   |
+| Toast notifications         | **sonner**                                                                                             | `latest`   |
+| Audio waveform              | **wavesurfer.js**                                                                                      | `latest`   |
+| E2E tests                   | **Playwright** (`@playwright/test`)                                                                    | `latest`   |
+| Unit/component tests        | **Vitest** + `@testing-library/react`                                                                  | `latest`   |
+| HTTP mocks in tests         | **MSW (Mock Service Worker)**                                                                          | `latest`   |
+| Type system                 | **TypeScript** (strict mode)                                                                           | `latest`   |
+| Linter                      | **ESLint** (`next/core-web-vitals` config)                                                             | `latest`   |
+| Formatter                   | **Prettier**                                                                                           | `latest`   |
+| Package manager             | **pnpm**                                                                                               | `latest`   |
+| DB migrations               | **Supabase CLI**                                                                                       | `latest`   |
+| Node.js                     | LTS (Active)                                                                                           | `22.x`     |
 
 > **Decision:** No separate backend server is allowed. All business logic runs in Next.js Route Handlers with `runtime = 'nodejs'`, Server Actions, or Inngest background functions.
 
@@ -157,6 +157,7 @@ pnpm add -D \
 **Given** features requiring live updates (chat messages, notifications, typing indicators, online status)
 **When** data changes or user presence updates
 **Then** Supabase Realtime v2 MUST be used:
+
 - **Postgres Changes** for new messages and notification inserts
 - **Broadcast** for ephemeral events (typing indicators, match alerts)
 - **Presence** for online/offline status
@@ -189,6 +190,7 @@ In Next.js 16, `middleware.ts` is renamed to `proxy.ts` to clarify its role as a
 ### Dual Protection
 
 Every data access MUST be protected at two levels:
+
 1. **Database level:** Row Level Security (RLS) policies in Postgres
 2. **Application level:** Zod v4 validation + authorization checks in Route Handlers and Server Actions
 
@@ -196,23 +198,23 @@ Every data access MUST be protected at two levels:
 
 ```css
 /* globals.css — CORRECT for v4 */
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
-  --color-primary: #FF8C42;
-  --color-primary-hover: #FCAF58;
-  --color-accent: #F9C784;
-  --font-sans: "Inter", sans-serif;
+  --color-primary: #ff8c42;
+  --color-primary-hover: #fcaf58;
+  --color-accent: #f9c784;
+  --font-sans: 'Inter', sans-serif;
 }
 
 @layer base {
   :root {
-    --background: #FFFFFF;
+    --background: #ffffff;
     --foreground: #111111;
   }
   .dark {
-    --background: #4E598C;
-    --foreground: #F5F5F5;
+    --background: #4e598c;
+    --foreground: #f5f5f5;
   }
 }
 ```
@@ -227,6 +229,7 @@ Every data access MUST be protected at two levels:
 ```
 
 **Forbidden for v4:**
+
 - ❌ `@tailwind base; @tailwind components; @tailwind utilities;` (v3 syntax)
 - ❌ `tailwind.config.js` / `tailwind.config.ts` (configuration is in CSS)
 - ❌ `autoprefixer` in PostCSS (built into v4)
@@ -246,11 +249,11 @@ Every data access MUST be protected at two levels:
 
 ### Ephemeral State
 
-| State | Mechanism |
-|---|---|
-| Online / offline | **Supabase Presence** (track on channel join) |
-| Typing status | **Supabase Realtime Broadcast** (never written to DB) |
-| Last seen | Column `last_seen_at` in `profiles`, updated on `presence.leave` |
+| State            | Mechanism                                                        |
+| ---------------- | ---------------------------------------------------------------- |
+| Online / offline | **Supabase Presence** (track on channel join)                    |
+| Typing status    | **Supabase Realtime Broadcast** (never written to DB)            |
+| Last seen        | Column `last_seen_at` in `profiles`, updated on `presence.leave` |
 
 > **Decision:** Upstash Redis is used ONLY for rate limiting (`@upstash/ratelimit`). It is NOT a state store.
 
@@ -289,9 +292,9 @@ const mutation = useMutation({
 import { z } from 'zod'
 
 // New top-level validators (v4)
-const email = z.email()     // instead of z.string().email()
-const uuid  = z.uuid()      // instead of z.string().uuid()
-const url   = z.url()       // instead of z.string().url()
+const email = z.email() // instead of z.string().email()
+const uuid = z.uuid() // instead of z.string().uuid()
+const url = z.url() // instead of z.string().url()
 
 // Preferred: "error" over "message"
 const schema = z.string().min(2, { error: 'Minimum 2 characters' })

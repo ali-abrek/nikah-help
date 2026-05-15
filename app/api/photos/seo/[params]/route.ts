@@ -61,8 +61,7 @@ export async function GET(
       throw new AppError('NOT_FOUND')
     }
 
-    const variants =
-      (photo.variants as Record<string, { avif: string; webp: string }> | null) ?? {}
+    const variants = (photo.variants as Record<string, { avif: string; webp: string }> | null) ?? {}
     const path = variants[parsed.variant]?.[parsed.fmt]
     if (!path) throw new AppError('NOT_FOUND')
 

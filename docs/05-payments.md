@@ -5,10 +5,11 @@
 This file defines the complete payment integration using T-Bank Internet Acquiring via iframe-based payment form. Payments handle male user subscriptions (30-day recurring access). No Stripe — T-Bank exclusively.
 
 > **MANDATORY OBSERVABILITY (payments):** Payments are business-critical. Silent payment failures = revenue loss + support escalations. Per [14-sentry-observability.md](14-sentry-observability.md), every T-Bank API call and webhook handler MUST report to Sentry on failure, **regardless of HTTP status**:
-> * `flow=payments.init` — `Init` API call failure. Severity: error. Alert: > 5 in 5 min → page on-call.
-> * `flow=payments.webhook` with `reason=signature` — invalid HMAC. Severity: error. Possible fraud signal.
-> * `flow=payments.webhook` with `reason=conflict` — idempotency conflict. Severity: warning.
-> * `flow=payments.rebill`, `attempt=<n>` — recurring rebill failure. Severity: error.
+>
+> - `flow=payments.init` — `Init` API call failure. Severity: error. Alert: > 5 in 5 min → page on-call.
+> - `flow=payments.webhook` with `reason=signature` — invalid HMAC. Severity: error. Possible fraud signal.
+> - `flow=payments.webhook` with `reason=conflict` — idempotency conflict. Severity: warning.
+> - `flow=payments.rebill`, `attempt=<n>` — recurring rebill failure. Severity: error.
 >
 > Tag events with `provider_payment_id` (the T-Bank `PaymentId`). **Never** include PAN, CVV, cardholder name, email, or full card data — these are not in our possession by design, and request bodies MUST still be defensively scrubbed before any capture. Sample rate for `flow=payments.*` traces is forced to **1.0** even in production (see `tracesSampler` in 14-sentry-observability.md).
 
@@ -44,12 +45,14 @@ function onPaymentIntegrationLoad() {
     terminalKey: window.__TBANK_CONFIG__.terminalKey,
     product: 'eacq',
     features: {
-      iframe: {},        // Payment form in iframe
-      addcardIframe: {}  // Card binding for recurrent payments
-    }
-  }).then(() => {
-    console.log('T-Bank integration ready')
-  }).catch(console.error)
+      iframe: {}, // Payment form in iframe
+      addcardIframe: {}, // Card binding for recurrent payments
+    },
+  })
+    .then(() => {
+      console.log('T-Bank integration ready')
+    })
+    .catch(console.error)
 }
 ```
 
@@ -77,7 +80,7 @@ const TBANK_API = 'https://securepay.tinkoff.ru/v2/Init'
 
 interface InitPaymentParams {
   orderId: string
-  customerKey: string   // user ID for recurrent payments
+  customerKey: string // user ID for recurrent payments
   description: string
   notificationURL: string
   successURL: string
@@ -89,15 +92,15 @@ const SUBSCRIPTION_PRICE_KOPECKS = 100000 // 1000 RUB
 async function initiatePayment(params: InitPaymentParams) {
   const body = {
     TerminalKey: process.env.TBANK_TERMINAL_KEY!,
-    Amount: 100000,                    // 1000 RUB in kopecks
+    Amount: 100000, // 1000 RUB in kopecks
     OrderId: params.orderId,
-    CustomerKey: params.customerKey,   // enables recurrent payments
-    Recurrent: 'Y',                    // parent payment flag for card-on-file
+    CustomerKey: params.customerKey, // enables recurrent payments
+    Recurrent: 'Y', // parent payment flag for card-on-file
     Description: params.description,
     NotificationURL: params.notificationURL,
     SuccessURL: params.successURL,
     FailURL: params.failURL,
-    PayType: 'O',                      // one-stage payment
+    PayType: 'O', // one-stage payment
     Language: 'ru',
   }
 
@@ -107,7 +110,7 @@ async function initiatePayment(params: InitPaymentParams) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.TBANK_API_TOKEN}`,
+      Authorization: `Bearer ${process.env.TBANK_API_TOKEN}`,
     },
     body: JSON.stringify(body),
   })
@@ -124,15 +127,19 @@ async function initiatePayment(params: InitPaymentParams) {
 ```typescript
 function generateToken(params: Record<string, any>): string {
   const sorted = Object.keys(params)
-    .filter(k => k !== 'Token')
+    .filter((k) => k !== 'Token')
     .sort()
-    .reduce((acc, key) => {
-      acc[key] = params[key]
-      return acc
-    }, {} as Record<string, any>)
+    .reduce(
+      (acc, key) => {
+        acc[key] = params[key]
+        return acc
+      },
+      {} as Record<string, any>,
+    )
 
   const concatenated = Object.values(sorted).join('')
-  return crypto.createHash('sha256')
+  return crypto
+    .createHash('sha256')
     .update(concatenated + process.env.TBANK_API_TOKEN)
     .digest('hex')
 }
@@ -246,16 +253,14 @@ export async function POST(request: Request) {
 async function activateSubscription(orderId: string, paymentId: string, rebillId?: string) {
   const subscription = await getSubscriptionByOrderId(orderId)
 
-  await supabaseAdmin
-    .from('subscriptions')
-    .upsert({
-      user_id: subscription.userId,
-      tbank_payment_id: paymentId.toString(),
-      status: 'active',
-      current_period_start: new Date().toISOString(),
-      current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      cancel_at_period_end: false,
-    })
+  await supabaseAdmin.from('subscriptions').upsert({
+    user_id: subscription.userId,
+    tbank_payment_id: paymentId.toString(),
+    status: 'active',
+    current_period_start: new Date().toISOString(),
+    current_period_end: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+    cancel_at_period_end: false,
+  })
 }
 ```
 
@@ -303,7 +308,7 @@ async function initiateRecurrentPayment(customerKey: string, orderId: string) {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${process.env.TBANK_API_TOKEN}`,
+      Authorization: `Bearer ${process.env.TBANK_API_TOKEN}`,
     },
     body: JSON.stringify(body),
   })
@@ -321,6 +326,7 @@ async function initiateRecurrentPayment(customerKey: string, orderId: string) {
 **Given** a male user on the free tier
 **When** they visit `/subscription`
 **Then** the page displays:
+
 - Current tier: Free (3 likes total — chats open automatically on mutual match)
 - Premium benefits: Unlimited likes (and therefore unlimited matches/chats)
 - Price: read from `pricing_plans` row `subscription_monthly` (currently 1000 RUB / 30 days)

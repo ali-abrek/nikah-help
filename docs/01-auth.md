@@ -5,10 +5,11 @@
 This file defines the complete authentication flow, session management, role-based access control, user registration, onboarding process, AI-generated bio, and account deletion. Authentication relies exclusively on Supabase Magic Link — no OAuth providers are used.
 
 > **MANDATORY OBSERVABILITY (auth):** Auth failures are **deliberately silent to end users** (we never confirm whether an email exists), which means **operators have zero signal unless Sentry is wired**. Per [14-sentry-observability.md](14-sentry-observability.md), the following MUST report to Sentry:
-> * `flow=auth.magic_link_send` — Supabase `signInWithOtp` failure (network, rate, provider error). Tag with hashed email domain only — never the email.
-> * `flow=auth.callback` — `exchangeCodeForSession` failure or invalid state in `app/(public)/auth/callback/route.ts`. Severity: error.
-> * `flow=auth.session_refresh` — failure inside `proxy.ts` when refreshing the SSR session. Severity: warning.
-> * `flow=auth.rbac` — RBAC check anomalies (missing `role` claim, missing `users_app.role` row). Severity: error.
+>
+> - `flow=auth.magic_link_send` — Supabase `signInWithOtp` failure (network, rate, provider error). Tag with hashed email domain only — never the email.
+> - `flow=auth.callback` — `exchangeCodeForSession` failure or invalid state in `app/(public)/auth/callback/route.ts`. Severity: error.
+> - `flow=auth.session_refresh` — failure inside `proxy.ts` when refreshing the SSR session. Severity: warning.
+> - `flow=auth.rbac` — RBAC check anomalies (missing `role` claim, missing `users_app.role` row). Severity: error.
 >
 > The user-facing message MUST remain generic; the Sentry event carries the cause + stack. `setSentryUser(id)` from `lib/sentry/` MUST be called with the user UUID only — never `email` or `username`. The helper's type signature enforces this; `scrubPii` in `beforeSend` strips all other user fields as a safety net.
 
@@ -77,7 +78,11 @@ export async function GET(request: Request) {
     const supabase = createServerClient(
       process.env.SUPABASE_URL!,
       process.env.SUPABASE_PUBLISHABLE_KEY!,
-      { cookies: { /* cookie handlers */ } }
+      {
+        cookies: {
+          /* cookie handlers */
+        },
+      },
     )
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
@@ -119,7 +124,7 @@ import { createBrowserClient } from '@supabase/ssr'
 export const createClient = () =>
   createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
   )
 ```
 
@@ -130,20 +135,16 @@ import { cookies } from 'next/headers'
 
 export async function createServerSupabase() {
   const cookieStore = await cookies()
-  return createServerClient(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_PUBLISHABLE_KEY!,
-    {
-      cookies: {
-        getAll() { return cookieStore.getAll() },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          )
-        },
+  return createServerClient(process.env.SUPABASE_URL!, process.env.SUPABASE_PUBLISHABLE_KEY!, {
+    cookies: {
+      getAll() {
+        return cookieStore.getAll()
       },
-    }
-  )
+      setAll(cookiesToSet) {
+        cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
+      },
+    },
+  })
 }
 ```
 
@@ -153,11 +154,11 @@ export async function createServerSupabase() {
 
 ### Roles
 
-| Role | Scope |
-|---|---|
-| `user` | Base permissions, subject to tariff limits |
-| `moderator` | Resolve reports, view flagged conversations |
-| `admin` | Everything `moderator` + manage roles + statistics |
+| Role        | Scope                                              |
+| ----------- | -------------------------------------------------- |
+| `user`      | Base permissions, subject to tariff limits         |
+| `moderator` | Resolve reports, view flagged conversations        |
+| `admin`     | Everything `moderator` + manage roles + statistics |
 
 ### Scenario: Role is checked on the backend
 
@@ -236,6 +237,7 @@ The onboarding flow MUST consist of 4 sequential steps at `/onboarding`. Each st
 **Given** a new user on `/onboarding`
 **When** they fill in the Step 1 form
 **Then** all fields are required:
+
 - Name (text input)
 - Date of birth (date picker, with **strict validation: user MUST be ≥ 18 years old at the time of submission**)
   - Client-side: Zod v4 schema rejects `birth_date > today - 18 years` with localized error "You must be at least 18 years old"
@@ -256,6 +258,7 @@ The onboarding flow MUST consist of 4 sequential steps at `/onboarding`. Each st
 **Then** the form adapts:
 
 **For men:**
+
 - Marital status (never married / divorced / widower / married to one / two / three)
 - Children (none / 1 / 2 / 3 / 4 / 5+)
 - Education
@@ -264,6 +267,7 @@ The onboarding flow MUST consist of 4 sequential steps at `/onboarding`. Each st
 - Textarea "About yourself, religion, and spouse preferences" (optional)
 
 **For women:**
+
 - Marital status (never married / divorced / widow)
 - Children
 - Education
@@ -277,6 +281,7 @@ The onboarding flow MUST consist of 4 sequential steps at `/onboarding`. Each st
 **Given** the user proceeds to Step 3
 **When** they upload photos
 **Then** the following rules apply:
+
 - Input `accept="image/*"` with drag & drop support
 - Upload directly to Supabase Storage via `storage.createSignedUploadUrl()`
 - Grid of up to 6 photos (4:5 aspect ratio, hidden until first upload)
@@ -288,6 +293,7 @@ The onboarding flow MUST consist of 4 sequential steps at `/onboarding`. Each st
 **Given** the user proceeds to Step 4
 **When** they review their data (all read-only)
 **Then** clicking "Save" triggers a Server Action that:
+
 1. Validates all data via Zod v4
 2. Calls OpenAI API to generate `profiles.ai_bio`
 3. Sets `onboarding_completed = true`
@@ -309,6 +315,7 @@ The onboarding flow MUST consist of 4 sequential steps at `/onboarding`. Each st
 ### Role of the AI Bio
 
 The generated `profiles.ai_bio` is the **canonical text description** of a profile. It is rendered:
+
 - In the user's own profile page
 - In other users' profile detail view (`/profile/[id]`)
 - In match modals and notification previews where the description is shown
@@ -336,16 +343,16 @@ The structured data (`marital_status`, `children_count`, `income_level`, etc.) i
 
 ### Scenario: Editable fields
 
-| Field | Editable | Notes |
-|---|---|---|
-| `name`, `country`, `city`, `nationality`, `height`, `weight` | ✅ | Free edit |
-| `birth_date` | ✅ | But re-validates ≥18 (DB CHECK enforces) |
-| `gender` | ❌ | Locked. Changing gender is functionally a new account — see Decision below |
-| `email` | ❌ | Tied to auth identity (Magic Link) |
-| Marital / children / education / income / housing / hijab / polygyny | ✅ | Gender-specific subset |
-| `about_self` | ✅ | User free text — triggers `ai_bio` regeneration |
-| `private_mode`, `is_published`, `locale`, `theme_preference` | ✅ | Toggle-style, no `ai_bio` regen |
-| `location` (geo) | ✅ | Recaptured via `navigator.geolocation` |
+| Field                                                                | Editable | Notes                                                                      |
+| -------------------------------------------------------------------- | -------- | -------------------------------------------------------------------------- |
+| `name`, `country`, `city`, `nationality`, `height`, `weight`         | ✅       | Free edit                                                                  |
+| `birth_date`                                                         | ✅       | But re-validates ≥18 (DB CHECK enforces)                                   |
+| `gender`                                                             | ❌       | Locked. Changing gender is functionally a new account — see Decision below |
+| `email`                                                              | ❌       | Tied to auth identity (Magic Link)                                         |
+| Marital / children / education / income / housing / hijab / polygyny | ✅       | Gender-specific subset                                                     |
+| `about_self`                                                         | ✅       | User free text — triggers `ai_bio` regeneration                            |
+| `private_mode`, `is_published`, `locale`, `theme_preference`         | ✅       | Toggle-style, no `ai_bio` regen                                            |
+| `location` (geo)                                                     | ✅       | Recaptured via `navigator.geolocation`                                     |
 
 > **Decision:** `gender` is immutable post-onboarding. Changing gender invalidates outgoing/incoming likes, mutual matches, and tariff counters. If a user genuinely needs to change it, they MUST delete the account and re-register. The UI shows the gender field as read-only with a tooltip explaining this.
 
@@ -354,6 +361,7 @@ The structured data (`marital_status`, `children_count`, `income_level`, etc.) i
 **Given** a user clicks "Save" after editing fields that affect the bio narrative
 **When** the Server Action runs (`saveOnboardingStep1` / `saveOnboardingStep2` for the wizard, the same actions invoked from `/profile/edit` post-onboarding)
 **Then** it:
+
 1. Validates all changes via Zod v4
 2. UPDATEs the profile and returns immediately (no waiting on OpenAI)
 3. Calls the shared helper `maybeRegenerateBio(supabase, userId)` which:
@@ -389,6 +397,7 @@ Changes to fields outside this list (e.g. `private_mode`, `theme_preference`, `i
 > **Decision:** A user may regenerate the AI bio at most **3 times per rolling 24 hours**, counted across both automatic regenerations (triggered by edits to bio-relevant fields) and manual "Regenerate description" clicks.
 
 Implementation:
+
 - The Inngest function `profile.regenerate-bio` declares `rateLimit: { limit: 3, period: '24h', key: 'event.data.userId' }`.
 - When the limit is hit:
   - For **manual** triggers: the Server Action returns a friendly error toast: "You can regenerate your description up to 3 times per day. Try again later."
@@ -424,10 +433,10 @@ export const profileRegenerateBioFn = inngest.createFunction(
           { role: 'system', content: AI_BIO_PROMPT },
           { role: 'user', content: JSON.stringify(profile.bioInputs) },
         ],
-      })
+      }),
     )
     await step.run('persist', () => updateAiBio(userId, bio))
-  }
+  },
 )
 ```
 
@@ -442,6 +451,7 @@ export const profileRegenerateBioFn = inngest.createFunction(
 **And** confirm in the dialog
 **Then** a progress indicator appears
 **And** the Inngest workflow `account.delete` executes sequentially:
+
 1. Mark `profiles.deletion_status = 'in_progress'`, set `is_published = false`
 2. Delete all photos from Supabase Storage
 3. Delete all chat media from Supabase Storage
@@ -467,8 +477,12 @@ export const accountDeleteFn = inngest.createFunction(
     await step.run('mark-deleting', async () => {
       // UPDATE profiles SET deletion_status = 'in_progress', is_published = false
     })
-    await step.run('delete-photos', async () => { /* Storage */ })
-    await step.run('delete-chats-media', async () => { /* iterate chats → Storage */ })
+    await step.run('delete-photos', async () => {
+      /* Storage */
+    })
+    await step.run('delete-chats-media', async () => {
+      /* iterate chats → Storage */
+    })
     await step.run('delete-db-records', async () => {
       // DELETE likes, matches, chats, messages, reports, notifications, push_subscriptions
     })
@@ -484,7 +498,7 @@ export const accountDeleteFn = inngest.createFunction(
     await step.run('purge-cloudflare', async () => {
       // Cloudflare API purge
     })
-  }
+  },
 )
 ```
 

@@ -7,9 +7,10 @@ This file defines the centralized notification system for the Nikah Help platfor
 **Target audience:** AI development agents (Claude Code) and senior fullstack engineers.
 
 > **MANDATORY OBSERVABILITY (notifications):** Per [14-sentry-observability.md](14-sentry-observability.md):
-> * `flow=notif.send`, `channel=<push|email|in_app>` — channel send failure (Resend non-2xx, Web Push `410 Gone`-loop, etc.). Severity: error.
-> * `flow=sw` — uncaught error in `public/sw.js` (Service Worker). Severity: warning. Use `@sentry/browser` lightweight init in the SW context.
-> * Notification payload `body` text is template-rendered and may contain user names — it MUST be redacted before capture (only `notification_type` + `notification_id` go to Sentry).
+>
+> - `flow=notif.send`, `channel=<push|email|in_app>` — channel send failure (Resend non-2xx, Web Push `410 Gone`-loop, etc.). Severity: error.
+> - `flow=sw` — uncaught error in `public/sw.js` (Service Worker). Severity: warning. Use `@sentry/browser` lightweight init in the SW context.
+> - Notification payload `body` text is template-rendered and may contain user names — it MUST be redacted before capture (only `notification_type` + `notification_id` go to Sentry).
 
 ---
 
@@ -73,7 +74,12 @@ Business Event
 
 ```typescript
 // lib/notifications/factory.ts
-import type { NotificationType, NotificationContext, NotificationOptions, NotificationPayload } from './types'
+import type {
+  NotificationType,
+  NotificationContext,
+  NotificationOptions,
+  NotificationPayload,
+} from './types'
 import { resolveTemplate } from './templates'
 import { resolveLink } from './links'
 import { validateContext } from './validation'
@@ -235,30 +241,27 @@ import type { NotificationType, NotificationContext } from './types'
  * Throws VALIDATION_INVALID_INPUT if a required field is missing.
  */
 const REQUIRED_FIELDS: Record<NotificationType, (keyof NotificationContext)[]> = {
-  like_received:              ['recipientId', 'actorId', 'actorName', 'entityId'],
-  match_created:              ['recipientId', 'actorId', 'actorName', 'matchId'],
-  message_new:                ['recipientId', 'actorId', 'actorName', 'messageId', 'chatId'],
-  like_revoked:               ['recipientId', 'actorId', 'entityId'],
-  photo_approved:             ['recipientId', 'photoId'],
-  photo_rejected:             ['recipientId', 'photoId', 'reason'],
+  like_received: ['recipientId', 'actorId', 'actorName', 'entityId'],
+  match_created: ['recipientId', 'actorId', 'actorName', 'matchId'],
+  message_new: ['recipientId', 'actorId', 'actorName', 'messageId', 'chatId'],
+  like_revoked: ['recipientId', 'actorId', 'entityId'],
+  photo_approved: ['recipientId', 'photoId'],
+  photo_rejected: ['recipientId', 'photoId', 'reason'],
   photo_removed_by_moderator: ['recipientId', 'photoId', 'reason'],
-  account_blocked:            ['recipientId', 'reason'],
-  account_reinstated:         ['recipientId'],
+  account_blocked: ['recipientId', 'reason'],
+  account_reinstated: ['recipientId'],
   account_suspension_expired: ['recipientId'],
-  inactivity_warning:         ['recipientId'],
+  inactivity_warning: ['recipientId'],
 }
 
-export function validateContext(
-  type: NotificationType,
-  context: NotificationContext,
-): void {
+export function validateContext(type: NotificationType, context: NotificationContext): void {
   const required = REQUIRED_FIELDS[type]
-  const missing = required.filter(field => context[field] == null)
+  const missing = required.filter((field) => context[field] == null)
 
   if (missing.length > 0) {
     throw new AppError('VALIDATION_INVALID_INPUT', {
       message: `Missing required context fields for ${type}: ${missing.join(', ')}`,
-      details: Object.fromEntries(missing.map(f => [f, 'Required'])),
+      details: Object.fromEntries(missing.map((f) => [f, 'Required'])),
       logContext: { notificationType: type, missing },
     })
   }
@@ -284,29 +287,29 @@ All types are lowercase with underscores. The registry below is the single sourc
 
 #### Social — Interpersonal interactions
 
-| Type | Trigger | Priority | Default Channels |
-|---|---|---|---|
-| `like_received` | User A likes User B's profile | normal | in_app + push |
-| `like_revoked` | User A revokes their like on User B | low | in_app |
-| `match_created` | Mutual like detected → match created | high | in_app + push + email |
-| `message_new` | New message in an active chat | normal | in_app + push |
+| Type            | Trigger                              | Priority | Default Channels      |
+| --------------- | ------------------------------------ | -------- | --------------------- |
+| `like_received` | User A likes User B's profile        | normal   | in_app + push         |
+| `like_revoked`  | User A revokes their like on User B  | low      | in_app                |
+| `match_created` | Mutual like detected → match created | high     | in_app + push + email |
+| `message_new`   | New message in an active chat        | normal   | in_app + push         |
 
 #### Moderation — Admin/moderator actions
 
-| Type | Trigger | Priority | Default Channels |
-|---|---|---|---|
-| `photo_approved` | Moderator approves a photo | normal | in_app |
-| `photo_rejected` | Moderator rejects a photo | normal | in_app |
-| `photo_removed_by_moderator` | Moderator removes an approved photo | high | in_app + email |
-| `account_blocked` | Moderator permanently blocks a user | high | email |
-| `account_reinstated` | Admin lifts a block | high | email |
-| `account_suspension_expired` | Temporary ban duration ends | normal | email |
+| Type                         | Trigger                             | Priority | Default Channels |
+| ---------------------------- | ----------------------------------- | -------- | ---------------- |
+| `photo_approved`             | Moderator approves a photo          | normal   | in_app           |
+| `photo_rejected`             | Moderator rejects a photo           | normal   | in_app           |
+| `photo_removed_by_moderator` | Moderator removes an approved photo | high     | in_app + email   |
+| `account_blocked`            | Moderator permanently blocks a user | high     | email            |
+| `account_reinstated`         | Admin lifts a block                 | high     | email            |
+| `account_suspension_expired` | Temporary ban duration ends         | normal   | email            |
 
 #### System — Automated platform events
 
-| Type | Trigger | Priority | Default Channels |
-|---|---|---|---|
-| `inactivity_warning` | User inactive > 90 days | low | email |
+| Type                 | Trigger                 | Priority | Default Channels |
+| -------------------- | ----------------------- | -------- | ---------------- |
+| `inactivity_warning` | User inactive > 90 days | low      | email            |
 
 ### Channel Defaults Rationale
 
@@ -540,9 +543,16 @@ import ruMessages from '@/messages/ru.json'
 import enMessages from '@/messages/en.json'
 
 const ALL_TYPES = [
-  'like_received', 'like_revoked', 'match_created', 'message_new',
-  'photo_approved', 'photo_rejected', 'photo_removed_by_moderator',
-  'account_blocked', 'account_reinstated', 'account_suspension_expired',
+  'like_received',
+  'like_revoked',
+  'match_created',
+  'message_new',
+  'photo_approved',
+  'photo_rejected',
+  'photo_removed_by_moderator',
+  'account_blocked',
+  'account_reinstated',
+  'account_suspension_expired',
   'inactivity_warning',
 ] as const
 
@@ -567,7 +577,7 @@ describe('notification templates', () => {
 
   it('should not have orphaned translations without a type', () => {
     for (const key of Object.keys(ruMessages.notifications)) {
-      expect(ALL_TYPES).toContain(key as typeof ALL_TYPES[number])
+      expect(ALL_TYPES).toContain(key as (typeof ALL_TYPES)[number])
     }
   })
 })
@@ -605,19 +615,13 @@ export function resolveLink(
   switch (type) {
     // Social — link to the relevant entity
     case 'like_received':
-      return context.actorId
-        ? `/profiles/${context.actorId}`
-        : undefined
+      return context.actorId ? `/profiles/${context.actorId}` : undefined
 
     case 'match_created':
-      return context.matchId
-        ? `/matches/${context.matchId}`
-        : undefined
+      return context.matchId ? `/matches/${context.matchId}` : undefined
 
     case 'message_new':
-      return context.chatId
-        ? `/chat/${context.chatId}`
-        : undefined
+      return context.chatId ? `/chat/${context.chatId}` : undefined
 
     case 'like_revoked':
       return undefined // No link — the like is gone
@@ -652,14 +656,14 @@ export function resolveLink(
 
 Centralized route patterns for the entire app. If a route changes, update it here and in `resolveLink()`:
 
-| Route | Pattern | Used By |
-|---|---|---|
-| `/profiles/:id` | Public profile view | `like_received` |
-| `/matches/:id` | Match detail / chat initiation | `match_created` |
-| `/chat/:id` | Chat conversation | `message_new` |
-| `/settings/photos` | Photo management | `photo_approved`, `photo_rejected`, `photo_removed_by_moderator` |
-| `/feed` | Main feed | `account_reinstated`, `account_suspension_expired`, `inactivity_warning` |
-| `/blocked` | Blocked account info page | No notification link (redirect page, not linked from notifications) |
+| Route              | Pattern                        | Used By                                                                  |
+| ------------------ | ------------------------------ | ------------------------------------------------------------------------ |
+| `/profiles/:id`    | Public profile view            | `like_received`                                                          |
+| `/matches/:id`     | Match detail / chat initiation | `match_created`                                                          |
+| `/chat/:id`        | Chat conversation              | `message_new`                                                            |
+| `/settings/photos` | Photo management               | `photo_approved`, `photo_rejected`, `photo_removed_by_moderator`         |
+| `/feed`            | Main feed                      | `account_reinstated`, `account_suspension_expired`, `inactivity_warning` |
+| `/blocked`         | Blocked account info page      | No notification link (redirect page, not linked from notifications)      |
 
 ---
 
@@ -807,19 +811,19 @@ function shouldSendEmail(type: string): boolean {
 
 ### Channel Routing Table
 
-| Type | In-App (Realtime) | Web Push | Email |
-|---|---|---|---|
-| `like_received` | ✅ (if online) | ✅ (if offline) | — |
-| `like_revoked` | ✅ | — | — |
-| `match_created` | ✅ | ✅ | ✅ |
-| `message_new` | ✅ | ✅ | — |
-| `photo_approved` | ✅ | — | — |
-| `photo_rejected` | ✅ | — | — |
-| `photo_removed_by_moderator` | ✅ | — | ✅ |
-| `account_blocked` | — | — | ✅ |
-| `account_reinstated` | — | — | ✅ |
-| `account_suspension_expired` | — | — | ✅ |
-| `inactivity_warning` | — | — | ✅ |
+| Type                         | In-App (Realtime) | Web Push        | Email |
+| ---------------------------- | ----------------- | --------------- | ----- |
+| `like_received`              | ✅ (if online)    | ✅ (if offline) | —     |
+| `like_revoked`               | ✅                | —               | —     |
+| `match_created`              | ✅                | ✅              | ✅    |
+| `message_new`                | ✅                | ✅              | —     |
+| `photo_approved`             | ✅                | —               | —     |
+| `photo_rejected`             | ✅                | —               | —     |
+| `photo_removed_by_moderator` | ✅                | —               | ✅    |
+| `account_blocked`            | —                 | —               | ✅    |
+| `account_reinstated`         | —                 | —               | ✅    |
+| `account_suspension_expired` | —                 | —               | ✅    |
+| `inactivity_warning`         | —                 | —               | ✅    |
 
 ---
 
@@ -874,6 +878,7 @@ Notifications older than 90 days are deleted by a Vercel Cron job:
 ```
 
 Read notifications older than 30 days are also purged:
+
 ```sql
 DELETE FROM notifications
 WHERE status = 'read'
@@ -992,11 +997,7 @@ export async function checkAndCreateMatch(likerId: string, likedId: string) {
 import { createNotification } from '@/lib/notifications/factory'
 import { inngest } from '@/lib/inngest/client'
 
-export async function sendMessage(
-  senderId: string,
-  chatId: string,
-  text: string,
-) {
+export async function sendMessage(senderId: string, chatId: string, text: string) {
   // ... insert message into messages table ...
 
   const { data: message } = await supabase
@@ -1016,9 +1017,7 @@ export async function sendMessage(
     .eq('id', chatId)
     .single()
 
-  const recipientId = chat.user1_id === senderId
-    ? chat.user2_id
-    : chat.user1_id
+  const recipientId = chat.user1_id === senderId ? chat.user2_id : chat.user1_id
 
   const { data: sender } = await supabase
     .from('profiles')
@@ -1052,11 +1051,7 @@ export async function sendMessage(
 import { createNotification } from '@/lib/notifications/factory'
 import { inngest } from '@/lib/inngest/client'
 
-export async function removePhotoByModerator(
-  photoId: string,
-  reason: string,
-  moderatorId: string,
-) {
+export async function removePhotoByModerator(photoId: string, reason: string, moderatorId: string) {
   // ... mark photo as rejected, delete from storage, etc. ...
 
   const { data: photo } = await supabase
@@ -1097,9 +1092,7 @@ export async function blockAccount(
 ) {
   // ... suspend user, sign out sessions, etc. ...
 
-  const duration = isPermanent
-    ? undefined
-    : `${banDurationDays} days`
+  const duration = isPermanent ? undefined : `${banDurationDays} days`
 
   const notification = createNotification('account_blocked', {
     recipientId: targetUserId,
@@ -1140,7 +1133,7 @@ export async function GET() {
   }
 
   // Batch send notifications
-  const events = inactiveUsers.map(user =>
+  const events = inactiveUsers.map((user) =>
     inngest.send({
       name: 'notification/send',
       data: {
@@ -1149,7 +1142,7 @@ export async function GET() {
           recipientId: user.id,
         }),
       },
-    })
+    }),
   )
 
   await Promise.all(events)
@@ -1178,13 +1171,15 @@ If the Inngest event fails to send, the error is logged and the business action 
 try {
   await inngest.send({ name: 'notification/send', data: { userId, payload: notification } })
 } catch (error) {
-  console.error(JSON.stringify({
-    level: 'error',
-    event: 'notification.inngest_send_failed',
-    userId,
-    type: notification.payload.type,
-    error: (error as Error).message,
-  }))
+  console.error(
+    JSON.stringify({
+      level: 'error',
+      event: 'notification.inngest_send_failed',
+      userId,
+      type: notification.payload.type,
+      error: (error as Error).message,
+    }),
+  )
   // Proceed — don't fail the business action because of a notification error
 }
 ```
@@ -1214,11 +1209,11 @@ If the user has no push subscriptions (unregistered, revoked, or cleaned up), pu
 
 ### Latency Budget
 
-| Component | Target |
-|---|---|
+| Component                             | Target  |
+| ------------------------------------- | ------- |
 | `createNotification()` (sync, no I/O) | < 0.1ms |
-| `inngest.send()` (fire and forget) | < 10ms |
-| Total overhead on business action | < 10ms |
+| `inngest.send()` (fire and forget)    | < 10ms  |
+| Total overhead on business action     | < 10ms  |
 
 ### Design Decisions for Performance
 
@@ -1279,16 +1274,19 @@ await inngest.send({ name: 'notification/send', data: { userId, payload: notific
 Checklist — follow these 6 steps:
 
 1. **Add the type** to `NotificationType` union in `lib/notifications/types.ts`:
+
    ```typescript
    | 'profile_viewed'  // New type
    ```
 
 2. **Add required fields** to `REQUIRED_FIELDS` in `lib/notifications/validation.ts`:
+
    ```typescript
    profile_viewed: ['recipientId', 'actorId', 'actorName', 'entityId'],
    ```
 
 3. **Add template keys** to `TEMPLATE_MAP` in `lib/notifications/templates.ts`:
+
    ```typescript
    profile_viewed: {
      titleKey: 'notifications.profile_viewed.title',
@@ -1297,6 +1295,7 @@ Checklist — follow these 6 steps:
    ```
 
 4. **Add translations** to both locale files:
+
    ```json
    // messages/ru.json
    "profile_viewed": {
@@ -1311,12 +1310,14 @@ Checklist — follow these 6 steps:
    ```
 
 5. **Add link resolution** in `lib/notifications/links.ts`:
+
    ```typescript
    case 'profile_viewed':
      return context.actorId ? `/profiles/${context.actorId}` : undefined
    ```
 
 6. **Update channel routing** in the dispatch function if the new type needs email:
+
    ```typescript
    // In shouldSendEmail() — only if email is needed
    'profile_viewed', // Probably not — too noisy
@@ -1333,11 +1334,13 @@ To change notification text, edit only the JSON message files. No code changes n
 To add a new channel (e.g., SMS, Telegram):
 
 1. Add the channel to the `Channel` type:
+
    ```typescript
    export type Channel = 'in_app' | 'email' | 'push' | 'sms'
    ```
 
 2. Add the delivery logic to the dispatch function:
+
    ```typescript
    if (channels.includes('sms')) {
      await sendSms({ to: profile.phone, body: smsBody })
@@ -1356,6 +1359,7 @@ ADD COLUMN channels jsonb NOT NULL DEFAULT '["in_app", "push", "email"]';
 ```
 
 The dispatch function would then check:
+
 ```typescript
 const allowedChannels = prefs.channels ?? ['in_app', 'push', 'email']
 ```

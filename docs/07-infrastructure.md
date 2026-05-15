@@ -34,8 +34,8 @@ This file defines deployment (Vercel), CDN/DNS (Cloudflare), CI/CD pipeline, mon
     }
   },
   "crons": [
-    { "path": "/api/cron/subscription-renewal",  "schedule": "0 9 * * *"  },
-    { "path": "/api/cron/expire-suspensions",    "schedule": "*/15 * * * *" },
+    { "path": "/api/cron/subscription-renewal", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/expire-suspensions", "schedule": "*/15 * * * *" },
     { "path": "/api/cron/inactive-account-warn", "schedule": "0 10 * * *" }
   ]
 }
@@ -52,11 +52,11 @@ The system runs two kinds of scheduled tasks:
 
 ### Vercel Cron Tasks
 
-| Path | Schedule | Purpose |
-|---|---|---|
-| `/api/cron/subscription-renewal` | `0 9 * * *` (daily 09:00 UTC) | Find subscriptions where `current_period_end` is within 24h and `cancel_at_period_end = false`. Emit `subscription/renew` Inngest event |
-| `/api/cron/expire-suspensions` | `*/15 * * * *` | Find `user_suspensions` where `expires_at <= now()` and `lifted_at IS NULL`; auto-set `lifted_at = now()` and emit `user/suspension-expired` notification |
-| `/api/cron/inactive-account-warn` | `0 10 * * *` | Find users with `last_seen_at < now() - 90 days` and no warning sent; send Resend email "We miss you" |
+| Path                              | Schedule                      | Purpose                                                                                                                                                   |
+| --------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/api/cron/subscription-renewal`  | `0 9 * * *` (daily 09:00 UTC) | Find subscriptions where `current_period_end` is within 24h and `cancel_at_period_end = false`. Emit `subscription/renew` Inngest event                   |
+| `/api/cron/expire-suspensions`    | `*/15 * * * *`                | Find `user_suspensions` where `expires_at <= now()` and `lifted_at IS NULL`; auto-set `lifted_at = now()` and emit `user/suspension-expired` notification |
+| `/api/cron/inactive-account-warn` | `0 10 * * *`                  | Find users with `last_seen_at < now() - 90 days` and no warning sent; send Resend email "We miss you"                                                     |
 
 Every cron Route Handler MUST verify the `Authorization: Bearer ${VERCEL_CRON_SECRET}` header (Vercel sends it automatically). Reject otherwise.
 
@@ -72,12 +72,12 @@ export async function GET(request: Request) {
 
 ### `pg_cron` Tasks
 
-| Job name | Schedule | SQL |
-|---|---|---|
-| `cleanup_idempotency_keys` | hourly | `DELETE FROM idempotency_keys WHERE created_at < now() - interval '24 hours';` |
-| `refresh_last_seen_offline` | every 5 min | Bulk-update `profiles.last_seen_at = now()` for users whose Realtime presence dropped (driven by a sentinel table updated by Inngest) |
-| `purge_deleted_profiles` | daily 02:00 | Hard-delete `profiles` rows in state `deletion_status = 'deleted'` older than 30 days (audit grace period) |
-| `vacuum_analyze_hot_tables` | nightly 03:00 | `VACUUM ANALYZE messages, photos, likes, notifications;` |
+| Job name                    | Schedule      | SQL                                                                                                                                   |
+| --------------------------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `cleanup_idempotency_keys`  | hourly        | `DELETE FROM idempotency_keys WHERE created_at < now() - interval '24 hours';`                                                        |
+| `refresh_last_seen_offline` | every 5 min   | Bulk-update `profiles.last_seen_at = now()` for users whose Realtime presence dropped (driven by a sentinel table updated by Inngest) |
+| `purge_deleted_profiles`    | daily 02:00   | Hard-delete `profiles` rows in state `deletion_status = 'deleted'` older than 30 days (audit grace period)                            |
+| `vacuum_analyze_hot_tables` | nightly 03:00 | `VACUUM ANALYZE messages, photos, likes, notifications;`                                                                              |
 
 Setup migration:
 
@@ -107,6 +107,7 @@ SELECT cron.schedule(
 **Given** the domain is configured with Cloudflare DNS pointing to Vercel
 **When** a request arrives
 **Then** Cloudflare provides:
+
 - **WAF** — Web Application Firewall (OWASP rules, rate limiting on auth endpoints)
 - **CDN** — Aggressive caching for static assets and image variants
 - **DNS** — Domain management
@@ -146,9 +147,9 @@ export async function proxy(request: NextRequest) {
     `img-src 'self' https://*.supabase.co data: blob:`,
     `font-src 'self' data:`,
     `connect-src 'self' https://*.supabase.co wss://*.supabase.co https://*.tbank.ru https://api.openai.com https://app.posthog.com https://*.sentry.io`,
-    `media-src 'self' https://*.supabase.co blob:`,                  // voice + image messages
-    `worker-src 'self' blob:`,                                       // service worker for Web Push
-    `manifest-src 'self'`,                                           // PWA manifest
+    `media-src 'self' https://*.supabase.co blob:`, // voice + image messages
+    `worker-src 'self' blob:`, // service worker for Web Push
+    `manifest-src 'self'`, // PWA manifest
     `frame-src *.tbank.ru`,
     `frame-ancestors 'none'`,
     `form-action 'self'`,
@@ -194,14 +195,14 @@ export default async function RootLayout({ children }) {
 
 #### CSP rules summary
 
-| Directive | Purpose |
-|---|---|
-| `script-src 'nonce-...' 'strict-dynamic'` | Block inline scripts; allow only Next.js bundle + T-Bank script with explicit nonce |
-| `worker-src 'self' blob:` | Allow `/sw.js` registration for Web Push |
-| `media-src 'self' blob: https://*.supabase.co` | Voice/image messages from Storage + `MediaRecorder` blobs |
-| `font-src 'self' data:` | `next/font` self-hosting + inlined data URIs |
-| `connect-src wss://*.supabase.co` | Realtime WebSocket |
-| `frame-ancestors 'none'` | Prevent clickjacking |
+| Directive                                      | Purpose                                                                             |
+| ---------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `script-src 'nonce-...' 'strict-dynamic'`      | Block inline scripts; allow only Next.js bundle + T-Bank script with explicit nonce |
+| `worker-src 'self' blob:`                      | Allow `/sw.js` registration for Web Push                                            |
+| `media-src 'self' blob: https://*.supabase.co` | Voice/image messages from Storage + `MediaRecorder` blobs                           |
+| `font-src 'self' data:`                        | `next/font` self-hosting + inlined data URIs                                        |
+| `connect-src wss://*.supabase.co`              | Realtime WebSocket                                                                  |
+| `frame-ancestors 'none'`                       | Prevent clickjacking                                                                |
 
 ---
 
@@ -263,6 +264,7 @@ jobs:
 ### Branch Protection
 
 Merge to `main` is BLOCKED without:
+
 - ESLint ✅
 - TypeScript ✅
 - Vitest ✅
@@ -275,12 +277,12 @@ Merge to `main` is BLOCKED without:
 
 ### Test Levels
 
-| Level | Scope | Tool |
-|---|---|---|
-| Unit | Business logic, utilities, Zod schemas, Inngest functions | **Vitest** |
-| Component | React components, forms | **Vitest + React Testing Library** |
-| Integration | Supabase (DB, RLS, Realtime) on Supabase Branch | **Vitest + Supabase JS client** |
-| E2E | Auth, chat, photos, likes, payments | **Playwright** |
+| Level       | Scope                                                     | Tool                               |
+| ----------- | --------------------------------------------------------- | ---------------------------------- |
+| Unit        | Business logic, utilities, Zod schemas, Inngest functions | **Vitest**                         |
+| Component   | React components, forms                                   | **Vitest + React Testing Library** |
+| Integration | Supabase (DB, RLS, Realtime) on Supabase Branch           | **Vitest + Supabase JS client**    |
+| E2E         | Auth, chat, photos, likes, payments                       | **Playwright**                     |
 
 ### Scenario: Unit tests are written for business logic
 
@@ -400,13 +402,13 @@ export const routing = defineRouting({
 
 ### Language Detection
 
-| Condition | Language |
-|---|---|
-| Russia / CIS + `Accept-Language` = ru | Russian |
-| Cloudflare `cf-ipcountry` ∈ CIS + language ≠ en | Russian |
-| `Accept-Language` = en | English |
-| Outside CIS + language ≠ ru | English |
-| Outside CIS + language = ru | Russian |
+| Condition                                       | Language |
+| ----------------------------------------------- | -------- |
+| Russia / CIS + `Accept-Language` = ru           | Russian  |
+| Cloudflare `cf-ipcountry` ∈ CIS + language ≠ en | Russian  |
+| `Accept-Language` = en                          | English  |
+| Outside CIS + language ≠ ru                     | English  |
+| Outside CIS + language = ru                     | Russian  |
 
 ### Language Sync
 
@@ -428,26 +430,26 @@ export const routing = defineRouting({
 
 ```css
 @theme {
-  --color-accent-1: #F9C784;
-  --color-accent-2: #FCAF58;
-  --color-accent-3: #FF8C42;
+  --color-accent-1: #f9c784;
+  --color-accent-2: #fcaf58;
+  --color-accent-3: #ff8c42;
 
   --color-primary: var(--color-accent-3);
   --color-primary-hover: var(--color-accent-2);
 }
 
 :root {
-  --background: #FFFFFF;
+  --background: #ffffff;
   --foreground: #111111;
-  --surface: #F5F5F5;
-  --border: #E2E2E2;
+  --surface: #f5f5f5;
+  --border: #e2e2e2;
 }
 
 .dark {
-  --background: #4E598C;
-  --foreground: #F5F5F5;
-  --surface: #3E4870;
-  --border: #5A6499;
+  --background: #4e598c;
+  --foreground: #f5f5f5;
+  --surface: #3e4870;
+  --border: #5a6499;
 }
 ```
 
@@ -469,6 +471,7 @@ pnpm dlx shadcn@latest add button input dialog sheet switch checkbox
 Each component MUST support states: `default`, `hover`, `active`, `disabled`, `loading`.
 
 Key components:
+
 - **Button**: `default` (accent), `secondary`, `ghost`, `destructive`
 - **Input**, **Textarea**, **Combobox**, **DatePicker**, **Slider**, **Switch**, **Checkbox**
 - **Card** — profile card in feed
@@ -533,9 +536,14 @@ The app is delivered as a Progressive Web App. The Web Push Service Worker (`pub
   "lang": "ru",
   "dir": "ltr",
   "icons": [
-    { "src": "/icon-192.png",          "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-512.png",          "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
 ```
@@ -555,7 +563,10 @@ export const metadata = {
     title: 'Nikah Help',
   },
   icons: {
-    icon: [{ url: '/icon-192.png', sizes: '192x192' }, { url: '/icon-512.png', sizes: '512x512' }],
+    icon: [
+      { url: '/icon-192.png', sizes: '192x192' },
+      { url: '/icon-512.png', sizes: '512x512' },
+    ],
     apple: '/apple-touch-icon.png',
   },
 }
@@ -563,20 +574,21 @@ export const metadata = {
 
 ### Icons checklist
 
-| File | Size | Purpose |
-|---|---|---|
-| `icon-192.png` | 192×192 | Standard install + Web Push notifications |
-| `icon-512.png` | 512×512 | Splash screen, large install tile |
-| `icon-maskable-512.png` | 512×512 | Android adaptive (safe area: center 80%) |
-| `apple-touch-icon.png` | 180×180 | iOS Home Screen |
-| `badge-72.png` | 72×72 | Web Push small badge (Android) |
-| `favicon.ico` | 32×32 + 16×16 | Browser tab |
+| File                    | Size          | Purpose                                   |
+| ----------------------- | ------------- | ----------------------------------------- |
+| `icon-192.png`          | 192×192       | Standard install + Web Push notifications |
+| `icon-512.png`          | 512×512       | Splash screen, large install tile         |
+| `icon-maskable-512.png` | 512×512       | Android adaptive (safe area: center 80%)  |
+| `apple-touch-icon.png`  | 180×180       | iOS Home Screen                           |
+| `badge-72.png`          | 72×72         | Web Push small badge (Android)            |
+| `favicon.ico`           | 32×32 + 16×16 | Browser tab                               |
 
 ### Install prompt UX
 
 > **Decision:** The install prompt is shown **after the user's first mutual match**. This is the highest-engagement moment in the funnel; users who matched are the most likely to want a permanent home-screen presence.
 
 Implementation:
+
 - The browser fires `beforeinstallprompt` opportunistically; capture the event in a Zustand store and prevent the default UA chip via `event.preventDefault()`.
 - Listen for the `match.created` Realtime Broadcast event on `user:${userId}` (the same event that powers the fullscreen match modal — see [03 — Likes System](./03-profiles-feed.md#requirement-likes-system)).
 - After the user closes the match modal, if a captured `beforeinstallprompt` is in the store AND the user has not previously dismissed/accepted, render a slim banner at the top: "Add Nikah Help to your home screen for instant access. [Install] [Not now]".
@@ -589,6 +601,7 @@ Implementation:
 ### iOS specifics
 
 iOS Safari does NOT support Web Push for sites that are not Add-to-Home-Screen-installed. If the user's environment is iOS Safari:
+
 - The "Enable notifications" button should explain: "On iPhone, install Nikah Help to your Home Screen first, then open it from there."
 - Detect via `('standalone' in navigator) && !navigator.standalone`.
 
@@ -600,31 +613,31 @@ iOS Safari does NOT support Web Push for sites that are not Add-to-Home-Screen-i
 
 ### Field thresholds (75th percentile, real users)
 
-| Metric | Target | What it covers |
-|---|---|---|
-| **LCP** (Largest Contentful Paint) | ≤ **2.5 s** | Time until the main content (feed grid, profile photo, match modal) is rendered |
-| **INP** (Interaction to Next Paint) | ≤ **200 ms** | Tap-to-feedback responsiveness, replaces FID since 2024 |
-| **CLS** (Cumulative Layout Shift) | ≤ **0.1** | No content shift after photos load — reserve aspect-ratio boxes for `<picture>` |
-| **FCP** (First Contentful Paint) | ≤ **1.8 s** | First paint of any meaningful content |
-| **TTFB** (Time to First Byte) | ≤ **800 ms** | Edge response from Vercel + Supabase round-trip |
+| Metric                              | Target       | What it covers                                                                  |
+| ----------------------------------- | ------------ | ------------------------------------------------------------------------------- |
+| **LCP** (Largest Contentful Paint)  | ≤ **2.5 s**  | Time until the main content (feed grid, profile photo, match modal) is rendered |
+| **INP** (Interaction to Next Paint) | ≤ **200 ms** | Tap-to-feedback responsiveness, replaces FID since 2024                         |
+| **CLS** (Cumulative Layout Shift)   | ≤ **0.1**    | No content shift after photos load — reserve aspect-ratio boxes for `<picture>` |
+| **FCP** (First Contentful Paint)    | ≤ **1.8 s**  | First paint of any meaningful content                                           |
+| **TTFB** (Time to First Byte)       | ≤ **800 ms** | Edge response from Vercel + Supabase round-trip                                 |
 
 ### Lab thresholds (Lighthouse, mobile, fast-3G throttling)
 
-| Route | Performance score |
-|---|---|
-| `/feed` | ≥ 90 |
-| `/auth` | ≥ 95 |
-| `/profile/[id]` | ≥ 90 |
+| Route             | Performance score       |
+| ----------------- | ----------------------- |
+| `/feed`           | ≥ 90                    |
+| `/auth`           | ≥ 95                    |
+| `/profile/[id]`   | ≥ 90                    |
 | `/chats/[chatId]` | ≥ 85 (Realtime + media) |
 
 ### Bundle budgets (per route, gzip)
 
-| Bundle | Budget |
-|---|---|
+| Bundle                                | Budget       |
+| ------------------------------------- | ------------ |
 | Initial JS for `/feed` (RSC + client) | ≤ **150 KB** |
-| Initial JS for `/auth` | ≤ **80 KB** |
-| Per-route incremental | ≤ **40 KB** |
-| Initial CSS (Tailwind purged) | ≤ **30 KB** |
+| Initial JS for `/auth`                | ≤ **80 KB**  |
+| Per-route incremental                 | ≤ **40 KB**  |
+| Initial CSS (Tailwind purged)         | ≤ **30 KB**  |
 
 Enforced via `next build` output size checks in CI (fail PR if a route exceeds budget by >10 %).
 
@@ -668,6 +681,7 @@ Enforced via `next build` output size checks in CI (fail PR if a route exceeds b
 #### Configuration
 
 Install:
+
 ```bash
 pnpm add @sentry/nextjs
 pnpm dlx @sentry/wizard@latest -i nextjs
@@ -678,7 +692,9 @@ pnpm dlx @sentry/wizard@latest -i nextjs
 ```typescript
 // next.config.ts
 import { withSentryConfig } from '@sentry/nextjs'
-const nextConfig: NextConfig = { /* ... */ }
+const nextConfig: NextConfig = {
+  /* ... */
+}
 
 export default withSentryConfig(nextConfig, {
   org: 'nikah-help',
@@ -686,8 +702,8 @@ export default withSentryConfig(nextConfig, {
   silent: !process.env.CI,
   // Source maps
   widenClientFileUpload: true,
-  hideSourceMaps: true,           // Source maps uploaded to Sentry, NOT served to clients
-  disableLogger: true,            // Strip Sentry's internal logger from client bundle
+  hideSourceMaps: true, // Source maps uploaded to Sentry, NOT served to clients
+  disableLogger: true, // Strip Sentry's internal logger from client bundle
   // Auth token for upload — set in Vercel as SENTRY_AUTH_TOKEN (NOT public)
   authToken: process.env.SENTRY_AUTH_TOKEN,
   // Release tagging
@@ -828,83 +844,83 @@ All events use **`snake_case`**. Properties are listed with type. Events outside
 
 ##### Auth & onboarding
 
-| Event | Properties | When |
-|---|---|---|
-| `auth_magic_link_requested` | `is_returning_user: boolean` | User submits email on `/auth` |
-| `auth_signed_in` | `is_first_sign_in: boolean` | Magic Link callback succeeds |
-| `onboarding_step_viewed` | `step: 1\|2\|3\|4` | RSC renders an onboarding step |
-| `onboarding_step_completed` | `step: 1\|2\|3\|4`, `duration_ms: number` | User progresses to next step |
-| `onboarding_completed` | `total_duration_ms: number`, `photo_count: number` | Step 4 → feed redirect |
-| `onboarding_abandoned` | `last_step: 1\|2\|3\|4` | User leaves before completion (fired on `pagehide` if flow incomplete) |
+| Event                       | Properties                                         | When                                                                   |
+| --------------------------- | -------------------------------------------------- | ---------------------------------------------------------------------- |
+| `auth_magic_link_requested` | `is_returning_user: boolean`                       | User submits email on `/auth`                                          |
+| `auth_signed_in`            | `is_first_sign_in: boolean`                        | Magic Link callback succeeds                                           |
+| `onboarding_step_viewed`    | `step: 1\|2\|3\|4`                                 | RSC renders an onboarding step                                         |
+| `onboarding_step_completed` | `step: 1\|2\|3\|4`, `duration_ms: number`          | User progresses to next step                                           |
+| `onboarding_completed`      | `total_duration_ms: number`, `photo_count: number` | Step 4 → feed redirect                                                 |
+| `onboarding_abandoned`      | `last_step: 1\|2\|3\|4`                            | User leaves before completion (fired on `pagehide` if flow incomplete) |
 
 ##### Profile & photos
 
-| Event | Properties | When |
-|---|---|---|
-| `profile_published` | — | `is_published` toggled to true |
-| `profile_unpublished` | — | `is_published` toggled to false |
-| `profile_edited` | `fields_changed: string[]`, `bio_regenerated: boolean` | User saves `/profile/edit` |
-| `bio_regenerate_clicked` | `was_rate_limited: boolean` | Manual "Regenerate description" |
-| `photo_uploaded` | `position: 1..6`, `format: string`, `original_size_bytes: number` | Step 4 finalizes |
-| `photo_replaced` | `position: 1..6` | Existing position replaced |
-| `photo_deleted` | `position: 1..6` | User-initiated delete |
-| `photo_reordered` | — | After successful `reorderPhotos` |
-| `photo_moderation_result` | `decision: 'approved'\|'rejected'\|'manual_review'`, `position: 1..6` | Inngest moderation finishes |
+| Event                     | Properties                                                            | When                             |
+| ------------------------- | --------------------------------------------------------------------- | -------------------------------- |
+| `profile_published`       | —                                                                     | `is_published` toggled to true   |
+| `profile_unpublished`     | —                                                                     | `is_published` toggled to false  |
+| `profile_edited`          | `fields_changed: string[]`, `bio_regenerated: boolean`                | User saves `/profile/edit`       |
+| `bio_regenerate_clicked`  | `was_rate_limited: boolean`                                           | Manual "Regenerate description"  |
+| `photo_uploaded`          | `position: 1..6`, `format: string`, `original_size_bytes: number`     | Step 4 finalizes                 |
+| `photo_replaced`          | `position: 1..6`                                                      | Existing position replaced       |
+| `photo_deleted`           | `position: 1..6`                                                      | User-initiated delete            |
+| `photo_reordered`         | —                                                                     | After successful `reorderPhotos` |
+| `photo_moderation_result` | `decision: 'approved'\|'rejected'\|'manual_review'`, `position: 1..6` | Inngest moderation finishes      |
 
 ##### Feed, likes, matches
 
-| Event | Properties | When |
-|---|---|---|
-| `feed_viewed` | `filter_count: number`, `radius_km: number\|null` | `/feed` SSR render |
-| `feed_filter_applied` | `filter: string`, `value: string` | One filter changed |
-| `profile_viewed` | `viewed_user_id: uuid` | `/profile/[id]` opens (debounced 1s) |
-| `like_sent` | `target_user_id: uuid`, `likes_used_lifetime: number` | After successful `sendLike` |
-| `like_blocked_by_limit` | `likes_used_lifetime: number` | Free-tier 3-likes wall hit |
-| `match_created` | `match_id: uuid`, `seconds_since_my_like: number` | Match modal shown |
-| `like_revoked` | `target_user_id: uuid` | After confirm |
+| Event                   | Properties                                            | When                                 |
+| ----------------------- | ----------------------------------------------------- | ------------------------------------ |
+| `feed_viewed`           | `filter_count: number`, `radius_km: number\|null`     | `/feed` SSR render                   |
+| `feed_filter_applied`   | `filter: string`, `value: string`                     | One filter changed                   |
+| `profile_viewed`        | `viewed_user_id: uuid`                                | `/profile/[id]` opens (debounced 1s) |
+| `like_sent`             | `target_user_id: uuid`, `likes_used_lifetime: number` | After successful `sendLike`          |
+| `like_blocked_by_limit` | `likes_used_lifetime: number`                         | Free-tier 3-likes wall hit           |
+| `match_created`         | `match_id: uuid`, `seconds_since_my_like: number`     | Match modal shown                    |
+| `like_revoked`          | `target_user_id: uuid`                                | After confirm                        |
 
 ##### Chat
 
-| Event | Properties | When |
-|---|---|---|
-| `chat_opened` | `chat_id: uuid`, `unread_count: number` | `/chats/[chatId]` SSR |
-| `message_sent` | `chat_id: uuid`, `type: 'text'\|'image'\|'voice'`, `length: number` (chars or seconds) | After successful `sendMessage` |
-| `message_edited` | `chat_id: uuid`, `seconds_since_send: number` | After `editMessage` |
-| `message_deleted` | `chat_id: uuid`, `type: 'text'\|'image'\|'voice'` | After `deleteMessage` |
-| `voice_message_played` | `chat_id: uuid`, `duration_listened_pct: number` | Player onEnded or progress threshold |
+| Event                  | Properties                                                                             | When                                 |
+| ---------------------- | -------------------------------------------------------------------------------------- | ------------------------------------ |
+| `chat_opened`          | `chat_id: uuid`, `unread_count: number`                                                | `/chats/[chatId]` SSR                |
+| `message_sent`         | `chat_id: uuid`, `type: 'text'\|'image'\|'voice'`, `length: number` (chars or seconds) | After successful `sendMessage`       |
+| `message_edited`       | `chat_id: uuid`, `seconds_since_send: number`                                          | After `editMessage`                  |
+| `message_deleted`      | `chat_id: uuid`, `type: 'text'\|'image'\|'voice'`                                      | After `deleteMessage`                |
+| `voice_message_played` | `chat_id: uuid`, `duration_listened_pct: number`                                       | Player onEnded or progress threshold |
 
 ##### Subscription & payments
 
-| Event | Properties | When |
-|---|---|---|
-| `subscription_page_viewed` | `is_premium: boolean` | `/subscription` RSC render |
-| `subscription_initiate_clicked` | — | "Subscribe" tap |
-| `subscription_payment_started` | `order_id: uuid` | T-Bank iframe loaded |
-| `subscription_payment_succeeded` | `order_id: uuid`, `amount_kopecks: number` | T-Bank webhook CONFIRMED |
-| `subscription_payment_failed` | `order_id: uuid`, `error_code: string` | T-Bank webhook REJECTED |
-| `subscription_cancelled_by_user` | — | "Cancel subscription" confirmed |
-| `subscription_renewed_automatically` | — | Recurring renewal succeeds |
-| `subscription_expired` | — | `current_period_end < now()` reached |
+| Event                                | Properties                                 | When                                 |
+| ------------------------------------ | ------------------------------------------ | ------------------------------------ |
+| `subscription_page_viewed`           | `is_premium: boolean`                      | `/subscription` RSC render           |
+| `subscription_initiate_clicked`      | —                                          | "Subscribe" tap                      |
+| `subscription_payment_started`       | `order_id: uuid`                           | T-Bank iframe loaded                 |
+| `subscription_payment_succeeded`     | `order_id: uuid`, `amount_kopecks: number` | T-Bank webhook CONFIRMED             |
+| `subscription_payment_failed`        | `order_id: uuid`, `error_code: string`     | T-Bank webhook REJECTED              |
+| `subscription_cancelled_by_user`     | —                                          | "Cancel subscription" confirmed      |
+| `subscription_renewed_automatically` | —                                          | Recurring renewal succeeds           |
+| `subscription_expired`               | —                                          | `current_period_end < now()` reached |
 
 ##### Notifications
 
-| Event | Properties | When |
-|---|---|---|
-| `push_permission_requested` | `outcome: 'granted'\|'denied'\|'default'` | After `Notification.requestPermission` |
-| `push_subscription_created` | `kind: 'web'\|'apns'\|'fcm'` | `/api/push/subscribe` succeeds |
-| `notification_clicked` | `type: string`, `entity_id: uuid` | SW `notificationclick` |
-| `pwa_install_prompt_shown` | — | After first match, banner rendered |
-| `pwa_install_prompt_outcome` | `outcome: 'accepted'\|'dismissed'\|'snoozed'` | User chooses on banner |
+| Event                        | Properties                                    | When                                   |
+| ---------------------------- | --------------------------------------------- | -------------------------------------- |
+| `push_permission_requested`  | `outcome: 'granted'\|'denied'\|'default'`     | After `Notification.requestPermission` |
+| `push_subscription_created`  | `kind: 'web'\|'apns'\|'fcm'`                  | `/api/push/subscribe` succeeds         |
+| `notification_clicked`       | `type: string`, `entity_id: uuid`             | SW `notificationclick`                 |
+| `pwa_install_prompt_shown`   | —                                             | After first match, banner rendered     |
+| `pwa_install_prompt_outcome` | `outcome: 'accepted'\|'dismissed'\|'snoozed'` | User chooses on banner                 |
 
 ##### Reports, blocks, moderation
 
-| Event | Properties | When |
-|---|---|---|
-| `report_submitted` | `type: 'profile'\|'photo'`, `has_comment: boolean` | After `submitReport` |
-| `user_blocked` | `target_user_id: uuid` | After `blockUser` |
-| `user_unblocked` | `block_id: uuid` | After `unblockUser` |
-| `account_blocked_by_moderator` | — | Server-side, fired during moderator block flow (server-to-PostHog) |
-| `account_deleted` | `account_age_days: number` | After `account.delete` workflow finishes |
+| Event                          | Properties                                         | When                                                               |
+| ------------------------------ | -------------------------------------------------- | ------------------------------------------------------------------ |
+| `report_submitted`             | `type: 'profile'\|'photo'`, `has_comment: boolean` | After `submitReport`                                               |
+| `user_blocked`                 | `target_user_id: uuid`                             | After `blockUser`                                                  |
+| `user_unblocked`               | `block_id: uuid`                                   | After `unblockUser`                                                |
+| `account_blocked_by_moderator` | —                                                  | Server-side, fired during moderator block flow (server-to-PostHog) |
+| `account_deleted`              | `account_age_days: number`                         | After `account.delete` workflow finishes                           |
 
 #### Privacy rules for events
 
@@ -917,13 +933,15 @@ All events use **`snake_case`**. Properties are listed with type. Events outside
 
 ```typescript
 // Structured logging in Route Handlers
-console.log(JSON.stringify({
-  level: 'info',
-  message: 'Photo processed',
-  photoId: photo.id,
-  userId: user.id,
-  duration: Date.now() - start,
-}))
+console.log(
+  JSON.stringify({
+    level: 'info',
+    message: 'Photo processed',
+    photoId: photo.id,
+    userId: user.id,
+    duration: Date.now() - start,
+  }),
+)
 ```
 
 Personal data MUST NOT appear in logs. Only identifiers.

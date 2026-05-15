@@ -77,6 +77,7 @@ Nikah Help is a Muslim marriage platform where male users pay a subscription (3 
 #### Task 0.1: Scaffold Next.js 16 Project
 
 **Files:**
+
 - Create: `nikah-help/` (project root)
 - Create: `package.json`, `tsconfig.json`, `next.config.ts`, `postcss.config.mjs`
 
@@ -132,6 +133,7 @@ pnpm build
 #### Task 0.2: Configure Linting & Formatting
 
 **Files:**
+
 - Create: `.eslintrc.json`
 - Create: `.prettierrc`
 
@@ -187,6 +189,7 @@ pnpm typecheck && pnpm lint
 #### Task 0.3: Configure Testing Infrastructure
 
 **Files:**
+
 - Create: `vitest.config.mts`
 - Create: `vitest.setup.ts`
 - Create: `playwright.config.ts`
@@ -256,6 +259,7 @@ pnpm test --run
 #### Task 0.4: Configure CI/CD Pipeline
 
 **Files:**
+
 - Create: `.github/workflows/ci.yml`
 
 - [ ] **Step 1: Write GitHub Actions workflow**
@@ -302,6 +306,7 @@ jobs:
 #### Task 0.5: Environment Variables & Vercel Config
 
 **Files:**
+
 - Create: `.env.local.example`
 - Create: `vercel.json`
 
@@ -348,6 +353,7 @@ git commit -m "chore: initialize project with Next.js 16, tooling, and CI/CD"
 #### Task 1.1: Supabase Project & CLI Setup
 
 **Files:**
+
 - Create: `supabase/config.toml`
 - Create: `supabase/migrations/.gitkeep`
 
@@ -365,6 +371,7 @@ Ensure `enabled = true` for `pg_cron` extension in `supabase/config.toml`.
 #### Task 1.2: Migration 0001 — Extensions & Enums
 
 **Files:**
+
 - Create: `supabase/migrations/0001_enums.sql`
 
 - [ ] **Step 1: Write migration**
@@ -401,6 +408,7 @@ supabase db push
 #### Task 1.3: Migration 0002 — Core Tables (profiles, photos)
 
 **Files:**
+
 - Create: `supabase/migrations/0002_profiles_photos.sql`
 
 Full `profiles` table, `photos` table with all columns, constraints, and indexes as defined in 02-database.md. Include the `enforce_max_photos()` trigger.
@@ -408,6 +416,7 @@ Full `profiles` table, `photos` table with all columns, constraints, and indexes
 #### Task 1.4: Migration 0003 — Social Tables (likes, matches, chats, messages)
 
 **Files:**
+
 - Create: `supabase/migrations/0003_social.sql`
 
 `likes`, `matches`, `chats`, `messages` tables with all columns, constraints, indexes, and `handle_match()` trigger. Include `edited_at`, `original_content`, `deleted_at` on messages.
@@ -415,6 +424,7 @@ Full `profiles` table, `photos` table with all columns, constraints, and indexes
 #### Task 1.5: Migration 0004 — Notifications, Subscriptions, Push
 
 **Files:**
+
 - Create: `supabase/migrations/0004_notifications_subscriptions.sql`
 
 `notifications`, `notification_preferences`, `subscriptions`, `push_subscriptions` tables. Include the `push_kind_fields_check` constraint.
@@ -422,6 +432,7 @@ Full `profiles` table, `photos` table with all columns, constraints, and indexes
 #### Task 1.6: Migration 0005 — Moderation & Blocks
 
 **Files:**
+
 - Create: `supabase/migrations/0005_moderation.sql`
 
 `reports`, `blocks`, `banned_emails`, `user_suspensions`, `pricing_plans`, `idempotency_keys` tables.
@@ -429,6 +440,7 @@ Full `profiles` table, `photos` table with all columns, constraints, and indexes
 #### Task 1.7: Migration 0006 — RLS Policies
 
 **Files:**
+
 - Create: `supabase/migrations/0006_rls.sql`
 
 All RLS policies for every table. Include `has_role()` function, `is_blocked_pair()` function, `is_user_suspended()` function, `count_likes_used()` function, `has_active_subscription()` function. Include `is_email_banned()` function.
@@ -436,6 +448,7 @@ All RLS policies for every table. Include `has_role()` function, `is_blocked_pai
 #### Task 1.8: Migration 0007 — Realtime Publication & `pg_cron` Jobs
 
 **Files:**
+
 - Create: `supabase/migrations/0007_realtime_cron.sql`
 
 ```sql
@@ -457,6 +470,7 @@ SELECT cron.schedule('purge_deleted_profiles', '0 2 * * *',
 #### Task 1.9: Migration 0008 — Storage Buckets & RLS
 
 **Files:**
+
 - Create: `supabase/migrations/0008_storage.sql`
 
 Create `profile-photos` and `chat-media` private buckets. Add Storage RLS policies as defined in 06-image-processing.md.
@@ -464,6 +478,7 @@ Create `profile-photos` and `chat-media` private buckets. Add Storage RLS polici
 #### Task 1.10: Migration 0009 — Seed Data
 
 **Files:**
+
 - Create: `supabase/seed.sql`
 - Create: `supabase/migrations/0009_seed.sql`
 
@@ -472,6 +487,7 @@ Insert `pricing_plans` row (`subscription_monthly`, 100000 kopecks, 30 days).
 #### Task 1.11: Migration 0010 — geonames Schema
 
 **Files:**
+
 - Create: `supabase/migrations/0010_geonames.sql`
 
 `geonames_countries` and `geonames_cities` tables with indexes and RLS policies.
@@ -494,6 +510,7 @@ git commit -m "feat: complete database schema with RLS, PostGIS, triggers, and s
 **Dependencies:** Phase 0 (project must exist)
 **Expected Outcome:** All tables, RLS policies, triggers, indexes deployed to Supabase. Generated types available.
 **Acceptance Criteria:**
+
 - `supabase db push` applies all migrations without errors
 - RLS enabled on every table
 - `types/database.types.ts` generated and compiles
@@ -512,6 +529,7 @@ git commit -m "feat: complete database schema with RLS, PostGIS, triggers, and s
 #### Task 2.1: Browser Client
 
 **Files:**
+
 - Create: `lib/supabase/client.ts`
 
 ```typescript
@@ -528,6 +546,7 @@ export const createClient = () =>
 #### Task 2.2: Server Client
 
 **Files:**
+
 - Create: `lib/supabase/server.ts`
 
 ```typescript
@@ -542,11 +561,11 @@ export async function createServerSupabase() {
     process.env.SUPABASE_PUBLISHABLE_KEY!,
     {
       cookies: {
-        getAll() { return cookieStore.getAll() },
+        getAll() {
+          return cookieStore.getAll()
+        },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options),
-          )
+          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options))
         },
       },
     },
@@ -557,6 +576,7 @@ export async function createServerSupabase() {
 #### Task 2.3: Admin Client (Service Role)
 
 **Files:**
+
 - Create: `lib/supabase/admin.ts`
 
 ```typescript
@@ -564,16 +584,15 @@ import { createClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
 
 export const createAdminClient = () =>
-  createClient<Database>(
-    process.env.SUPABASE_URL!,
-    process.env.SUPABASE_SECRET_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } },
-  )
+  createClient<Database>(process.env.SUPABASE_URL!, process.env.SUPABASE_SECRET_KEY!, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  })
 ```
 
 #### Task 2.4: Proxy Helper & proxy.ts
 
 **Files:**
+
 - Create: `lib/supabase/proxy.ts` (updateSession helper)
 - Create: `app/proxy.ts` (Next.js 16 middleware → proxy.ts)
 
@@ -582,6 +601,7 @@ Implement session refresh via `getClaims()` with CSP nonce generation. Write CSP
 #### Task 2.5: Email Hash Helper
 
 **Files:**
+
 - Create: `lib/crypto/email-hash.ts`
 
 ```typescript
@@ -590,13 +610,16 @@ import { createHash } from 'node:crypto'
 export function hashBlockedEmail(email: string): Buffer {
   const pepper = process.env.BLOCKED_EMAIL_PEPPER
   if (!pepper) throw new Error('BLOCKED_EMAIL_PEPPER missing')
-  return createHash('sha256').update(pepper + email.trim().toLowerCase()).digest()
+  return createHash('sha256')
+    .update(pepper + email.trim().toLowerCase())
+    .digest()
 }
 ```
 
 #### Task 2.6: Error Handling — Types, Registry & AppError
 
 **Files:**
+
 - Create: `lib/errors/types.ts`
 - Create: `lib/errors/registry.ts`
 - Create: `lib/errors/app-error.ts`
@@ -607,6 +630,7 @@ export function hashBlockedEmail(email: string): Buffer {
 - [ ] **Step 1: Write ErrorResponse type, STATUS_MAP (53 error codes), and AppError class**
 
 Implement exactly as specified in `docs/09-error-handling.md`:
+
 - `lib/errors/types.ts` — `ErrorResponse` interface (code, message, details?, trace_id, status)
 - `lib/errors/registry.ts` — `STATUS_MAP` with all 53 error codes mapped to HTTP statuses, `ErrorCode` type
 - `lib/errors/app-error.ts` — `AppError` class extending Error with `code`, `status`, `traceId`, `details`, `cause`, `logContext`, `toResponse()` method
@@ -671,6 +695,7 @@ pnpm test --run tests/unit/lib/errors/
 #### Task 2.7: Error Handling — Boundary Handlers, Validation & Logger
 
 **Files:**
+
 - Create: `lib/errors/handler.ts`
 - Create: `lib/errors/action.ts`
 - Create: `lib/errors/validation.ts`
@@ -680,6 +705,7 @@ pnpm test --run tests/unit/lib/errors/
 - [ ] **Step 1: Write handleRouteError, handleActionError, validationError, logError**
 
 Implement exactly as specified in `docs/09-error-handling.md` lines 367-425 (boundary handlers) and lines 585-626 (logger):
+
 - `handleRouteError(error)` — catches AppError → NextResponse JSON, wraps unknown → SYSTEM_INTERNAL_ERROR
 - `handleActionError(error)` — same but returns `{ success: false, error: ErrorResponse }` discriminated union
 - `validationError(zodError)` — extracts per-field errors from ZodError → AppError with details map
@@ -715,6 +741,7 @@ describe('handleRouteError', () => {
 #### Task 2.8: Error Handling — Client Utilities & i18n Messages
 
 **Files:**
+
 - Create: `lib/errors/client.ts`
 - Create: `lib/errors/messages.ts`
 - Modify: `messages/ru.json` (add errors namespace with all 53 codes)
@@ -731,7 +758,9 @@ export async function parseApiError(response: Response): Promise<ErrorResponse> 
   try {
     const body = await response.json()
     if (body && typeof body.code === 'string') return body as ErrorResponse
-  } catch { /* not JSON */ }
+  } catch {
+    /* not JSON */
+  }
   return {
     code: 'SYSTEM_INTERNAL_ERROR',
     message: 'Что-то пошло не так. Попробуйте позже.',
@@ -773,6 +802,7 @@ describe('error i18n coverage', () => {
 #### Task 2.9: Rate Limiting — Client, Keys & Types
 
 **Files:**
+
 - Create: `lib/ratelimit/types.ts`
 - Create: `lib/ratelimit/client.ts`
 - Create: `lib/ratelimit/keys.ts`
@@ -781,6 +811,7 @@ describe('error i18n coverage', () => {
 - [ ] **Step 1: Write types and Upstash client**
 
 Implement exactly as specified in `docs/10-rate-limiting.md`:
+
 - `lib/ratelimit/types.ts` — `RateLimitOptions` interface (limit, window, keyStrategy, errorCode?, bypassRoles?)
 - `lib/ratelimit/client.ts` — Upstash Redis + `@upstash/ratelimit` sliding window instance, 3s timeout, `enableAutoPipelining: true`
 - `lib/ratelimit/keys.ts` — `resolveKeys()` with IP extraction (cf-connecting-ip → x-forwarded-for → x-real-ip), SHA-256 hashing, path normalization (UUID → :id), `x-user-id` header reading
@@ -788,6 +819,7 @@ Implement exactly as specified in `docs/10-rate-limiting.md`:
 #### Task 2.10: Rate Limiting — Wrapper & Presets
 
 **Files:**
+
 - Create: `lib/ratelimit/with-rate-limit.ts`
 - Create: `lib/ratelimit/presets.ts`
 - Create: `lib/ratelimit/headers.ts`
@@ -796,6 +828,7 @@ Implement exactly as specified in `docs/10-rate-limiting.md`:
 - [ ] **Step 1: Write withRateLimit wrapper**
 
 Implement as specified in `docs/10-rate-limiting.md` lines 53-96. Key behaviors:
+
 - Role bypass: reads `x-user-role` header, skips rate limit for `['admin', 'moderator']`
 - On limit exceeded: throws `AppError` with configured `errorCode`
 - On Redis failure: logs warning, fails open (calls handler without limiting)
@@ -805,24 +838,37 @@ Implement as specified in `docs/10-rate-limiting.md` lines 53-96. Key behaviors:
 ```typescript
 // lib/ratelimit/presets.ts
 export const AUTH_STRICT: RateLimitOptions = {
-  limit: 10, window: 60, keyStrategy: 'ip',
-  errorCode: 'RATE_LIMIT_AUTH_CALLBACK', bypassRoles: [],
+  limit: 10,
+  window: 60,
+  keyStrategy: 'ip',
+  errorCode: 'RATE_LIMIT_AUTH_CALLBACK',
+  bypassRoles: [],
 }
 export const ACTION_MODERATE: RateLimitOptions = {
-  limit: 30, window: 60, keyStrategy: 'user',
+  limit: 30,
+  window: 60,
+  keyStrategy: 'user',
 }
 export const MESSAGE_SEND: RateLimitOptions = {
-  limit: 30, window: 60, keyStrategy: 'user',
+  limit: 30,
+  window: 60,
+  keyStrategy: 'user',
   errorCode: 'RATE_LIMIT_MESSAGE_SEND',
 }
 export const READ_GENEROUS: RateLimitOptions = {
-  limit: 120, window: 60, keyStrategy: 'ip+user',
+  limit: 120,
+  window: 60,
+  keyStrategy: 'ip+user',
 }
 export const PHOTO_UPLOAD: RateLimitOptions = {
-  limit: 20, window: 60, keyStrategy: 'user',
+  limit: 20,
+  window: 60,
+  keyStrategy: 'user',
 }
 export const WEBHOOK: RateLimitOptions = {
-  limit: 300, window: 60, keyStrategy: 'ip',
+  limit: 300,
+  window: 60,
+  keyStrategy: 'ip',
 }
 ```
 
@@ -831,7 +877,10 @@ export const WEBHOOK: RateLimitOptions = {
 ```typescript
 // lib/ratelimit/headers.ts
 export function setRateLimitHeaders(
-  response: NextResponse, limit: number, remaining: number, reset: number,
+  response: NextResponse,
+  limit: number,
+  remaining: number,
+  reset: number,
 ): void {
   response.headers.set('X-RateLimit-Limit', String(limit))
   response.headers.set('X-RateLimit-Remaining', String(remaining))
@@ -862,6 +911,7 @@ describe('withRateLimit', () => {
 #### Task 2.11: Idempotency — Keys, Redis & Lock Acquisition
 
 **Files:**
+
 - Create: `lib/idempotency/types.ts`
 - Create: `lib/idempotency/keys.ts`
 - Create: `lib/idempotency/redis.ts`
@@ -871,16 +921,18 @@ describe('withRateLimit', () => {
 - [ ] **Step 1: Write types, key resolver, Redis operations, and header filter**
 
 Implement exactly as specified in `docs/11-idempotency.md`:
+
 - `lib/idempotency/types.ts` — `IdempotencyOptions` (required?, ttl?, timeout?), `StoredResponse`
 - `lib/idempotency/keys.ts` — `resolveIdempotencyKey()` with UUID v4 regex validation, user-scoped keys (`idempotency:user:{userId}:{uuid}`), IP fallback for unauthenticated
 - `lib/idempotency/redis.ts` — `acquireLock()` (atomic SETNX + EXPIRE via Redis Lua script — see docs/11-idempotency.md lines 164-180 for the exact script), `storeResult()`, `waitForResult()` (50ms polling), `releaseLock()` (guarded: only deletes if value is still "pending")
-- `lib/idempotency/headers.ts` — `filterHeaders()` allowlisting only content-type, cache-control, x-ratelimit-*
+- `lib/idempotency/headers.ts` — `filterHeaders()` allowlisting only content-type, cache-control, x-ratelimit-\*
 
 **Note on Redis Lua scripts:** The `acquireLock` and `releaseLock` functions use Redis's server-side scripting (the `EVAL` command) for atomicity. Full Lua script source is in `docs/11-idempotency.md`. These are NOT JavaScript `eval()` — they execute on the Redis server, not in Node.js.
 
 #### Task 2.12: Idempotency — Wrapper, Presets & Client Helper
 
 **Files:**
+
 - Create: `lib/idempotency/with-idempotency.ts`
 - Create: `lib/idempotency/presets.ts`
 - Create: `lib/idempotency/client.ts`
@@ -889,6 +941,7 @@ Implement exactly as specified in `docs/11-idempotency.md`:
 - [ ] **Step 1: Write withIdempotency wrapper**
 
 Implement as specified in `docs/11-idempotency.md` lines 43-119. Key behaviors:
+
 - No key + not required → pass through without idempotency
 - No key + required → throw `IDEMPOTENCY_KEY_MISSING`
 - Lock acquired → execute handler, store 2xx results, release lock on 4xx/5xx
@@ -900,13 +953,19 @@ Implement as specified in `docs/11-idempotency.md` lines 43-119. Key behaviors:
 ```typescript
 // lib/idempotency/presets.ts
 export const PAYMENT_CRITICAL: IdempotencyOptions = {
-  required: true, ttl: 86_400, timeout: 60_000,
+  required: true,
+  ttl: 86_400,
+  timeout: 60_000,
 }
 export const USER_ACTION: IdempotencyOptions = {
-  required: false, ttl: 3600, timeout: 10_000,
+  required: false,
+  ttl: 3600,
+  timeout: 10_000,
 }
 export const MESSAGE_SEND: IdempotencyOptions = {
-  required: false, ttl: 600, timeout: 5_000,
+  required: false,
+  ttl: 600,
+  timeout: 5_000,
 }
 
 // lib/idempotency/client.ts
@@ -928,17 +987,15 @@ describe('resolveIdempotencyKey', () => {
     const req = new NextRequest('http://localhost/api/test', {
       headers: { 'x-user-id': 'user-123' },
     })
-    const key = await resolveIdempotencyKey(
-      req, '550e8400-e29b-41d4-a716-446655440000',
-    )
+    const key = await resolveIdempotencyKey(req, '550e8400-e29b-41d4-a716-446655440000')
     expect(key).toContain('idempotency:user:user-123:')
   })
 
   it('should reject invalid format', async () => {
     const req = new NextRequest('http://localhost/api/test')
-    await expect(
-      resolveIdempotencyKey(req, 'not-a-uuid'),
-    ).rejects.toThrow('IDEMPOTENCY_KEY_INVALID')
+    await expect(resolveIdempotencyKey(req, 'not-a-uuid')).rejects.toThrow(
+      'IDEMPOTENCY_KEY_INVALID',
+    )
   })
 })
 ```
@@ -946,6 +1003,7 @@ describe('resolveIdempotencyKey', () => {
 #### Task 2.13: Wire Infrastructure into proxy.ts
 
 **Files:**
+
 - Modify: `app/proxy.ts` (add x-user-id, x-user-role headers; add suspension check with error redirect)
 
 - [ ] **Step 1: Set user headers after session refresh**
@@ -964,8 +1022,7 @@ if (claims) {
 
 ```typescript
 if (claims) {
-  const { data: suspended } = await supabase
-    .rpc('is_user_suspended', { p_user: claims.sub })
+  const { data: suspended } = await supabase.rpc('is_user_suspended', { p_user: claims.sub })
   if (suspended) {
     await supabase.auth.signOut()
     url.pathname = '/blocked'
@@ -977,6 +1034,7 @@ if (claims) {
 **Dependencies:** Phase 1 (database must exist, env vars set, Upstash Redis provisioned)
 **Expected Outcome:** All 4 infrastructure systems (Supabase clients, error handling, rate limiting, idempotency) are complete, tested, and ready for feature development. proxy.ts refreshes sessions, sets user headers, and enforces suspensions.
 **Acceptance Criteria:**
+
 - `createClient()` works in browser components
 - `createServerSupabase()` works in RSC/Route Handlers
 - `createAdminClient()` works with service role bypass
@@ -1002,6 +1060,7 @@ if (claims) {
 #### Task 3.1: Auth Page & Magic Link Flow
 
 **Files:**
+
 - Create: `app/(public)/auth/page.tsx`
 - Create: `app/(public)/layout.tsx`
 - Create: `features/auth/schemas.ts`
@@ -1056,6 +1115,7 @@ export default function PublicLayout({ children }) {
 #### Task 3.2: Auth Callback Route Handler
 
 **Files:**
+
 - Create: `app/api/auth/callback/route.ts`
 
 Implement the full callback: exchange code for session, redirect to `/onboarding` if `onboarding_completed = false`, else `/feed`. Handle errors (redirect to `/auth?error=auth_callback_failed`). Include `handle_new_user()` trigger handling + block rebind logic (peppered hash).
@@ -1063,6 +1123,7 @@ Implement the full callback: exchange code for session, redirect to `/onboarding
 #### Task 3.3: Root Layout & Route Groups
 
 **Files:**
+
 - Create: `app/layout.tsx` (root layout with HTML, body, providers)
 - Create: `app/(app)/layout.tsx` (authenticated layout with AppBar/Sidebar)
 - Create: `app/(app)/feed/page.tsx` (placeholder)
@@ -1071,6 +1132,7 @@ Implement the full callback: exchange code for session, redirect to `/onboarding
 #### Task 3.4: Onboarding Step 1 — Basic Data
 
 **Files:**
+
 - Create: `app/(app)/onboarding/page.tsx` (wizard container)
 - Create: `features/profile/schemas.ts` (Zod schema for step 1 fields)
 - Create: `features/profile/actions.ts` (saveStep1 Server Action)
@@ -1084,12 +1146,15 @@ Implement form with: name, DOB (≥18 validation), gender (icon cards), country 
 ```typescript
 export const onboardingStep1Schema = z.object({
   name: z.string().min(2, { error: 'Минимум 2 символа' }).max(50),
-  birth_date: z.string().refine((val) => {
-    const date = new Date(val)
-    const eighteenYearsAgo = new Date()
-    eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18)
-    return date <= eighteenYearsAgo
-  }, { error: 'Вам должно быть не менее 18 лет' }),
+  birth_date: z.string().refine(
+    (val) => {
+      const date = new Date(val)
+      const eighteenYearsAgo = new Date()
+      eighteenYearsAgo.setFullYear(eighteenYearsAgo.getFullYear() - 18)
+      return date <= eighteenYearsAgo
+    },
+    { error: 'Вам должно быть не менее 18 лет' },
+  ),
   gender: z.enum(['male', 'female']),
   country: z.string().min(1),
   city: z.string().min(1),
@@ -1151,6 +1216,7 @@ export async function saveOnboardingStep1(formData: FormData) {
 #### Task 3.5: Onboarding Step 2 — Extended Data
 
 **Files:**
+
 - Create: `features/profile/schemas.ts` (add step 2 schemas — male and female variants)
 - Create: `features/profile/server/save-extended-data.ts`
 - Create: `features/profile/components/OnboardingStep2.tsx`
@@ -1160,6 +1226,7 @@ Implement gender-conditional form with all fields from the spec. Men: marital st
 #### Task 3.6: Geo Autocomplete API
 
 **Files:**
+
 - Create: `app/api/geo/cities/route.ts`
 - Create: `features/geo/schemas.ts`
 
@@ -1168,6 +1235,7 @@ Route Handler that queries `geonames_cities` with country filter + search query 
 #### Task 3.7: Write Tests for Auth & Onboarding
 
 **Files:**
+
 - Create: `tests/unit/features/auth/send-magic-link.test.ts`
 - Create: `tests/unit/features/profile/onboarding-schemas.test.ts`
 - Create: `tests/integration/features/auth/callback.test.ts`
@@ -1201,6 +1269,7 @@ describe('authEmailSchema', () => {
 **Dependencies:** Phase 2 (Supabase clients, error handling, rate limiting, idempotency, proxy.ts working)
 **Expected Outcome:** Users can sign up via Magic Link, be redirected to onboarding, complete steps 1-2 with auto-save. Sessions are refreshed correctly.
 **Acceptance Criteria:**
+
 - Auth flow: email → Magic Link → callback → onboarding redirect
 - Onboarding step 1 saves all basic fields correctly to DB
 - Onboarding step 2 saves gender-conditional fields
@@ -1221,6 +1290,7 @@ describe('authEmailSchema', () => {
 #### Task 4.1: Inngest Setup
 
 **Files:**
+
 - Create: `lib/inngest/client.ts`
 - Create: `app/api/webhooks/inngest/route.ts`
 
@@ -1236,6 +1306,7 @@ Serve Inngest functions from the Route Handler.
 #### Task 4.2: Photo Upload Flow (Onboarding Step 3)
 
 **Files:**
+
 - Create: `app/api/photos/upload-url/route.ts`
 - Create: `features/profile/components/OnboardingStep3.tsx`
 - Create: `features/profile/actions.ts` (add photo actions)
@@ -1245,6 +1316,7 @@ Implement: signed URL generation, direct upload to Supabase Storage, `markPhotoU
 #### Task 4.3: OpenAI Client
 
 **Files:**
+
 - Create: `lib/openai/client.ts`
 
 ```typescript
@@ -1258,6 +1330,7 @@ export const AI_BIO_PROMPT = `You are an assistant for a Muslim marriage applica
 #### Task 4.4: Onboarding Step 4 — Review & Bio Generation
 
 **Files:**
+
 - Create: `features/profile/components/OnboardingStep4.tsx`
 - Create: `features/profile/server/generate-bio.ts`
 - Create: `features/profile/server/complete-onboarding.ts`
@@ -1267,6 +1340,7 @@ Review step shows all data read-only. "Save" triggers bio generation via OpenAI,
 #### Task 4.5: Inngest Bio Regeneration Function
 
 **Files:**
+
 - Create: `lib/inngest/functions/profile-regenerate-bio.ts`
 
 ```typescript
@@ -1298,6 +1372,7 @@ export const profileRegenerateBioFn = inngest.createFunction(
 #### Task 4.6: Write Tests
 
 **Files:**
+
 - Create: `tests/unit/features/profile/ai-bio.test.ts`
 - Create: `tests/integration/api/photos/upload-url.test.ts`
 - Create: `tests/e2e/onboarding.spec.ts`
@@ -1305,6 +1380,7 @@ export const profileRegenerateBioFn = inngest.createFunction(
 **Dependencies:** Phase 3 (onboarding steps 1-2 working)
 **Expected Outcome:** Users complete onboarding, bio is generated, redirected to feed. Photos uploaded and displayed.
 **Acceptance Criteria:**
+
 - Photo upload via signed URL works end-to-end
 - Photo grid shows up to 6 photos, first = avatar
 - OpenAI bio generation succeeds with valid profile data
@@ -1325,6 +1401,7 @@ export const profileRegenerateBioFn = inngest.createFunction(
 #### Task 5.0: Photo Variant Configuration (Shared Config)
 
 **Files:**
+
 - Create: `lib/image-processing/photo-variants.ts`
 - Test: `tests/unit/lib/image-processing/photo-variants.test.ts`
 - Design doc: `docs/13-photo-variants.md`
@@ -1332,6 +1409,7 @@ export const profileRegenerateBioFn = inngest.createFunction(
 - [ ] **Step 1: Write the shared photo variants config**
 
 Implement exactly as specified in `docs/13-photo-variants.md`. This file is the single source of truth for ALL photo dimensions, formats, compression, upload constraints, and storage paths. Key exports:
+
 - `PHOTO_VARIANTS` — 5 variants (avatar 100×100, cover 400×500, cover_blurred σ=40, full ≤1200×1500, full_blurred σ=60), each with width, height, aspectRatio, fit, blur, cacheControl, generateBlurred, fileSuffix, jsonbKey, publicName
 - `COMPRESSION` — `{ avif: { quality: 60 }, webp: { quality: 80 } }`
 - `FORMATS` — `['avif', 'webp']` as const
@@ -1345,7 +1423,12 @@ Implement exactly as specified in `docs/13-photo-variants.md`. This file is the 
 ```typescript
 // tests/unit/lib/image-processing/photo-variants.test.ts
 import { describe, it, expect } from 'vitest'
-import { PHOTO_VARIANTS, resolveServeVariant, getBlurredVariant, PUBLIC_VARIANTS } from '@/lib/image-processing/photo-variants'
+import {
+  PHOTO_VARIANTS,
+  resolveServeVariant,
+  getBlurredVariant,
+  PUBLIC_VARIANTS,
+} from '@/lib/image-processing/photo-variants'
 
 describe('photo variant config', () => {
   it('should have exactly 5 variants', () => {
@@ -1384,6 +1467,7 @@ describe('photo variant config', () => {
 #### Task 5.1: sharp Processing Pipeline
 
 **Files:**
+
 - Create: `lib/image-processing/pipeline.ts`
 - Create: `lib/image-processing/validate-upload.ts`
 
@@ -1394,6 +1478,7 @@ Also implement `validateUpload(buffer)` that checks file size, MIME type, and mi
 #### Task 5.2: Process Route Handler
 
 **Files:**
+
 - Create: `app/api/photos/process/route.ts`
 
 ```typescript
@@ -1406,6 +1491,7 @@ Downloads original from Storage, runs sharp pipeline, uploads all 10 variants vi
 #### Task 5.3: Photo Stream Route Handler
 
 **Files:**
+
 - Create: `app/api/photos/stream/route.ts`
 
 Implement: authenticate viewer, validate params (`variant` must be one of `PUBLIC_VARIANTS`, `fmt` must be `avif` or `webp`), apply rate limit via `withRateLimit(handler, READ_GENEROUS)`, determine authorization (blur decision from `get_photo_stream_context` Postgres function), resolve actual variant via `resolveServeVariant(publicVariant, showFull)`, read storage path from `photos.variants[variant.jsonbKey][fmt]`, download from Storage via service role, return bytes with headers from variant config (`variant.cacheControl`, `Content-Type: image/{fmt}`).
@@ -1413,6 +1499,7 @@ Implement: authenticate viewer, validate params (`variant` must be one of `PUBLI
 #### Task 5.4: Inngest Photo Moderation
 
 **Files:**
+
 - Create: `lib/inngest/functions/photo-moderate.ts`
 
 OpenAI Vision moderation: download cover variant, call gpt-4o, evaluate structured output against thresholds, update `photos.moderation_status`.
@@ -1420,6 +1507,7 @@ OpenAI Vision moderation: download cover variant, call gpt-4o, evaluate structur
 #### Task 5.5: Photo CRUD Server Actions
 
 **Files:**
+
 - Create: `features/profile/actions.ts` (add replacePhoto, deletePhoto, reorderPhotos)
 - Create: `features/profile/server/replace-photo.ts`
 - Create: `features/profile/server/delete-photo.ts`
@@ -1430,6 +1518,7 @@ Implement replace (with cleanup via Inngest), delete (with avatar promotion logi
 #### Task 5.6: Database Webhook for Moderation
 
 **Files:**
+
 - Create: Supabase Database Webhook config (via dashboard or migration)
 
 Configure webhook: `photos.status = 'processed'` → `POST /api/webhooks/inngest` with event `photo/moderate`.
@@ -1437,6 +1526,7 @@ Configure webhook: `photos.status = 'processed'` → `POST /api/webhooks/inngest
 #### Task 5.7: Cleanup Inngest Functions
 
 **Files:**
+
 - Create: `lib/inngest/functions/photo-replace-cleanup.ts`
 - Create: `lib/inngest/functions/photo-abandon-cleanup.ts`
 - Create: `lib/inngest/functions/photo-delete.ts`
@@ -1444,6 +1534,7 @@ Configure webhook: `photos.status = 'processed'` → `POST /api/webhooks/inngest
 #### Task 5.8: Photo Component (Picture Element)
 
 **Files:**
+
 - Create: `features/photos/components/Photo.tsx`
 
 ```tsx
@@ -1455,14 +1546,21 @@ import {
 
 interface PhotoProps {
   photoId: string
-  variant?: PublicVariant  // default: 'cover'
-  blurred?: boolean        // default: false
+  variant?: PublicVariant // default: 'cover'
+  blurred?: boolean // default: false
   alt: string
   className?: string
-  protected?: boolean      // default: true — prevents right-click save
+  protected?: boolean // default: true — prevents right-click save
 }
 
-export function Photo({ photoId, variant = 'cover', blurred = false, alt, className, protected = true }: PhotoProps) {
+export function Photo({
+  photoId,
+  variant = 'cover',
+  blurred = false,
+  alt,
+  className,
+  protected = true,
+}: PhotoProps) {
   const config = PHOTO_VARIANTS[variant]
   const serveVariant = blurred
     ? resolveServeVariant(variant, false)
@@ -1475,9 +1573,14 @@ export function Photo({ photoId, variant = 'cover', blurred = false, alt, classN
     <picture>
       <source srcSet={avifSrc} type="image/avif" />
       <source srcSet={webpSrc} type="image/webp" />
-      <img src={webpSrc} alt={alt}
-        width={config.width} height={config.height}
-        className={className} loading="lazy" decoding="async"
+      <img
+        src={webpSrc}
+        alt={alt}
+        width={config.width}
+        height={config.height}
+        className={className}
+        loading="lazy"
+        decoding="async"
         draggable={false}
         onContextMenu={protected ? (e) => e.preventDefault() : undefined}
         style={{ aspectRatio: `${config.aspectRatio.w}/${config.aspectRatio.h}` }}
@@ -1492,6 +1595,7 @@ All dimensions (`width`, `height`, `aspectRatio`) come from the shared config. N
 #### Task 5.9: Write Tests
 
 **Files:**
+
 - Create: `tests/unit/lib/image-processing/pipeline.test.ts`
 - Create: `tests/integration/api/photos/stream.test.ts`
 - Create: `tests/integration/api/photos/process.test.ts`
@@ -1512,24 +1616,26 @@ describe('processImage', () => {
   it('should produce exactly N files (variants × formats)', async () => {
     const testImage = await sharp({
       create: { width: 2000, height: 2500, channels: 3, background: '#4488cc' },
-    }).jpeg().toBuffer()
+    })
+      .jpeg()
+      .toBuffer()
 
     const result = await processImage(testImage, userId, photoId)
-    expect(result.files).toHaveLength(
-      Object.keys(PHOTO_VARIANTS).length * FORMATS.length,
-    )
+    expect(result.files).toHaveLength(Object.keys(PHOTO_VARIANTS).length * FORMATS.length)
   })
 
   it('should produce avatar at configured dimensions', async () => {
     const testImage = await sharp({
       create: { width: 2000, height: 2500, channels: 3, background: '#4488cc' },
-    }).jpeg().toBuffer()
+    })
+      .jpeg()
+      .toBuffer()
 
     const result = await processImage(testImage, userId, photoId)
 
     for (const format of FORMATS) {
       const file = result.files.find(
-        f => f.path.includes('-avatar') && f.path.endsWith(`.${format}`),
+        (f) => f.path.includes('-avatar') && f.path.endsWith(`.${format}`),
       )
       expect(file).toBeDefined()
       const meta = await sharp(file!.buffer).metadata()
@@ -1541,11 +1647,13 @@ describe('processImage', () => {
   it('should never upscale (withoutEnlargement)', async () => {
     const smallImage = await sharp({
       create: { width: 200, height: 250, channels: 3, background: '#4488cc' },
-    }).jpeg().toBuffer()
+    })
+      .jpeg()
+      .toBuffer()
 
     const result = await processImage(smallImage, userId, photoId)
     const fullFile = result.files.find(
-      f => f.path.includes('-full.') && !f.path.includes('blurred'),
+      (f) => f.path.includes('-full.') && !f.path.includes('blurred'),
     )
     const meta = await sharp(fullFile!.buffer).metadata()
     expect(meta.width!).toBeLessThanOrEqual(200)
@@ -1559,6 +1667,7 @@ describe('processImage', () => {
 **Dependencies:** Phase 4 (onboarding step 3 photos must work, Inngest must be set up)
 **Expected Outcome:** Photos are processed into 10 variants, streamed through proxy with correct blur enforcement, moderated automatically.
 **Acceptance Criteria:**
+
 - sharp pipeline generates exactly 10 files with correct dimensions
 - Photo stream proxy returns correct variant based on blur matrix
 - Moderation auto-rejects explicit content
@@ -1578,6 +1687,7 @@ describe('processImage', () => {
 #### Task 6.1: Feed Page (SSR + Realtime)
 
 **Files:**
+
 - Create: `app/(app)/feed/page.tsx` (React Server Component — initial data fetch)
 - Create: `features/feed/components/FeedClient.tsx` ('use client' — infinite scroll, Realtime subscription)
 - Create: `features/feed/components/ProfileCard.tsx`
@@ -1589,6 +1699,7 @@ Implement cursor-based pagination, opposite-gender filter, published+approved-ph
 #### Task 6.2: Feed Filters
 
 **Files:**
+
 - Create: `app/(app)/feed/@filters/page.tsx` (parallel route)
 - Create: `features/feed/components/FilterPanel.tsx`
 - Create: `features/feed/schemas.ts` (filter types, Zod schemas)
@@ -1599,6 +1710,7 @@ Gender-specific filter panels. URL query param sync via `useSearchParams` + `rou
 #### Task 6.3: PostGIS Radius Search
 
 **Files:**
+
 - Create: `features/feed/server/radius-search.ts`
 
 Implement `ST_DWithin` query against `profiles.location`. Radius slider 50-1000 km (step 50). Only returns users with geolocation enabled. Excludes users without `location`.
@@ -1606,6 +1718,7 @@ Implement `ST_DWithin` query against `profiles.location`. Radius slider 50-1000 
 #### Task 6.4: Profile Detail View
 
 **Files:**
+
 - Create: `app/(app)/profile/[id]/page.tsx`
 - Create: `features/profile/components/ProfileDetail.tsx`
 - Create: `features/profile/components/PhotoSlider.tsx`
@@ -1616,6 +1729,7 @@ Show: avatar, name, age, country, AI bio (full text), photos (PhotoSlider, blurr
 #### Task 6.5: Own Profile Page & Edit
 
 **Files:**
+
 - Create: `app/(app)/profile/page.tsx` (own profile redirect to /profile/[own-id])
 - Create: `app/(app)/profile/edit/page.tsx`
 - Create: `features/profile/components/ProfileEditForm.tsx`
@@ -1625,6 +1739,7 @@ Group into same 4 sections as onboarding. Pre-fill from DB. Gender locked (read-
 #### Task 6.6: Profile Publish/Unpublish
 
 **Files:**
+
 - Create: `features/profile/components/PublishToggle.tsx`
 - Create: `features/profile/server/toggle-publish.ts`
 
@@ -1633,6 +1748,7 @@ Toggle with confirmation dialog. On publish: check at least one approved photo. 
 #### Task 6.7: Write Tests
 
 **Files:**
+
 - Create: `tests/unit/features/feed/filters.test.ts`
 - Create: `tests/unit/features/profile/publish.test.ts`
 - Create: `tests/integration/features/feed/radius-search.test.ts`
@@ -1641,6 +1757,7 @@ Toggle with confirmation dialog. On publish: check at least one approved photo. 
 **Dependencies:** Phase 5 (photos must be processed and deliverable via stream)
 **Expected Outcome:** Users browse feed, apply filters, search by radius, view profiles, edit own profile.
 **Acceptance Criteria:**
+
 - Feed shows opposite-gender, published profiles with approved photos
 - Infinite scroll loads more profiles
 - Filters work and persist to URL
@@ -1663,6 +1780,7 @@ Toggle with confirmation dialog. On publish: check at least one approved photo. 
 #### Task 7.1: Send Like Server Action
 
 **Files:**
+
 - Create: `features/likes/actions.ts`
 - Create: `features/likes/server/send-like.ts`
 - Create: `features/likes/schemas.ts`
@@ -1672,6 +1790,7 @@ Implement: validate published, opposite gender, not blocked, not self, within ta
 #### Task 7.2: Revoke Like / Match Cleanup
 
 **Files:**
+
 - Create: `features/likes/server/revoke-like.ts`
 - Create: `lib/inngest/functions/like-revoke.ts`
 
@@ -1680,6 +1799,7 @@ Implement Inngest workflow: DELETE likes, matches, messages (cascade), chat medi
 #### Task 7.3: Tariff Limit Enforcement
 
 **Files:**
+
 - Create: `features/likes/server/check-limits.ts`
 
 Single counter: `COUNT(*) FROM likes WHERE from_user_id = $me`. Check `has_active_subscription()` first. If premium → allow. If free-tier male and count < 3 → allow. Else → reject with modal linking to `/subscription`.
@@ -1687,6 +1807,7 @@ Single counter: `COUNT(*) FROM likes WHERE from_user_id = $me`. Check `has_activ
 #### Task 7.4: Match Modal (Fullscreen)
 
 **Files:**
+
 - Create: `components/layout/MatchModal.tsx`
 - Create: `features/likes/hooks/useMatchListener.ts`
 
@@ -1695,6 +1816,7 @@ Listen for Broadcast event `match.created` on `user:${userId}`. Show fullscreen 
 #### Task 7.5: Likes List Pages
 
 **Files:**
+
 - Create: `app/(app)/likes/page.tsx`
 - Create: `features/likes/components/LikesTabs.tsx`
 
@@ -1703,6 +1825,7 @@ Three tabs: "Liked you" (incoming), "You liked" (outgoing), "Matches" (mutual).
 #### Task 7.6: Write Tests
 
 **Files:**
+
 - Create: `tests/unit/features/likes/limits.test.ts`
 - Create: `tests/integration/features/likes/match-trigger.test.ts`
 - Create: `tests/e2e/likes.spec.ts`
@@ -1725,6 +1848,7 @@ describe('tariff limits', () => {
 **Dependencies:** Phase 6 (feed and profiles must be viewable)
 **Expected Outcome:** Liking works, matches auto-create with atomic trigger, tariff limits enforced server-side.
 **Acceptance Criteria:**
+
 - Like button on profile detail works
 - Mutual like → match + chat created automatically
 - Free-tier male limited to 3 lifetime likes
@@ -1747,6 +1871,7 @@ describe('tariff limits', () => {
 #### Task 8.1: Chat List Page
 
 **Files:**
+
 - Create: `app/(app)/chats/page.tsx`
 - Create: `features/chat/components/ChatList.tsx`
 - Create: `features/chat/server/get-chats.ts`
@@ -1756,6 +1881,7 @@ List of chats with last message preview, unread count, online indicator. Sort by
 #### Task 8.2: Chat Detail Layout
 
 **Files:**
+
 - Create: `app/(app)/chats/[chatId]/page.tsx`
 - Create: `features/chat/components/ChatDetail.tsx`
 - Create: `features/chat/components/MessageList.tsx`
@@ -1767,6 +1893,7 @@ Scroll to bottom (or first unread with "New Messages" divider). Message bubbles 
 #### Task 8.3: Message Sending
 
 **Files:**
+
 - Create: `features/chat/actions.ts`
 - Create: `features/chat/server/send-message.ts`
 - Create: `features/chat/schemas.ts`
@@ -1776,6 +1903,7 @@ Text message: validate ≤ 4000 chars, rate limit 30/min via Upstash, INSERT, cl
 #### Task 8.4: Realtime v2 Integration
 
 **Files:**
+
 - Create: `features/chat/hooks/useChatChannel.ts`
 
 Subscribe to `chat:${chatId}` channel. Postgres Changes on `messages` for new messages. Broadcast for typing events. Presence for online status.
@@ -1783,6 +1911,7 @@ Subscribe to `chat:${chatId}` channel. Postgres Changes on `messages` for new me
 #### Task 8.5: Typing Indicators & Presence
 
 **Files:**
+
 - Create: `features/chat/components/TypingIndicator.tsx`
 - Create: `features/chat/hooks/useTypingStatus.ts`
 - Create: `features/chat/hooks/usePresence.ts`
@@ -1792,6 +1921,7 @@ Throttled Broadcast `typing` / `typing_stop`. Presence tracking on channel join.
 #### Task 8.6: Message Status (delivered/read)
 
 **Files:**
+
 - Create: `features/chat/server/mark-delivered.ts`
 - Create: `features/chat/server/mark-as-read.ts`
 
@@ -1800,6 +1930,7 @@ Client calls `markDelivered` on receiving Realtime INSERT. Intersection Observer
 #### Task 8.7: Message Edit & Delete
 
 **Files:**
+
 - Create: `features/chat/server/edit-message.ts`
 - Create: `features/chat/server/delete-message.ts`
 
@@ -1808,6 +1939,7 @@ Edit: own text messages only, within 5-minute window. Sets `edited_at`, preserve
 #### Task 8.8: Quote Replies
 
 **Files:**
+
 - Create: `features/chat/components/QuotePreview.tsx`
 
 Set `parent_id` on new message. Show quoted message preview above composer. Long press / right click to quote.
@@ -1815,6 +1947,7 @@ Set `parent_id` on new message. Show quoted message preview above composer. Long
 #### Task 8.9: Voice Messages
 
 **Files:**
+
 - Create: `features/chat/components/VoiceRecorder.tsx`
 - Create: `features/chat/components/VoicePlayer.tsx`
 
@@ -1823,6 +1956,7 @@ MediaRecorder API (Opus/WebM), 90s max duration. wavesurfer.js playback with wav
 #### Task 8.10: Chat Deletion
 
 **Files:**
+
 - Create: `features/chat/server/delete-chat.ts`
 - Create: `lib/inngest/functions/chat-delete.ts`
 
@@ -1831,6 +1965,7 @@ Inngest: delete media files from Storage, delete messages, delete chat. Broadcas
 #### Task 8.11: Write Tests
 
 **Files:**
+
 - Create: `tests/unit/features/chat/message-schema.test.ts`
 - Create: `tests/unit/features/chat/message-edit.test.ts`
 - Create: `tests/integration/features/chat/realtime.test.ts`
@@ -1839,6 +1974,7 @@ Inngest: delete media files from Storage, delete messages, delete chat. Broadcas
 **Dependencies:** Phase 7 (matches must create chats)
 **Expected Outcome:** Two matched users can chat in real-time with all message types, status indicators, and editing.
 **Acceptance Criteria:**
+
 - Chat list shows all active chats with preview and unread count
 - Real-time message delivery works (< 500ms latency)
 - Text, image, and voice messages send and display correctly
@@ -1864,6 +2000,7 @@ Inngest: delete media files from Storage, delete messages, delete chat. Broadcas
 #### Task 9.0: Notification Factory & Templates
 
 **Files:**
+
 - Create: `lib/notifications/types.ts`
 - Create: `lib/notifications/factory.ts`
 - Create: `lib/notifications/templates.ts`
@@ -1877,6 +2014,7 @@ Inngest: delete media files from Storage, delete messages, delete chat. Broadcas
 - [ ] **Step 1: Write types, factory, templates, links, and validation**
 
 Implement exactly as specified in `docs/12-notifications.md`:
+
 - `lib/notifications/types.ts` — `NotificationType` (11 types: like_received, match_created, message_new, like_revoked, photo_approved, photo_rejected, photo_removed_by_moderator, account_blocked, account_reinstated, account_suspension_expired, inactivity_warning), `NotificationContext`, `NotificationOptions`, `NotificationPayload`
 - `lib/notifications/templates.ts` — `TEMPLATE_MAP` mapping each type to its `titleKey` and `bodyKey` i18n keys, `resolveTemplate(type)`
 - `lib/notifications/links.ts` — `resolveLink(type, context)` centralized route generation (e.g., `match_created` → `/matches/:id`, `message_new` → `/chat/:id`, `like_received` → `/profiles/:id`)
@@ -1896,9 +2034,16 @@ import ruMessages from '@/messages/ru.json'
 import enMessages from '@/messages/en.json'
 
 const ALL_TYPES = [
-  'like_received', 'like_revoked', 'match_created', 'message_new',
-  'photo_approved', 'photo_rejected', 'photo_removed_by_moderator',
-  'account_blocked', 'account_reinstated', 'account_suspension_expired',
+  'like_received',
+  'like_revoked',
+  'match_created',
+  'message_new',
+  'photo_approved',
+  'photo_rejected',
+  'photo_removed_by_moderator',
+  'account_blocked',
+  'account_reinstated',
+  'account_suspension_expired',
   'inactivity_warning',
 ] as const
 
@@ -1926,9 +2071,11 @@ describe('notification templates', () => {
 #### Task 9.1: Inngest Notification Dispatch
 
 **Files:**
+
 - Create: `lib/inngest/functions/notification-dispatch.ts`
 
 Single dispatch function consuming `notification/send` Inngest events. Flow:
+
 1. Check `notification_preferences` — if type is disabled for this user, return early
 2. INSERT into `notifications` table using the pre-built `NotificationPayload` from the factory (title_key, body_key, payload)
 3. Check Presence for online status
@@ -1940,6 +2087,7 @@ All notification payloads are built by `createNotification()` — the dispatch f
 #### Task 9.2: Notification Center Page
 
 **Files:**
+
 - Create: `app/(app)/notifications/page.tsx`
 - Create: `features/notifications/components/NotificationList.tsx`
 - Create: `features/notifications/components/NotificationItem.tsx`
@@ -1950,6 +2098,7 @@ Chronological list with infinite scroll, unread visual distinction, click-to-nav
 #### Task 9.3: Web Push Service Worker
 
 **Files:**
+
 - Create: `public/sw.js`
 
 ```javascript
@@ -1961,7 +2110,7 @@ self.addEventListener('push', (event) => {
       icon: payload.icon ?? '/icon-192.png',
       badge: payload.badge ?? '/badge-72.png',
       data: { url: payload.url },
-    })
+    }),
   )
 })
 
@@ -1973,7 +2122,7 @@ self.addEventListener('notificationclick', (event) => {
       const existing = wins.find((w) => w.url.includes(url))
       if (existing) return existing.focus()
       return clients.openWindow(url)
-    })
+    }),
   )
 })
 ```
@@ -1981,6 +2130,7 @@ self.addEventListener('notificationclick', (event) => {
 #### Task 9.4: Push Subscription Management
 
 **Files:**
+
 - Create: `lib/web-push/register.ts` (client-side SW registration + subscribe)
 - Create: `lib/web-push/send.ts` (server-side dispatch via web-push library)
 - Create: `app/api/push/subscribe/route.ts` (persist subscription)
@@ -1990,6 +2140,7 @@ Client registers SW on user gesture ("Enable notifications" button), subscribes 
 #### Task 9.5: Notification Preferences
 
 **Files:**
+
 - Create: `app/(app)/settings/page.tsx` (add notification prefs section)
 - Create: `features/notifications/components/NotificationPreferences.tsx`
 
@@ -1998,6 +2149,7 @@ Toggle per notification type and channel (in-app, push, email). Read/write to `n
 #### Task 9.6: Email Notifications (Resend)
 
 **Files:**
+
 - Create: `lib/resend/client.ts`
 - Create: `lib/resend/templates.ts`
 
@@ -2009,55 +2161,55 @@ All templates below use `{{variable}}` placeholder syntax. The Resend client sub
 
 **Template 1: Magic Link Email**
 
-| Lang | Subject | Body |
-|---|---|---|
-| RU | `Вход в Nikah Help` | `Здравствуйте,\n\nВы запросили вход в Nikah Help.\n\nНажмите на ссылку ниже, чтобы войти в аккаунт:\n\n{{magic_link}}\n\nСсылка действует ограниченное время. Если вы не запрашивали вход, просто проигнорируйте это письмо.\n\nС уважением,\nNikah Help` |
-| EN | `Login to Nikah Help` | `Hello,\n\nYou requested to sign in to Nikah Help.\n\nClick the link below to access your account:\n\n{{magic_link}}\n\nThis link is valid for a limited time. If you did not request this, please ignore this email.\n\nBest regards,\nNikah Help` |
+| Lang | Subject               | Body                                                                                                                                                                                                                                                      |
+| ---- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RU   | `Вход в Nikah Help`   | `Здравствуйте,\n\nВы запросили вход в Nikah Help.\n\nНажмите на ссылку ниже, чтобы войти в аккаунт:\n\n{{magic_link}}\n\nСсылка действует ограниченное время. Если вы не запрашивали вход, просто проигнорируйте это письмо.\n\nС уважением,\nNikah Help` |
+| EN   | `Login to Nikah Help` | `Hello,\n\nYou requested to sign in to Nikah Help.\n\nClick the link below to access your account:\n\n{{magic_link}}\n\nThis link is valid for a limited time. If you did not request this, please ignore this email.\n\nBest regards,\nNikah Help`       |
 
 Sent via Supabase Auth → Resend integration. The `{{magic_link}}` variable is injected by Supabase Auth.
 
 **Template 2: Account Blocked (Moderation)**
 
-| Lang | Subject | Body |
-|---|---|---|
-| RU | `Аккаунт временно заблокирован` | `Здравствуйте,\n\nВаш аккаунт в Nikah Help был временно заблокирован из-за нарушения правил платформы.\n\nЕсли вы считаете, что это произошло по ошибке, пожалуйста, свяжитесь с поддержкой:\n\n{{support_email}}\n\nС уважением,\nNikah Help` |
-| EN | `Account temporarily suspended` | `Hello,\n\nYour Nikah Help account has been temporarily suspended due to a violation of platform rules.\n\nIf you believe this was a mistake, please contact support:\n\n{{support_email}}\n\nBest regards,\nNikah Help` |
+| Lang | Subject                         | Body                                                                                                                                                                                                                                           |
+| ---- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RU   | `Аккаунт временно заблокирован` | `Здравствуйте,\n\nВаш аккаунт в Nikah Help был временно заблокирован из-за нарушения правил платформы.\n\nЕсли вы считаете, что это произошло по ошибке, пожалуйста, свяжитесь с поддержкой:\n\n{{support_email}}\n\nС уважением,\nNikah Help` |
+| EN   | `Account temporarily suspended` | `Hello,\n\nYour Nikah Help account has been temporarily suspended due to a violation of platform rules.\n\nIf you believe this was a mistake, please contact support:\n\n{{support_email}}\n\nBest regards,\nNikah Help`                       |
 
 Sent by the `account-block` Inngest function on moderator permanent-ban action.
 
 **Template 3: Account Reinstated**
 
-| Lang | Subject | Body |
-|---|---|---|
-| RU | `Аккаунт восстановлен` | `Здравствуйте,\n\nВаш аккаунт в Nikah Help был восстановлен. Теперь вы снова можете пользоваться сервисом.\n\nБлагодарим за понимание.\n\nС уважением,\nNikah Help` |
-| EN | `Account reinstated` | `Hello,\n\nYour Nikah Help account has been restored. You can now continue using the service.\n\nThank you for your understanding.\n\nBest regards,\nNikah Help` |
+| Lang | Subject                | Body                                                                                                                                                                |
+| ---- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RU   | `Аккаунт восстановлен` | `Здравствуйте,\n\nВаш аккаунт в Nikah Help был восстановлен. Теперь вы снова можете пользоваться сервисом.\n\nБлагодарим за понимание.\n\nС уважением,\nNikah Help` |
+| EN   | `Account reinstated`   | `Hello,\n\nYour Nikah Help account has been restored. You can now continue using the service.\n\nThank you for your understanding.\n\nBest regards,\nNikah Help`    |
 
 Sent by the admin "lift block" flow. Variables: none.
 
 **Template 4: Photo Removed (Moderation)**
 
-| Lang | Subject | Body |
-|---|---|---|
-| RU | `Фото удалено` | `Здравствуйте,\n\nОдно из ваших фото было удалено, так как оно не соответствует правилам Nikah Help.\n\nПожалуйста, загрузите новое фото, соответствующее требованиям платформы.\n\nС уважением,\nNikah Help` |
-| EN | `Photo removed` | `Hello,\n\nOne of your photos has been removed because it does not comply with Nikah Help guidelines.\n\nPlease upload a new photo that meets the platform requirements.\n\nBest regards,\nNikah Help` |
+| Lang | Subject         | Body                                                                                                                                                                                                          |
+| ---- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RU   | `Фото удалено`  | `Здравствуйте,\n\nОдно из ваших фото было удалено, так как оно не соответствует правилам Nikah Help.\n\nПожалуйста, загрузите новое фото, соответствующее требованиям платформы.\n\nС уважением,\nNikah Help` |
+| EN   | `Photo removed` | `Hello,\n\nOne of your photos has been removed because it does not comply with Nikah Help guidelines.\n\nPlease upload a new photo that meets the platform requirements.\n\nBest regards,\nNikah Help`        |
 
 Sent by the moderator "remove photo" action. Variables: none.
 
 **Template 5: Inactivity Email ("We miss you")**
 
-| Lang | Subject | Body |
-|---|---|---|
-| RU | `Мы скучаем по вам` | `Здравствуйте,\n\nМы заметили, что вы давно не заходили в Nikah Help.\n\nВозможно, вас уже ждут новые знакомства и взаимные симпатии.\n\nВернитесь и продолжите поиск:\n\n{{app_link}}\n\nС уважением,\nNikah Help` |
-| EN | `We miss you at Nikah Help` | `Hello,\n\nWe noticed that you haven't visited Nikah Help for a while.\n\nYou may already have new matches waiting for you.\n\nCome back and continue your journey:\n\n{{app_link}}\n\nBest regards,\nNikah Help` |
+| Lang | Subject                     | Body                                                                                                                                                                                                                |
+| ---- | --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RU   | `Мы скучаем по вам`         | `Здравствуйте,\n\nМы заметили, что вы давно не заходили в Nikah Help.\n\nВозможно, вас уже ждут новые знакомства и взаимные симпатии.\n\nВернитесь и продолжите поиск:\n\n{{app_link}}\n\nС уважением,\nNikah Help` |
+| EN   | `We miss you at Nikah Help` | `Hello,\n\nWe noticed that you haven't visited Nikah Help for a while.\n\nYou may already have new matches waiting for you.\n\nCome back and continue your journey:\n\n{{app_link}}\n\nBest regards,\nNikah Help`   |
 
 Sent by Vercel Cron `/api/cron/inactive-account-warn` for users with `last_seen_at < now() - 90 days`. `{{app_link}}` resolves to `https://nikah.help/feed`.
 
 **Template 6: Notification Email (New Match)**
 
-| Lang | Subject | Body |
-|---|---|---|
-| RU | `У вас новая взаимная симпатия` | `Здравствуйте,\n\nУ вас появилась новая взаимная симпатия в Nikah Help.\n\nПерейдите в приложение, чтобы начать общение:\n\n{{app_link}}\n\nС уважением,\nNikah Help` |
-| EN | `You have a new match` | `Hello,\n\nYou have a new match on Nikah Help.\n\nOpen the app to start a conversation:\n\n{{app_link}}\n\nBest regards,\nNikah Help` |
+| Lang | Subject                         | Body                                                                                                                                                                  |
+| ---- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| RU   | `У вас новая взаимная симпатия` | `Здравствуйте,\n\nУ вас появилась новая взаимная симпатия в Nikah Help.\n\nПерейдите в приложение, чтобы начать общение:\n\n{{app_link}}\n\nС уважением,\nNikah Help` |
+| EN   | `You have a new match`          | `Hello,\n\nYou have a new match on Nikah Help.\n\nOpen the app to start a conversation:\n\n{{app_link}}\n\nBest regards,\nNikah Help`                                 |
 
 Sent by `notification-dispatch` Inngest function when user is offline AND email channel is enabled for `match_created` notification type.
 
@@ -2066,6 +2218,7 @@ Sent by `notification-dispatch` Inngest function when user is offline AND email 
 #### Task 9.7: Write Tests
 
 **Files:**
+
 - Create: `tests/unit/lib/web-push/send.test.ts`
 - Create: `tests/integration/features/notifications/dispatch.test.ts`
 - Create: `tests/e2e/notifications.spec.ts`
@@ -2073,6 +2226,7 @@ Sent by `notification-dispatch` Inngest function when user is offline AND email 
 **Dependencies:** Phase 8 (chat must create notifications for new messages)
 **Expected Outcome:** Users receive notifications in-app (real-time), via Web Push (offline), and email. Preferences respected.
 **Acceptance Criteria:**
+
 - `createNotification()` factory used by ALL notification-producing code (no inline title_key/body_key construction)
 - 11 notification types have RU + EN templates with CI enforcement
 - Notification dispatched on like, match, new message, photo moderation
@@ -2097,6 +2251,7 @@ Sent by `notification-dispatch` Inngest function when user is offline AND email 
 #### Task 10.1: T-Bank API Client
 
 **Files:**
+
 - Create: `lib/tbank/client.ts`
 - Create: `lib/tbank/types.ts`
 
@@ -2105,6 +2260,7 @@ Implement Init API call: `POST https://securepay.tinkoff.ru/v2/Init` with token 
 #### Task 10.2: Payment Initiation Server Action
 
 **Files:**
+
 - Create: `features/subscription/actions.ts`
 - Create: `features/subscription/server/init-payment.ts`
 - Create: `features/subscription/schemas.ts`
@@ -2114,6 +2270,7 @@ Read price from `pricing_plans` (code = `subscription_monthly`), never from clie
 #### Task 10.3: Iframe Payment Form
 
 **Files:**
+
 - Create: `app/(app)/subscription/page.tsx` (RSC)
 - Create: `features/subscription/components/PaymentIframe.tsx`
 - Create: `features/subscription/components/SubscriptionPage.tsx`
@@ -2123,6 +2280,7 @@ Load T-Bank integration script. Init `PaymentIntegration`. Render iframe with `P
 #### Task 10.4: Payment Webhook Route Handler
 
 **Files:**
+
 - Create: `app/api/webhooks/tbank/route.ts`
 - Create: `lib/tbank/webhook.ts` (signature verification)
 
@@ -2131,6 +2289,7 @@ Handle `CONFIRMED`, `REJECTED`, `REFUNDED` statuses. On CONFIRMED: activate subs
 #### Task 10.5: Subscription Activation & Status
 
 **Files:**
+
 - Create: `features/subscription/server/activate-subscription.ts`
 - Create: `features/subscription/server/check-subscription.ts`
 
@@ -2139,6 +2298,7 @@ Handle `CONFIRMED`, `REJECTED`, `REFUNDED` statuses. On CONFIRMED: activate subs
 #### Task 10.6: Recurring Payment Renewal (Vercel Cron)
 
 **Files:**
+
 - Create: `app/api/cron/subscription-renewal/route.ts`
 
 Daily cron: find subscriptions nearing expiration (`cancel_at_period_end = false`, `current_period_end` within 24h). Emit `subscription/renew` Inngest event. Inngest function calls T-Bank Init with `CustomerKey` (no `Recurrent` flag).
@@ -2146,6 +2306,7 @@ Daily cron: find subscriptions nearing expiration (`cancel_at_period_end = false
 #### Task 10.7: Cancel Subscription
 
 **Files:**
+
 - Create: `features/subscription/server/cancel-subscription.ts`
 
 Set `cancel_at_period_end = true`. User retains premium until `current_period_end`. No further auto-renewal.
@@ -2153,6 +2314,7 @@ Set `cancel_at_period_end = true`. User retains premium until `current_period_en
 #### Task 10.8: Subscription UI
 
 **Files:**
+
 - Create: `features/subscription/components/PricingCard.tsx`
 
 Show current tier, benefits, price, "Subscribe" / "Cancel" buttons. Female users: "All features are free for women."
@@ -2160,6 +2322,7 @@ Show current tier, benefits, price, "Subscribe" / "Cancel" buttons. Female users
 #### Task 10.9: Write Tests
 
 **Files:**
+
 - Create: `tests/unit/lib/tbank/token.test.ts`
 - Create: `tests/integration/api/webhooks/tbank.test.ts`
 - Create: `tests/e2e/subscription.spec.ts`
@@ -2190,6 +2353,7 @@ describe('generateToken', () => {
 **Dependencies:** Phase 7 (tariff limits reference subscription status)
 **Expected Outcome:** Male users can subscribe via T-Bank, subscription activates on payment, auto-renews, cancels properly.
 **Acceptance Criteria:**
+
 - Payment initiation calls T-Bank Init API with correct signature
 - Iframe renders payment form
 - Webhook CONFIRMED activates subscription
@@ -2212,6 +2376,7 @@ describe('generateToken', () => {
 #### Task 11.1: User Block / Unblock
 
 **Files:**
+
 - Create: `features/profile/actions.ts` (add blockUser, unblockUser)
 - Create: `features/profile/server/block-user.ts`
 - Create: `features/profile/server/unblock-user.ts`
@@ -2221,6 +2386,7 @@ describe('generateToken', () => {
 #### Task 11.2: Personal Blocklist Page
 
 **Files:**
+
 - Create: `app/(app)/settings/blocked/page.tsx`
 - Create: `features/profile/components/BlockList.tsx`
 - Create: `features/profile/components/BlockListItem.tsx`
@@ -2230,6 +2396,7 @@ List with search, pagination (infinite scroll), avatar (or placeholder for ghost
 #### Task 11.3: Report Submission
 
 **Files:**
+
 - Create: `features/reports/actions.ts`
 - Create: `features/reports/schemas.ts`
 - Create: `features/reports/components/ReportDialog.tsx`
@@ -2239,6 +2406,7 @@ Report dialog (free-text comment, max 500 chars). Rate limit 5/day. Submit via S
 #### Task 11.4: Admin Layout & RBAC
 
 **Files:**
+
 - Create: `app/(admin)/layout.tsx`
 - Create: `app/(admin)/admin/page.tsx` (redirect to /admin/reports)
 - Create: `features/admin/components/AdminGuard.tsx`
@@ -2248,6 +2416,7 @@ Check `role IN ('moderator', 'admin')`. Redirect non-authorized users. Server-si
 #### Task 11.5: Moderator Report Queue
 
 **Files:**
+
 - Create: `app/(admin)/admin/reports/page.tsx`
 - Create: `features/admin/components/ReportList.tsx`
 - Create: `features/admin/components/ReportDetail.tsx`
@@ -2258,6 +2427,7 @@ Filterable, paginated report list. Detail view: reported entity preview, reporte
 #### Task 11.6: Moderator Actions
 
 **Files:**
+
 - Create: `features/admin/actions.ts`
 - Create: `features/admin/server/resolve-report.ts`
 - Create: `features/admin/server/remove-photo.ts`
@@ -2268,6 +2438,7 @@ Dismiss, Remove Photo, Block User. Block user: insert into `user_suspensions` + 
 #### Task 11.7: Admin Block List Panel
 
 **Files:**
+
 - Create: `app/(admin)/admin/blocks/page.tsx`
 - Create: `features/admin/components/BlockListPanel.tsx`
 - Create: `features/admin/server/get-blocks.ts`
@@ -2277,6 +2448,7 @@ Paginated table of all active blocks. Filter by status, date, banned_by. Search 
 #### Task 11.8: Admin User Management
 
 **Files:**
+
 - Create: `app/(admin)/admin/users/page.tsx`
 - Create: `features/admin/server/get-users.ts`
 
@@ -2285,6 +2457,7 @@ User search, view, role assignment (admin only).
 #### Task 11.9: Suspension Enforcement in proxy.ts
 
 **Files:**
+
 - Modify: `app/proxy.ts` (add suspension check)
 
 Check `is_user_suspended()` on every authenticated request. If suspended → sign out, redirect to `/blocked` page.
@@ -2292,6 +2465,7 @@ Check `is_user_suspended()` on every authenticated request. If suspended → sig
 #### Task 11.10: Blocked Page
 
 **Files:**
+
 - Create: `app/(public)/blocked/page.tsx`
 
 Static page: "This account has been blocked." Contact support link. No re-login form.
@@ -2299,6 +2473,7 @@ Static page: "This account has been blocked." Contact support link. No re-login 
 #### Task 11.11: Inngest Functions for Moderation
 
 **Files:**
+
 - Create: `lib/inngest/functions/account-block.ts`
 - Create: `lib/inngest/functions/photo-moderate-remove.ts`
 
@@ -2307,6 +2482,7 @@ Account block: revoke sessions, unpublish, send email. Photo removal: delete var
 #### Task 11.12: Write Tests
 
 **Files:**
+
 - Create: `tests/unit/features/admin/report-schema.test.ts`
 - Create: `tests/unit/lib/crypto/email-hash.test.ts`
 - Create: `tests/integration/features/admin/moderation.test.ts`
@@ -2315,6 +2491,7 @@ Account block: revoke sessions, unpublish, send email. Photo removal: delete var
 **Dependencies:** Phase 6 (profiles must exist to block/report), Phase 3 (auth/proxy.ts for suspension enforcement)
 **Expected Outcome:** Users can block, report. Moderators can review reports, remove photos, block users. Admins can lift blocks. Suspensions enforced at proxy level.
 **Acceptance Criteria:**
+
 - Block hides profiles, prevents likes, deletes matches/chats
 - Block persists past account deletion via peppered hash
 - Block rebind works on re-registration
@@ -2339,6 +2516,7 @@ Account block: revoke sessions, unpublish, send email. Photo removal: delete var
 #### Task 12.1: next-intl Setup
 
 **Files:**
+
 - Create: `messages/ru.json`
 - Create: `messages/en.json`
 - Create: `i18n/routing.ts`
@@ -2350,6 +2528,7 @@ Configure 2 locales (ru, en), default `ru`. Define routing strategy.
 #### Task 12.2: Translation Message Files
 
 **Files:**
+
 - Modify: `messages/ru.json`
 - Modify: `messages/en.json`
 
@@ -2358,6 +2537,7 @@ Add all translation keys for: auth, onboarding, feed, chat, notifications, subsc
 #### Task 12.3: PWA Manifest & Icons
 
 **Files:**
+
 - Create: `public/manifest.webmanifest`
 - Create: `public/icon-192.png`
 - Create: `public/icon-512.png`
@@ -2370,6 +2550,7 @@ Add all translation keys for: auth, onboarding, feed, chat, notifications, subsc
 #### Task 12.4: Install Prompt UX
 
 **Files:**
+
 - Create: `features/pwa/components/InstallBanner.tsx`
 - Create: `features/pwa/hooks/useInstallPrompt.ts`
 
@@ -2378,6 +2559,7 @@ Capture `beforeinstallprompt`. Show banner after first mutual match. Respect dis
 #### Task 12.5: Theme System (next-themes)
 
 **Files:**
+
 - Create: `components/providers/ThemeProvider.tsx`
 - Modify: `app/layout.tsx` (wrap with ThemeProvider)
 - Modify: `app/globals.css` (add .dark variables)
@@ -2387,6 +2569,7 @@ Light/dark themes with Tailwind CSS variables. Toggle in settings. Persist prefe
 #### Task 12.6: shadcn/ui Integration
 
 **Files:**
+
 - Create: `components/ui/` (all shadcn components)
 - Create: `components.json`
 
@@ -2398,6 +2581,7 @@ pnpm dlx shadcn@latest add button input dialog sheet switch checkbox card avatar
 #### Task 12.7: Loading & Error States
 
 **Files:**
+
 - Create: `components/layout/Skeleton.tsx`
 - Create: `components/layout/EmptyState.tsx`
 - Create: `components/layout/ErrorBoundary.tsx`
@@ -2416,6 +2600,7 @@ Every page: loading skeleton, empty state with illustration + CTA, error boundar
 #### Task 12.9: Sentry Setup
 
 **Files:**
+
 - Create: `sentry.client.config.ts`
 - Create: `sentry.server.config.ts`
 - Create: `sentry.edge.config.ts`
@@ -2426,6 +2611,7 @@ PII stripping, release tagging, source map upload.
 #### Task 12.10: Write Tests
 
 **Files:**
+
 - Create: `tests/unit/lib/i18n/messages.test.ts` (validate keys exist in both locales)
 - Create: `tests/e2e/i18n.spec.ts`
 - Create: `tests/e2e/pwa.spec.ts`
@@ -2433,6 +2619,7 @@ PII stripping, release tagging, source map upload.
 **Dependencies:** Phases 3-11 (all features must exist to translate and polish)
 **Expected Outcome:** App works in RU and EN, installable as PWA, dark/light themes, polished UI with loading/error states.
 **Acceptance Criteria:**
+
 - All UI text is translatable (no hardcoded strings)
 - Switching language updates all text immediately
 - PWA manifest valid, icons load, installable on Android/iOS
@@ -2456,6 +2643,7 @@ PII stripping, release tagging, source map upload.
 #### Task 13.1: Auth & Onboarding E2E Tests
 
 **Files:**
+
 - Create: `tests/e2e/auth.spec.ts`
 - Create: `tests/e2e/onboarding.spec.ts`
 
@@ -2464,6 +2652,7 @@ Full flow: Magic Link (mocked), onboarding all 4 steps, bio generation. Test err
 #### Task 13.2: Core Flow E2E Tests
 
 **Files:**
+
 - Create: `tests/e2e/likes-chat.spec.ts`
 - Create: `tests/e2e/feed.spec.ts`
 
@@ -2472,6 +2661,7 @@ Send like, mutual match, open chat, send messages, verify real-time delivery.
 #### Task 13.3: Payment E2E Tests
 
 **Files:**
+
 - Create: `tests/e2e/subscription.spec.ts`
 
 Initiate payment, verify iframe, mock webhook, verify subscription activation, verify like limit lifted.
@@ -2479,6 +2669,7 @@ Initiate payment, verify iframe, mock webhook, verify subscription activation, v
 #### Task 13.4: Moderation E2E Tests
 
 **Files:**
+
 - Create: `tests/e2e/moderation.spec.ts`
 
 File report, moderator views queue, dismisses/acts, verify actions.
@@ -2486,6 +2677,7 @@ File report, moderator views queue, dismisses/acts, verify actions.
 #### Task 13.5: RLS Security Tests
 
 **Files:**
+
 - Create: `tests/integration/security/rls-policies.test.ts`
 
 For each table: attempt unauthorized SELECT/INSERT/UPDATE/DELETE with different roles. Verify RLS blocks.
@@ -2493,6 +2685,7 @@ For each table: attempt unauthorized SELECT/INSERT/UPDATE/DELETE with different 
 #### Task 13.6: Rate Limiting Tests
 
 **Files:**
+
 - Create: `tests/integration/security/rate-limiting.test.ts`
 
 Verify auth callback rate limit, photo stream rate limit, like/message send rate limits.
@@ -2517,6 +2710,7 @@ All tests must pass in CI.
 **Dependencies:** Phases 0-12 (complete application)
 **Expected Outcome:** Full test suite passing, security verified, app ready for launch.
 **Acceptance Criteria:**
+
 - All E2E tests pass on Preview Deployments
 - RLS tests verify every table policy
 - Rate limiting tests confirm Upstash enforcement
@@ -2599,6 +2793,7 @@ Run through the complete MVP Launch Checklist from 07-infrastructure.md. Every i
 ## Priority Summary
 
 ### MVP (Must Ship)
+
 - Phase 0: Project Init
 - Phase 1: Database Schema
 - Phase 2: Core Infrastructure (Supabase Clients, Error Handling, Rate Limiting, Idempotency)
@@ -2616,6 +2811,7 @@ Run through the complete MVP Launch Checklist from 07-infrastructure.md. Every i
 - Phase 14: Launch
 
 ### Post-MVP
+
 - Voice message transcription (AI)
 - Video chat integration
 - Advanced matching algorithm (ML-based recommendations)
@@ -2657,4 +2853,4 @@ The following are not defined in the docs and need clarification:
 12. **Idempotency system** — ✅ RESOLVED. `docs/11-idempotency.md`. `withIdempotency()` wrapper, atomic Redis locks, UUID v4 key validation, user-scoped keys. Phase 2 Tasks 2.11-2.12.
 13. **Notification system** — ✅ RESOLVED. `docs/12-notifications.md`. Centralized `createNotification()` factory, 11 types, i18n templates, link resolution, channel routing. Phase 9 Tasks 9.0-9.1.
 14. **Photo variant configuration** — ✅ RESOLVED. `docs/13-photo-variants.md`. Shared `PHOTO_VARIANTS` config, `resolveServeVariant()`, upload constraints, storage path builders. Phase 5 Task 5.0.
-≠≠
+    ≠≠

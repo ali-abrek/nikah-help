@@ -13,6 +13,7 @@
 ### Task 1: Transliteration Helper
 
 **Files:**
+
 - Create: `nikah-help/lib/seo/transliterate.ts`
 - Create: `nikah-help/tests/unit/seo/transliterate.test.ts`
 
@@ -79,14 +80,44 @@ Expected: FAIL — module not found
 // nikah-help/lib/seo/transliterate.ts
 
 const CYRILLIC_TO_LATIN: Record<string, string> = {
-  а: 'a',  б: 'b',  в: 'v',  г: 'g',  д: 'd',
-  е: 'e',  ё: 'yo', ж: 'zh', з: 'z',  и: 'i',
-  й: 'y',  к: 'k',  л: 'l',  м: 'm',  н: 'n',
-  о: 'o',  п: 'p',  р: 'r',  с: 's',  т: 't',
-  у: 'u',  ф: 'f',  х: 'kh', ц: 'ts', ч: 'ch',
-  ш: 'sh', щ: 'shch', ъ: '', ы: 'y', ь: '',
-  э: 'e',  ю: 'yu', я: 'ya',
-  ҳ: 'h',  ӯ: 'u',  ҷ: 'j',  қ: 'k',  ғ: 'g',
+  а: 'a',
+  б: 'b',
+  в: 'v',
+  г: 'g',
+  д: 'd',
+  е: 'e',
+  ё: 'yo',
+  ж: 'zh',
+  з: 'z',
+  и: 'i',
+  й: 'y',
+  к: 'k',
+  л: 'l',
+  м: 'm',
+  н: 'n',
+  о: 'o',
+  п: 'p',
+  р: 'r',
+  с: 's',
+  т: 't',
+  у: 'u',
+  ф: 'f',
+  х: 'kh',
+  ц: 'ts',
+  ч: 'ch',
+  ш: 'sh',
+  щ: 'shch',
+  ъ: '',
+  ы: 'y',
+  ь: '',
+  э: 'e',
+  ю: 'yu',
+  я: 'ya',
+  ҳ: 'h',
+  ӯ: 'u',
+  ҷ: 'j',
+  қ: 'k',
+  ғ: 'g',
 }
 
 /**
@@ -123,6 +154,7 @@ git commit -m "feat: add Cyrillic-to-Latin transliteration helper for SEO slugs"
 ### Task 2: SEO Slug Generation
 
 **Files:**
+
 - Create: `nikah-help/lib/seo/slug.ts`
 - Create: `nikah-help/tests/unit/seo/slug.test.ts`
 
@@ -259,6 +291,7 @@ git commit -m "feat: add SEO slug generation helper with nikah-<gender>-<city>-<
 ### Task 3: SEO Constants and the "никах" Invariant Rule
 
 **Files:**
+
 - Create: `nikah-help/lib/seo/constants.ts`
 - Create: `nikah-help/tests/unit/seo/constants.test.ts`
 
@@ -379,6 +412,7 @@ git commit -m "feat: add SEO constants with immutable никах invariant rule 
 ### Task 4: SEO Metadata Builder — Titles & Descriptions
 
 **Files:**
+
 - Create: `nikah-help/lib/seo/metadata.ts`
 - Create: `nikah-help/tests/unit/seo/metadata.test.ts`
 
@@ -462,31 +496,38 @@ describe('buildGenericTitle', () => {
   })
 
   it('builds generic page title in English', () => {
-    expect(buildGenericTitle('Settings', 'en')).toBe(
-      'Settings | Muslim Nikah Dating | Nikah Help',
-    )
+    expect(buildGenericTitle('Settings', 'en')).toBe('Settings | Muslim Nikah Dating | Nikah Help')
   })
 })
 
 describe('buildProfileMetaDescription', () => {
   it('returns stored meta_description if available', () => {
-    const desc = buildProfileMetaDescription({ meta_description: 'Али, 32 года. Соблюдающий мусульманин.' }, 'ru')
+    const desc = buildProfileMetaDescription(
+      { meta_description: 'Али, 32 года. Соблюдающий мусульманин.' },
+      'ru',
+    )
     expect(desc).toBe('Али, 32 года. Соблюдающий мусульманин.')
   })
 
   it('falls back to ai_bio if no meta_description', () => {
-    const desc = buildProfileMetaDescription({ ai_bio: 'Я Али, из Краснодара. Ищу жену для никах.' }, 'ru')
+    const desc = buildProfileMetaDescription(
+      { ai_bio: 'Я Али, из Краснодара. Ищу жену для никах.' },
+      'ru',
+    )
     expect(desc).toBe('Я Али, из Краснодара. Ищу жену для никах.')
   })
 
   it('falls back to template-based description when neither exists', () => {
-    const desc = buildProfileMetaDescription({
-      name: 'Али',
-      age: 32,
-      city: 'Краснодар',
-      country: 'Россия',
-      gender: 'male',
-    }, 'ru')
+    const desc = buildProfileMetaDescription(
+      {
+        name: 'Али',
+        age: 32,
+        city: 'Краснодар',
+        country: 'Россия',
+        gender: 'male',
+      },
+      'ru',
+    )
     expect(desc).toContain('Али')
     expect(desc).toContain('Краснодар')
     expect(desc).toContain('никах')
@@ -547,7 +588,7 @@ export function buildProfileTitle(profile: ProfileSeoData, lang: Lang): string {
 
   if (lang === 'ru') {
     const genderLabel = profile.gender === 'female' ? 'Мусульманка' : 'Мусульманин'
-        const lookingFor =
+    const lookingFor =
       profile.gender === 'female'
         ? NIKAH_INVARIANT_RU.femaleLookingFor
         : NIKAH_INVARIANT_RU.maleLookingFor
@@ -582,9 +623,7 @@ export function buildProfileTitle(profile: ProfileSeoData, lang: Lang): string {
  */
 export function buildGenericTitle(pageName: string, lang: Lang): string {
   const tagline =
-    lang === 'ru'
-      ? NIKAH_INVARIANT_RU.muslimNikahDating
-      : NIKAH_INVARIANT_EN.muslimNikahDating
+    lang === 'ru' ? NIKAH_INVARIANT_RU.muslimNikahDating : NIKAH_INVARIANT_EN.muslimNikahDating
   return `${pageName} ${BRAND_SEPARATOR} ${tagline} ${BRAND_SEPARATOR} ${SITE_NAME}`
 }
 
@@ -611,17 +650,13 @@ export function buildProfileMetaDescription(profile: Record<string, unknown>, la
   const city = typeof profile.city === 'string' ? profile.city : ''
   const country = typeof profile.country === 'string' ? profile.country : ''
   const gender = typeof profile.gender === 'string' ? profile.gender : ''
-  const age = computeAge(
-    typeof profile.birth_date === 'string' ? profile.birth_date : null,
-  )
+  const age = computeAge(typeof profile.birth_date === 'string' ? profile.birth_date : null)
 
   if (lang === 'ru') {
     const locationParts = [city, country].filter(Boolean).join(', ')
     const forNikah = NIKAH_INVARIANT_RU.forNikah
     const lookFor =
-      gender === 'female'
-        ? NIKAH_INVARIANT_RU.femaleLookingFor
-        : NIKAH_INVARIANT_RU.maleLookingFor
+      gender === 'female' ? NIKAH_INVARIANT_RU.femaleLookingFor : NIKAH_INVARIANT_RU.maleLookingFor
 
     let desc = ''
     if (name) desc += `${name}`
@@ -634,9 +669,7 @@ export function buildProfileMetaDescription(profile: Record<string, unknown>, la
   // English fallback
   const locationParts = [city, country].filter(Boolean).join(', ')
   const lookFor =
-    gender === 'female'
-      ? NIKAH_INVARIANT_EN.femaleLookingFor
-      : NIKAH_INVARIANT_EN.maleLookingFor
+    gender === 'female' ? NIKAH_INVARIANT_EN.femaleLookingFor : NIKAH_INVARIANT_EN.maleLookingFor
 
   let desc = ''
   if (name) desc += `${name}`
@@ -664,6 +697,7 @@ git commit -m "feat: add SEO metadata builder for profile titles, generic titles
 ### Task 5: Image Alt Tag Generation
 
 **Files:**
+
 - Create: `nikah-help/lib/seo/alt-tags.ts`
 - Create: `nikah-help/tests/unit/seo/alt-tags.test.ts`
 
@@ -680,14 +714,18 @@ describe('buildImageAltTag', () => {
       { name: 'Али', gender: 'male', city: 'Москва', country: 'Россия', birth_date: '1993-03-15' },
       'ru',
     )
-    expect(alt).toBe(
-      'Али, 32 года, Москва, Россия. Мусульманин ищет мусульманку для никах.',
-    )
+    expect(alt).toBe('Али, 32 года, Москва, Россия. Мусульманин ищет мусульманку для никах.')
   })
 
   it('builds Russian alt tag for female user', () => {
     const alt = buildImageAltTag(
-      { name: 'Амина', gender: 'female', city: 'Ташкент', country: 'Узбекистан', birth_date: '2003-07-21' },
+      {
+        name: 'Амина',
+        gender: 'female',
+        city: 'Ташкент',
+        country: 'Узбекистан',
+        birth_date: '2003-07-21',
+      },
       'ru',
     )
     expect(alt).toBe(
@@ -822,6 +860,7 @@ git commit -m "feat: add SEO image alt tag generator with immutable никах r
 ### Task 6: Structured Data (JSON-LD) Builder
 
 **Files:**
+
 - Create: `nikah-help/lib/seo/structured-data.ts`
 - Create: `nikah-help/tests/unit/seo/structured-data.test.ts`
 
@@ -858,7 +897,10 @@ describe('buildProfileJsonLd', () => {
     const male = buildProfileJsonLd(profile, 'https://nikahhelp.com')
     expect(male).toContain('"gender":"Male"')
 
-    const female = buildProfileJsonLd({ ...profile, gender: 'female' as const }, 'https://nikahhelp.com')
+    const female = buildProfileJsonLd(
+      { ...profile, gender: 'female' as const },
+      'https://nikahhelp.com',
+    )
     expect(female).toContain('"gender":"Female"')
   })
 
@@ -880,7 +922,9 @@ describe('buildProfileJsonLd', () => {
 
   it('includes url', () => {
     const result = buildProfileJsonLd(profile, 'https://nikahhelp.com')
-    expect(result).toContain('"url":"https://nikahhelp.com/profile/a895e215-96c9-4f2e-a6ee-6eaacc1fe5da')
+    expect(result).toContain(
+      '"url":"https://nikahhelp.com/profile/a895e215-96c9-4f2e-a6ee-6eaacc1fe5da',
+    )
   })
 })
 ```
@@ -952,6 +996,7 @@ git commit -m "feat: add schema.org JSON-LD structured data builder for profile 
 ### Task 7: SEO Public API Barrel
 
 **Files:**
+
 - Create: `nikah-help/lib/seo/index.ts`
 
 - [ ] **Step 1: Write the barrel file**
@@ -984,6 +1029,7 @@ git commit -m "feat: add SEO public API barrel export"
 ### Task 8: Database Migration — Add `meta_description` to Profiles
 
 **Files:**
+
 - Create: `nikah-help/supabase/migrations/<timestamp>_add_meta_description.sql`
 
 - [ ] **Step 1: Generate migration filename**
@@ -1035,6 +1081,7 @@ git commit -m "feat: add meta_description column to profiles table for SEO"
 ### Task 9: Extend OpenAI Prompt and Bio Generation for Meta Description
 
 **Files:**
+
 - Modify: `nikah-help/lib/openai/client.ts`
 - Modify: `nikah-help/features/profile/server/generate-bio.ts`
 - Modify: `nikah-help/lib/inngest/functions/profile-regenerate-bio.ts`
@@ -1085,46 +1132,46 @@ In `nikah-help/features/profile/server/generate-bio.ts`, modify the OpenAI respo
 Replace the section from the `completion` call through the `supabase.from('profiles').update(...)` call:
 
 ```typescript
-    const completion = await getOpenAI().chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system' as const, content: AI_BIO_PROMPT },
-        {
-          role: 'user' as const,
-          content: `Создай биографию для пользователя на основе следующих данных:\n\n${JSON.stringify(bioInput, null, 2)}`,
-        },
-      ],
-      max_tokens: 500,
-      temperature: 0.7,
-      response_format: { type: 'json_object' },
-    })
+const completion = await getOpenAI().chat.completions.create({
+  model: 'gpt-4o-mini',
+  messages: [
+    { role: 'system' as const, content: AI_BIO_PROMPT },
+    {
+      role: 'user' as const,
+      content: `Создай биографию для пользователя на основе следующих данных:\n\n${JSON.stringify(bioInput, null, 2)}`,
+    },
+  ],
+  max_tokens: 500,
+  temperature: 0.7,
+  response_format: { type: 'json_object' },
+})
 
-    const raw = completion.choices[0]?.message?.content?.trim()
+const raw = completion.choices[0]?.message?.content?.trim()
 
-    if (!raw) throw new Error('Failed to generate bio')
+if (!raw) throw new Error('Failed to generate bio')
 
-    let parsed: { bio?: string; meta_description?: string }
-    try {
-      parsed = JSON.parse(raw)
-    } catch {
-      // Fallback: old-format plain text response
-      parsed = { bio: raw }
-    }
+let parsed: { bio?: string; meta_description?: string }
+try {
+  parsed = JSON.parse(raw)
+} catch {
+  // Fallback: old-format plain text response
+  parsed = { bio: raw }
+}
 
-    const bio = parsed.bio?.trim()
-    const metaDescription = parsed.meta_description?.trim()
+const bio = parsed.bio?.trim()
+const metaDescription = parsed.meta_description?.trim()
 
-    if (!bio) throw new Error('Failed to generate bio')
+if (!bio) throw new Error('Failed to generate bio')
 
-    await supabase
-      .from('profiles')
-      .update({
-        ai_bio: bio,
-        meta_description: metaDescription ?? null,
-        ai_bio_status: 'ready',
-        ai_bio_input_hash: newHash,
-      })
-      .eq('id', userId)
+await supabase
+  .from('profiles')
+  .update({
+    ai_bio: bio,
+    meta_description: metaDescription ?? null,
+    ai_bio_status: 'ready',
+    ai_bio_input_hash: newHash,
+  })
+  .eq('id', userId)
 ```
 
 - [ ] **Step 3: Update the Inngest function to persist meta_description**
@@ -1132,7 +1179,12 @@ Replace the section from the `completion` call through the `supabase.from('profi
 In `nikah-help/lib/inngest/functions/profile-regenerate-bio.ts`, update the `persistAiBio` function and the call site:
 
 ```typescript
-async function persistAiBio(userId: string, bio: string, metaDescription: string | null, inputHash: string) {
+async function persistAiBio(
+  userId: string,
+  bio: string,
+  metaDescription: string | null,
+  inputHash: string,
+) {
   const supabase = await createServerSupabase()
 
   const { error } = await supabase
@@ -1152,43 +1204,43 @@ async function persistAiBio(userId: string, bio: string, metaDescription: string
 And update the parsing in the main function body (replace the relevant section):
 
 ```typescript
-    const completion = await step.run('openai-generate', () =>
-      getOpenAI().chat.completions.create({
-        model: 'gpt-4o-mini',
-        messages: [
-          { role: 'system', content: AI_BIO_PROMPT },
-          {
-            role: 'user',
-            content: `Создай биографию для пользователя на основе следующих данных:\n\n${JSON.stringify(profile, null, 2)}`,
-          },
-        ],
-        max_tokens: 500,
-        temperature: 0.7,
-        response_format: { type: 'json_object' },
-      }),
-    )
+const completion = await step.run('openai-generate', () =>
+  getOpenAI().chat.completions.create({
+    model: 'gpt-4o-mini',
+    messages: [
+      { role: 'system', content: AI_BIO_PROMPT },
+      {
+        role: 'user',
+        content: `Создай биографию для пользователя на основе следующих данных:\n\n${JSON.stringify(profile, null, 2)}`,
+      },
+    ],
+    max_tokens: 500,
+    temperature: 0.7,
+    response_format: { type: 'json_object' },
+  }),
+)
 
-    const raw = completion.choices[0]?.message?.content?.trim()
+const raw = completion.choices[0]?.message?.content?.trim()
 
-    if (!raw) {
-      throw new Error('OpenAI returned empty response')
-    }
+if (!raw) {
+  throw new Error('OpenAI returned empty response')
+}
 
-    let parsed: { bio?: string; meta_description?: string }
-    try {
-      parsed = JSON.parse(raw)
-    } catch {
-      parsed = { bio: raw }
-    }
+let parsed: { bio?: string; meta_description?: string }
+try {
+  parsed = JSON.parse(raw)
+} catch {
+  parsed = { bio: raw }
+}
 
-    const bio = parsed.bio?.trim()
-    const metaDescription = parsed.meta_description?.trim() ?? null
+const bio = parsed.bio?.trim()
+const metaDescription = parsed.meta_description?.trim() ?? null
 
-    if (!bio) {
-      throw new Error('OpenAI returned empty bio')
-    }
+if (!bio) {
+  throw new Error('OpenAI returned empty bio')
+}
 
-    await step.run('persist', () => persistAiBio(userId, bio, metaDescription, inputHash))
+await step.run('persist', () => persistAiBio(userId, bio, metaDescription, inputHash))
 ```
 
 - [ ] **Step 4: Run typecheck**
@@ -1208,6 +1260,7 @@ git commit -m "feat: generate SEO meta description alongside AI bio in single Op
 ### Task 10: Database Migration — Ensure Profile Query Returns SEO Fields
 
 **Files:**
+
 - Modify: `nikah-help/features/profile/server/get-profile.ts`
 
 - [ ] **Step 1: Add `meta_description` and `ai_bio` to the profile SELECT**
@@ -1215,6 +1268,7 @@ git commit -m "feat: generate SEO meta description alongside AI bio in single Op
 In `nikah-help/features/profile/server/get-profile.ts`, update the select string to include `ai_bio` and `meta_description`:
 
 The current select (line 47-52):
+
 ```typescript
       `
       id, name, gender, birth_date, country, city, nationality,
@@ -1225,6 +1279,7 @@ The current select (line 47-52):
 ```
 
 Change to:
+
 ```typescript
       `
       id, name, gender, birth_date, country, city, nationality,
@@ -1236,6 +1291,7 @@ Change to:
 ```
 
 Also add `meta_description` to the `ProfileDetailData` interface:
+
 ```typescript
 export interface ProfileDetailData {
   // ... existing fields ...
@@ -1264,6 +1320,7 @@ git commit -m "feat: include meta_description in profile detail query for SEO"
 ### Task 11: Profile Page — generateMetadata and 301 Redirect Logic
 
 **Files:**
+
 - Modify: `nikah-help/app/(app)/profile/[id]/page.tsx`
 
 - [ ] **Step 1: Understand the URL parsing problem**
@@ -1379,6 +1436,7 @@ export default async function ProfileDetailPage({ params }: Props) {
 Note: the import of `permanentRedirect` at the top of the file replaces the old `redirect` import for the auth check. The `wait, that's wrong - permanentRedirect` for auth should use `redirect` (307), not `permanentRedirect`. Let me fix:
 
 Change the auth redirect to use `redirect` from `next/navigation`:
+
 ```typescript
 import { notFound, redirect, permanentRedirect } from 'next/navigation'
 ```
@@ -1503,6 +1561,7 @@ git commit -m "feat: add generateMetadata, canonical URLs, JSON-LD, and 301 redi
 ### Task 12: Update Internal Links to Use SEO-Friendly URLs
 
 **Files:**
+
 - Modify: `nikah-help/features/feed/components/FeedCard.tsx` (or wherever profile links are constructed)
 - Check all files that link to `/profile/<id>`
 
@@ -1513,6 +1572,7 @@ Run: `grep -r "/profile/" nikah-help/app nikah-help/features nikah-help/componen
 - [ ] **Step 2: Update FeedCard link**
 
 Find the `href` in FeedCard that links to the profile. Instead of:
+
 ```tsx
 href={`/profile/${profile.id}`}
 ```
@@ -1523,13 +1583,18 @@ Update to construct the SEO-friendly URL. The FeedCard likely has access to `gen
 import { generateSeoSlug } from '@/lib/seo'
 
 // In the component:
-const slug = generateSeoSlug({ gender: profile.gender, country: profile.country, city: profile.city })
+const slug = generateSeoSlug({
+  gender: profile.gender,
+  country: profile.country,
+  city: profile.city,
+})
 const profileUrl = `/profile/${profile.id}-${slug}`
 ```
 
 - [ ] **Step 3: Update all other `/profile/<id>` links**
 
 Do the same transformation for every link that points to `/profile/<id>`:
+
 - Likes page profile links
 - Notification links
 - Chat header profile link
@@ -1554,6 +1619,7 @@ git commit -m "feat: update all internal profile links to use SEO-friendly URLs 
 ### Task 13: SEO-Friendly Image URL Route Handler
 
 **Files:**
+
 - Create: `nikah-help/app/api/photos/seo/[params]/route.ts`
 
 - [ ] **Step 1: Write the Route Handler**
@@ -1786,6 +1852,7 @@ git commit -m "feat: add SEO-friendly photo URL route handler with UUID+slug par
 ### Task 14: Dynamic Sitemap
 
 **Files:**
+
 - Create: `nikah-help/app/sitemap.ts`
 
 - [ ] **Step 1: Write the sitemap generator**
@@ -1809,8 +1876,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: siteUrl, lastModified: new Date(), changeFrequency: 'weekly', priority: 1 },
     { url: `${siteUrl}/auth`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.5 },
     { url: `${siteUrl}/faq`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${siteUrl}/guide`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.6 },
-    { url: `${siteUrl}/agreements`, lastModified: new Date(), changeFrequency: 'monthly', priority: 0.3 },
+    {
+      url: `${siteUrl}/guide`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.6,
+    },
+    {
+      url: `${siteUrl}/agreements`,
+      lastModified: new Date(),
+      changeFrequency: 'monthly',
+      priority: 0.3,
+    },
     { url: `${siteUrl}/feed`, lastModified: new Date(), changeFrequency: 'daily', priority: 0.8 },
   ]
 
@@ -1857,6 +1934,7 @@ git commit -m "feat: add dynamic sitemap.xml with profile URLs and automatic upd
 ### Task 15: robots.txt
 
 **Files:**
+
 - Create: `nikah-help/app/robots.ts`
 
 - [ ] **Step 1: Write the robots.txt generator**
@@ -1909,6 +1987,7 @@ git commit -m "feat: add robots.txt blocking non-indexable paths"
 ### Task 16: Generic Page Metadata Updates
 
 **Files:**
+
 - Modify: Several page files under `nikah-help/app/`
 
 - [ ] **Step 1: Update static metadata on generic pages to use the new format**
@@ -1934,18 +2013,18 @@ Apply the same pattern to: `faq`, `guide`, `agreements`, `feed`, `likes`, `chats
 
 For each page, update the metadata export:
 
-| Page | Title |
-|------|-------|
-| `app/guide/page.tsx` | `Инструкция \| Знакомства мусульман для никах \| Nikah Help` |
-| `app/faq/page.tsx` | `Вопросы и ответы \| Знакомства мусульман для никах \| Nikah Help` |
-| `app/agreements/page.tsx` | `Соглашения \| Знакомства мусульман для никах \| Nikah Help` |
-| `app/settings/page.tsx` | `Настройки \| Знакомства мусульман для никах \| Nikah Help` |
-| `app/(app)/feed/page.tsx` | `Анкеты \| Знакомства мусульман для никах \| Nikah Help` |
-| `app/(app)/likes/page.tsx` | `Симпатии \| Знакомства мусульман для никах \| Nikah Help` |
-| `app/(app)/chats/page.tsx` | `Чаты \| Знакомства мусульман для никах \| Nikah Help` |
-| `app/(app)/notifications/page.tsx` | `Уведомления \| Знакомства мусульман для никах \| Nikah Help` |
-| `app/(public)/auth/page.tsx` | `Войти \| Знакомства мусульман для никах \| Nikah Help` |
-| `app/(app)/profile/edit/page.tsx` | `Редактирование профиля \| Знакомства мусульман для никах \| Nikah Help` |
+| Page                               | Title                                                                    |
+| ---------------------------------- | ------------------------------------------------------------------------ |
+| `app/guide/page.tsx`               | `Инструкция \| Знакомства мусульман для никах \| Nikah Help`             |
+| `app/faq/page.tsx`                 | `Вопросы и ответы \| Знакомства мусульман для никах \| Nikah Help`       |
+| `app/agreements/page.tsx`          | `Соглашения \| Знакомства мусульман для никах \| Nikah Help`             |
+| `app/settings/page.tsx`            | `Настройки \| Знакомства мусульман для никах \| Nikah Help`              |
+| `app/(app)/feed/page.tsx`          | `Анкеты \| Знакомства мусульман для никах \| Nikah Help`                 |
+| `app/(app)/likes/page.tsx`         | `Симпатии \| Знакомства мусульман для никах \| Nikah Help`               |
+| `app/(app)/chats/page.tsx`         | `Чаты \| Знакомства мусульман для никах \| Nikah Help`                   |
+| `app/(app)/notifications/page.tsx` | `Уведомления \| Знакомства мусульман для никах \| Nikah Help`            |
+| `app/(public)/auth/page.tsx`       | `Войти \| Знакомства мусульман для никах \| Nikah Help`                  |
+| `app/(app)/profile/edit/page.tsx`  | `Редактирование профиля \| Знакомства мусульман для никах \| Nikah Help` |
 
 Add descriptions where missing.
 
@@ -1966,6 +2045,7 @@ git commit -m "feat: update all page metadata titles to include никах invar
 ### Task 17: Filter Page SEO (Canonical URLs + Noindex)
 
 **Files:**
+
 - Modify: `nikah-help/app/(app)/feed/filters/page.tsx`
 - Modify: `nikah-help/app/(app)/feed/page.tsx`
 
@@ -2021,6 +2101,7 @@ git commit -m "feat: add canonical URL to feed page and noindex to filter pages"
 ### Task 18: Exclude Unindexable Profiles from Sitemap and Metadata
 
 **Files:**
+
 - Modify: `nikah-help/app/sitemap.ts` (already filters `is_published` and `deletion_status`)
 - Modify: `nikah-help/app/(app)/profile/[id]/page.tsx`
 
@@ -2031,12 +2112,12 @@ In the profile page's `generateMetadata`, add logic to noindex profiles that sho
 In the `generateMetadata` function, after the profile check, add:
 
 ```typescript
-  // Don't index banned, deleted, or unpublished profiles
-  if (!profile.is_published || profile.deletion_status) {
-    return {
-      robots: { index: false, follow: false },
-    }
+// Don't index banned, deleted, or unpublished profiles
+if (!profile.is_published || profile.deletion_status) {
+  return {
+    robots: { index: false, follow: false },
   }
+}
 ```
 
 But wait — `deletion_status` is not currently in `ProfileDetailData`. We need to add it to the interface and the select query.
@@ -2062,6 +2143,7 @@ git commit -m "feat: noindex banned/deleted/unpublished profiles in SEO metadata
 ### Task 19: hreflang Preparation
 
 **Files:**
+
 - Modify: `nikah-help/app/(app)/profile/[id]/page.tsx` (generateMetadata)
 
 - [ ] **Step 1: Add hreflang alternates to profile generateMetadata**
@@ -2097,6 +2179,7 @@ git commit -m "feat: add hreflang alternates for future multilingual profile URL
 ### Task 20: Auto-Regenerate SEO Data After Profile Changes
 
 **Files:**
+
 - Modify: `nikah-help/lib/profile/bio-fields.ts`
 - Review: `nikah-help/features/profile/server/maybe-regenerate-bio.ts`
 
@@ -2162,6 +2245,7 @@ Expected: Successful production build
 ## Self-Review
 
 **1. Spec coverage:** Each section of the spec is covered:
+
 - Section 1 (SEO slugs): Tasks 1-3
 - Section 2 (SEO-friendly URLs): Task 11 (redirect logic), Task 12 (link updates)
 - Section 3 (SEO image URLs): Task 13

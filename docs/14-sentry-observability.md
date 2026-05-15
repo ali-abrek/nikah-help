@@ -18,27 +18,27 @@ This document supersedes any conflicting Sentry-related guidance elsewhere in th
 **When** an unhandled exception or 5xx happens in any runtime
 **Then** the team MUST be able to:
 
-* see the full exception with stack trace, breadcrumbs, request context, release version, and environment within seconds,
-* group identical issues across all runtimes and tag them with the failing user flow,
-* correlate the failure to a deployment, a release, and a session replay,
-* alert the right owner via Slack/Email automatically,
-* close the loop with a regression test and a "first seen in commit" link.
+- see the full exception with stack trace, breadcrumbs, request context, release version, and environment within seconds,
+- group identical issues across all runtimes and tag them with the failing user flow,
+- correlate the failure to a deployment, a release, and a session replay,
+- alert the right owner via Slack/Email automatically,
+- close the loop with a regression test and a "first seen in commit" link.
 
 This is impossible with `console.error` + Vercel Logs alone. Vercel Logs are time-bounded, ungrouped, unsearchable across runtimes, do not correlate frontend and backend, do not retain release/source-map context, and do not surface user impact (sessions affected, replay video, browser/device). Sentry is the only component in the approved stack that provides cross-runtime error grouping, release health, and replay-correlated debugging.
 
 ### Problems Sentry solves on this platform
 
-| Problem | Without Sentry | With Sentry |
-|---|---|---|
-| Frontend errors invisible | User reports "it broke" via support | Stack trace + replay within minutes |
-| Server Action 500s buried in logs | Engineers grep Vercel Logs | Grouped, deduplicated, alertable |
-| Edge runtime errors lost on cold-start | No record after function exits | Captured before flush, sourcemapped |
-| Realtime/WebSocket disconnect storms | Users complain; no signal | Breadcrumb-tracked, alerting on rate |
-| Payment webhook failures silent | Money lost, support tickets | High-severity alert, audit trail |
-| Image processing pipeline regressions | Photos stuck "Processing…" | Inngest function failures grouped by step |
-| Bad release deployed | Only roll back when users notice | Release Health flags it; auto-rollback option |
-| Stack traces minified in prod | Untriageable | Source maps uploaded → readable traces |
-| Cross-runtime user journey debugging | Five logs to correlate | Single distributed trace |
+| Problem                                | Without Sentry                      | With Sentry                                   |
+| -------------------------------------- | ----------------------------------- | --------------------------------------------- |
+| Frontend errors invisible              | User reports "it broke" via support | Stack trace + replay within minutes           |
+| Server Action 500s buried in logs      | Engineers grep Vercel Logs          | Grouped, deduplicated, alertable              |
+| Edge runtime errors lost on cold-start | No record after function exits      | Captured before flush, sourcemapped           |
+| Realtime/WebSocket disconnect storms   | Users complain; no signal           | Breadcrumb-tracked, alerting on rate          |
+| Payment webhook failures silent        | Money lost, support tickets         | High-severity alert, audit trail              |
+| Image processing pipeline regressions  | Photos stuck "Processing…"          | Inngest function failures grouped by step     |
+| Bad release deployed                   | Only roll back when users notice    | Release Health flags it; auto-rollback option |
+| Stack traces minified in prod          | Untriageable                        | Source maps uploaded → readable traces        |
+| Cross-runtime user journey debugging   | Five logs to correlate              | Single distributed trace                      |
 
 ### Why Sentry is non-negotiable for production readiness
 
@@ -55,29 +55,31 @@ This is impossible with `console.error` + Vercel Logs alone. Vercel Logs are tim
 
 The platform MUST use **only the official Sentry SDKs**. No third-party shims, no homegrown wrappers around `fetch('https://sentry.io/api/...')`.
 
-| Runtime / Surface | Required SDK | Init file |
-|---|---|---|
-| Next.js (Node, Edge, Browser) | `@sentry/nextjs` | `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts` |
-| `instrumentation.ts` register hook | `@sentry/nextjs` | `instrumentation.ts` calls `Sentry.init` for Node + Edge runtimes per Next.js 16 conventions |
-| Inngest background jobs (Node) | `@sentry/nextjs` server build (same process) | reuses `sentry.server.config.ts` |
-| Supabase Edge Functions (Deno) | `@sentry/deno` | `supabase/functions/<fn>/_shared/sentry.ts` |
-| Vercel Cron Jobs | `@sentry/nextjs` server | reuses `sentry.server.config.ts`, wrapped with `Sentry.withMonitor` |
-| Service Worker (Web Push) | `@sentry/browser` (lightweight init) | `public/sw.js` |
-| `proxy.ts` (Next 16 proxy/middleware) | `@sentry/nextjs` edge | reuses `sentry.edge.config.ts` |
+| Runtime / Surface                     | Required SDK                                 | Init file                                                                                    |
+| ------------------------------------- | -------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Next.js (Node, Edge, Browser)         | `@sentry/nextjs`                             | `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts`                |
+| `instrumentation.ts` register hook    | `@sentry/nextjs`                             | `instrumentation.ts` calls `Sentry.init` for Node + Edge runtimes per Next.js 16 conventions |
+| Inngest background jobs (Node)        | `@sentry/nextjs` server build (same process) | reuses `sentry.server.config.ts`                                                             |
+| Supabase Edge Functions (Deno)        | `@sentry/deno`                               | `supabase/functions/<fn>/_shared/sentry.ts`                                                  |
+| Vercel Cron Jobs                      | `@sentry/nextjs` server                      | reuses `sentry.server.config.ts`, wrapped with `Sentry.withMonitor`                          |
+| Service Worker (Web Push)             | `@sentry/browser` (lightweight init)         | `public/sw.js`                                                                               |
+| `proxy.ts` (Next 16 proxy/middleware) | `@sentry/nextjs` edge                        | reuses `sentry.edge.config.ts`                                                               |
 
 `@sentry/nextjs` MUST be wired via `withSentryConfig` in `next.config.ts`, which is responsible for:
 
-* injecting Sentry instrumentation,
-* uploading source maps at build time,
-* hiding source maps from the public bundle (`hideSourceMaps: true`),
-* finalizing the release with `setCommits` so commit-level "first seen" works,
-* tunneling browser events through `/monitoring` to bypass ad-blockers.
+- injecting Sentry instrumentation,
+- uploading source maps at build time,
+- hiding source maps from the public bundle (`hideSourceMaps: true`),
+- finalizing the release with `setCommits` so commit-level "first seen" works,
+- tunneling browser events through `/monitoring` to bypass ad-blockers.
 
 ```ts
 // next.config.ts
 import { withSentryConfig } from '@sentry/nextjs'
 
-const nextConfig = { /* ... */ }
+const nextConfig = {
+  /* ... */
+}
 
 export default withSentryConfig(nextConfig, {
   org: process.env.SENTRY_ORG,
@@ -94,15 +96,15 @@ export default withSentryConfig(nextConfig, {
 
 ### Stack-specific integration
 
-* **Next.js Route Handlers (`runtime = 'nodejs'`)** — auto-instrumented; no manual `try/catch` for tracing. Errors thrown out of the handler are captured by `instrumentation-client.ts` / `Sentry.captureRequestError` from `instrumentation.ts`.
-* **Server Actions** — auto-instrumented through the Next.js SDK. Manual `Sentry.captureException` MUST still be used inside `try/catch` blocks that swallow errors for UX reasons (see "No silent failures").
-* **Edge runtime** — `sentry.edge.config.ts` MUST keep `tracesSampleRate` low (≤ 0.05) and MUST NOT load Replay or any non-edge-compatible integration. Do not import Node-only modules.
-* **Vercel** — Sentry's official Vercel integration MUST be installed at the project level so deploys auto-create releases, push commit SHAs, and inject `SENTRY_*` env vars into preview/production. Source maps are uploaded by `@sentry/cli` during `next build`.
-* **Supabase** — DB query failures bubble up through the JS client and are captured at the boundary; Edge Functions ship `@sentry/deno` and call `Sentry.captureException` before returning a 5xx; Database Webhook delivery failures are surfaced via Inngest function failures (which themselves report).
-* **Realtime** — channel error and disconnect events MUST be reported (see "WebSocket / Realtime" below).
-* **Image processing pipeline** — every Inngest step MUST be wrapped so the failing `step.run` is captured with the photo id, variant, and step name as tags (no raw image bytes).
-* **Payments** — every T-Bank API call and webhook handler MUST report on failure, with the `provider_payment_id` (NOT card data) as a tag.
-* **Background jobs / Cron** — wrap with `Sentry.withMonitor('cron-name', ...)` for cron monitoring (heartbeat + missed-run alerts).
+- **Next.js Route Handlers (`runtime = 'nodejs'`)** — auto-instrumented; no manual `try/catch` for tracing. Errors thrown out of the handler are captured by `instrumentation-client.ts` / `Sentry.captureRequestError` from `instrumentation.ts`.
+- **Server Actions** — auto-instrumented through the Next.js SDK. Manual `Sentry.captureException` MUST still be used inside `try/catch` blocks that swallow errors for UX reasons (see "No silent failures").
+- **Edge runtime** — `sentry.edge.config.ts` MUST keep `tracesSampleRate` low (≤ 0.05) and MUST NOT load Replay or any non-edge-compatible integration. Do not import Node-only modules.
+- **Vercel** — Sentry's official Vercel integration MUST be installed at the project level so deploys auto-create releases, push commit SHAs, and inject `SENTRY_*` env vars into preview/production. Source maps are uploaded by `@sentry/cli` during `next build`.
+- **Supabase** — DB query failures bubble up through the JS client and are captured at the boundary; Edge Functions ship `@sentry/deno` and call `Sentry.captureException` before returning a 5xx; Database Webhook delivery failures are surfaced via Inngest function failures (which themselves report).
+- **Realtime** — channel error and disconnect events MUST be reported (see "WebSocket / Realtime" below).
+- **Image processing pipeline** — every Inngest step MUST be wrapped so the failing `step.run` is captured with the photo id, variant, and step name as tags (no raw image bytes).
+- **Payments** — every T-Bank API call and webhook handler MUST report on failure, with the `provider_payment_id` (NOT card data) as a tag.
+- **Background jobs / Cron** — wrap with `Sentry.withMonitor('cron-name', ...)` for cron monitoring (heartbeat + missed-run alerts).
 
 ---
 
@@ -114,11 +116,11 @@ All Sentry usage in application code MUST go through the centralized `lib/sentry
 
 The module provides a single, typed, auditable surface area for all error capture, PII scrubbing, user context, and cron monitoring. This layered design ensures:
 
-* **Consistency** — every event has a `flow` tag, structured metadata, and PII scrubbing applied uniformly.
-* **Auditability** — a grep for `captureSentryException` finds every manual capture site in the codebase.
-* **Safe by default** — the TypeScript types prevent PII from being passed in `extra` or `tags`; `setSentryUser` accepts only `id`.
-* **Testability** — `scrubPii` is a pure function, unit-testable against fixtures.
-* **Replaceability** — if the Sentry SDK API changes, only `lib/sentry/` needs updating, not every call site.
+- **Consistency** — every event has a `flow` tag, structured metadata, and PII scrubbing applied uniformly.
+- **Auditability** — a grep for `captureSentryException` finds every manual capture site in the codebase.
+- **Safe by default** — the TypeScript types prevent PII from being passed in `extra` or `tags`; `setSentryUser` accepts only `id`.
+- **Testability** — `scrubPii` is a pure function, unit-testable against fixtures.
+- **Replaceability** — if the Sentry SDK API changes, only `lib/sentry/` needs updating, not every call site.
 
 ### Module structure
 
@@ -158,19 +160,17 @@ The primary helper for reporting exceptions at any boundary.
 import type { FlowTag, SentrySeverity, SentryExtra } from './types'
 
 interface CaptureOptions {
-  flow: FlowTag                              // REQUIRED — flow taxonomy tag
-  severity?: SentrySeverity                  // default: 'error'
-  tags?: Record<string, string>              // optional string-only key/value tags
-  extra?: SentryExtra                        // typed extra — no PII possible via type system
+  flow: FlowTag // REQUIRED — flow taxonomy tag
+  severity?: SentrySeverity // default: 'error'
+  tags?: Record<string, string> // optional string-only key/value tags
+  extra?: SentryExtra // typed extra — no PII possible via type system
 }
 
-export async function captureSentryException(
-  error: unknown,
-  options: CaptureOptions,
-): Promise<void>
+export async function captureSentryException(error: unknown, options: CaptureOptions): Promise<void>
 ```
 
 **Behavior:**
+
 - Guards on `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` being set; silently no-ops if absent (dev without config).
 - Dynamically imports `@sentry/nextjs` so edge/client bundles only pull it in when called.
 - Sets `flow` tag on every event — no event lands in Sentry without flow attribution.
@@ -212,13 +212,14 @@ Wraps a Vercel Cron Route Handler with Sentry Crons monitoring.
 import type { NextRequest } from 'next/server'
 
 export function withSentryMonitor(
-  slug: string,                               // cron.<name>, e.g. 'cron.expire-suspensions'
+  slug: string, // cron.<name>, e.g. 'cron.expire-suspensions'
   handler: (request: NextRequest) => Promise<NextResponse>,
-  schedule: string,                           // crontab string, e.g. '0 2 * * *'
+  schedule: string, // crontab string, e.g. '0 2 * * *'
 ): (request: NextRequest) => Promise<NextResponse>
 ```
 
 **Behavior:**
+
 - Wraps the handler with `Sentry.withMonitor(slug, handler, { schedule: { type: 'crontab', value: schedule } })`.
 - On success: Sentry receives a check-in heartbeat (job ran on time).
 - On missed run: Sentry fires a `flow=cron.*` alert per the alerting rules.
@@ -251,6 +252,7 @@ export function setSentryUser(id: string): void {
 ```
 
 **Rules:**
+
 - MUST be called after successful authentication (Magic Link callback, session refresh).
 - MUST be called with the UUID `user.id` only — NEVER `email`, `username`, or any other identifier.
 - MUST be cleared on sign-out via `Sentry.setUser(null)` (called in the sign-out action).
@@ -299,6 +301,7 @@ Form B requires a **non-trivial comment** that names the risk and the compensati
 ### 2. All critical exceptions flow through centralized helpers
 
 Every exception that reaches Sentry MUST pass through one of:
+
 - `captureSentryException` (manual capture at boundaries)
 - `logError` (automatic capture for `AppError` instances at framework boundaries)
 - `onRequestError` (automatic capture for unhandled errors in Route Handlers and Server Actions)
@@ -345,10 +348,10 @@ All events MUST use the standardized severity levels defined in this document. D
 
 The `FlowTag` union type in `lib/sentry/types.ts` is the **single source of truth** for all flow identifiers in the system. Every Sentry event carries a `flow` tag from this union. The taxonomy enables:
 
-* **Alert routing** — alert rules match on `flow` prefixes (e.g., `flow=payments.*` pages the payments squad).
-* **Ownership assignment** — Sentry Ownership Rules auto-assign issues by `flow` prefix to the correct squad.
-* **Dashboard filtering** — dashboards are organized by `flow` domain.
-* **Cost attribution** — quota consumption is tracked by `flow` domain for capacity planning.
+- **Alert routing** — alert rules match on `flow` prefixes (e.g., `flow=payments.*` pages the payments squad).
+- **Ownership assignment** — Sentry Ownership Rules auto-assign issues by `flow` prefix to the correct squad.
+- **Dashboard filtering** — dashboards are organized by `flow` domain.
+- **Cost attribution** — quota consumption is tracked by `flow` domain for capacity planning.
 
 ### `FlowTag` union
 
@@ -412,28 +415,28 @@ export type FlowTag =
   | 'sw'
 
   // -- Dynamic slots (template literals) --
-  | `action.${string}`    // e.g. 'action.send_message', 'action.upload_photo'
-  | `cron.${string}`      // e.g. 'cron.expire-suspensions', 'cron.subscription-renewal'
+  | `action.${string}` // e.g. 'action.send_message', 'action.upload_photo'
+  | `cron.${string}` // e.g. 'cron.expire-suspensions', 'cron.subscription-renewal'
 ```
 
 ### Naming standards
 
-| Rule | Example | Rationale |
-|---|---|---|
-| Lowercase, dot-separated tokens | `auth.callback` | Consistent with Sentry tag conventions |
-| Domain prefix first | `payments.init` | Enables prefix-based alert routing |
-| Operation in `snake_case` | `magic_link_send` | Readable; matches `AppError.code` convention |
-| Three levels max (domain.sub.op) | `image.process.upload_variant` | Keeps tags grep-friendly; deeper nesting uses `tags` |
-| Dynamic slots use template literals | `action.${string}` | Extensible without union explosion |
+| Rule                                | Example                        | Rationale                                            |
+| ----------------------------------- | ------------------------------ | ---------------------------------------------------- |
+| Lowercase, dot-separated tokens     | `auth.callback`                | Consistent with Sentry tag conventions               |
+| Domain prefix first                 | `payments.init`                | Enables prefix-based alert routing                   |
+| Operation in `snake_case`           | `magic_link_send`              | Readable; matches `AppError.code` convention         |
+| Three levels max (domain.sub.op)    | `image.process.upload_variant` | Keeps tags grep-friendly; deeper nesting uses `tags` |
+| Dynamic slots use template literals | `action.${string}`             | Extensible without union explosion                   |
 
 ### Suffix conventions
 
-| Suffix pattern | Meaning | Example |
-|---|---|---|
-| `.<verb>` | An action or operation | `payments.init` |
-| `.<noun>_<verb>` | Sub-operation within a domain | `auth.session_refresh` |
-| `action.<action_name>` | Server Action flow (dynamic) | `action.send_like` |
-| `cron.<job_name>` | Vercel Cron job (dynamic) | `cron.expire-suspensions` |
+| Suffix pattern         | Meaning                       | Example                   |
+| ---------------------- | ----------------------------- | ------------------------- |
+| `.<verb>`              | An action or operation        | `payments.init`           |
+| `.<noun>_<verb>`       | Sub-operation within a domain | `auth.session_refresh`    |
+| `action.<action_name>` | Server Action flow (dynamic)  | `action.send_like`        |
+| `cron.<job_name>`      | Vercel Cron job (dynamic)     | `cron.expire-suspensions` |
 
 ### Extension strategy
 
@@ -447,23 +450,24 @@ export type FlowTag =
 
 `logError` in `lib/errors/logger.ts` automatically derives `flow` from `AppError.code` for common error paths, so most route files need no changes:
 
-| `AppError.code` | Derived `flow` tag |
-|---|---|
-| `PHOTO_UPLOAD_FAILED`, `PHOTO_DOWNLOAD_FAILED`, `EXTERNAL_SUPABASE_STORAGE_FAILED` | `image.upload` |
-| `PHOTO_PROCESSING_FAILED`, `PHOTO_MODERATION_FAILED` | `image.process` |
-| `SYSTEM_DATABASE_ERROR` | `db.query` |
-| `EXTERNAL_OPENAI_FAILED`, `EXTERNAL_DEEPSEEK_FAILED`, `EXTERNAL_OPENAI_TIMEOUT` | `moderation.vision` |
-| `EXTERNAL_TBANK_FAILED` | `payments.init` |
-| `EXTERNAL_RESEND_FAILED` | `notif.send` |
-| `PAYMENT_INIT_FAILED`, `PAYMENT_SIGNATURE_INVALID` | `payments.webhook` |
-| `RATE_LIMIT_AUTH_CALLBACK` | `ratelimit.infra` |
-| `SYSTEM_INTERNAL_ERROR`, `SYSTEM_TIMEOUT` | (no flow — `error_code` tag only) |
+| `AppError.code`                                                                    | Derived `flow` tag                |
+| ---------------------------------------------------------------------------------- | --------------------------------- |
+| `PHOTO_UPLOAD_FAILED`, `PHOTO_DOWNLOAD_FAILED`, `EXTERNAL_SUPABASE_STORAGE_FAILED` | `image.upload`                    |
+| `PHOTO_PROCESSING_FAILED`, `PHOTO_MODERATION_FAILED`                               | `image.process`                   |
+| `SYSTEM_DATABASE_ERROR`                                                            | `db.query`                        |
+| `EXTERNAL_OPENAI_FAILED`, `EXTERNAL_DEEPSEEK_FAILED`, `EXTERNAL_OPENAI_TIMEOUT`    | `moderation.vision`               |
+| `EXTERNAL_TBANK_FAILED`                                                            | `payments.init`                   |
+| `EXTERNAL_RESEND_FAILED`                                                           | `notif.send`                      |
+| `PAYMENT_INIT_FAILED`, `PAYMENT_SIGNATURE_INVALID`                                 | `payments.webhook`                |
+| `RATE_LIMIT_AUTH_CALLBACK`                                                         | `ratelimit.infra`                 |
+| `SYSTEM_INTERNAL_ERROR`, `SYSTEM_TIMEOUT`                                          | (no flow — `error_code` tag only) |
 
 Codes not in the mapping emit without a `flow` tag so they still land in Sentry — they just won't match flow-based alert rules until Phase 2 annotates them.
 
 ### Example flows by domain
 
 **Auth flows:**
+
 ```
 auth.magic_link_send   — signInWithOtp failure (tag: step=otp_send|ratelimit_init|ratelimit_call)
 auth.callback           — exchangeCodeForSession failure (tag: step=exchange)
@@ -473,6 +477,7 @@ auth.rbac               — role missing or claim anomaly
 ```
 
 **Realtime flows:**
+
 ```
 realtime.channel        — CHANNEL_ERROR, TIMED_OUT on any Supabase channel
                         — tags: { channel: 'chat:<id>' | 'chat:<id>:presence' | 'user:<id>' }
@@ -480,6 +485,7 @@ realtime.channel        — CHANNEL_ERROR, TIMED_OUT on any Supabase channel
 ```
 
 **Cron flows:**
+
 ```
 cron.expire-suspensions    — Vercel Cron: auto-lift expired suspensions
 cron.subscription-renewal  — Vercel Cron: find subscriptions due for renewal
@@ -487,6 +493,7 @@ cron.inactive-account-warn — Vercel Cron: 90-day inactive warning email
 ```
 
 **Moderation flows:**
+
 ```
 moderation.vision       — Sightengine / OpenAI Vision API call failure
                         — extra: { provider: 'sightengine'|'openai', photoId, step }
@@ -495,6 +502,7 @@ moderation.action       — moderator action persistence failure
 ```
 
 **Image processing flows:**
+
 ```
 image.upload            — multipart parse / size validation / Storage upload failure
 image.process           — sharp transform error (extra: { variant, step })
@@ -503,6 +511,7 @@ image.process.dlq       — pipeline stuck, all retries exhausted (severity: fat
 ```
 
 **Payments flows:**
+
 ```
 payments.init           — T-Bank Init API failure (extra: { provider: 'tbank' })
 payments.webhook        — webhook signature invalid (tags: { reason: 'signature' })
@@ -511,12 +520,14 @@ payments.rebill         — recurring rebill failure (extra: { attempt })
 ```
 
 **Notifications flows:**
+
 ```
 notif.send              — push notification send failure (extra: { channel: 'push', subscriptionId })
 notif.send              — email send failure (extra: { channel: 'email' })
 ```
 
 **Edge runtime flows:**
+
 ```
 edge.proxy              — uncaught exception in proxy.ts outer catch block
 ```
@@ -533,33 +544,33 @@ Every runtime error, every unhandled exception, and every API failure MUST flow 
 **When** the failure path executes
 **Then** a Sentry event MUST be produced with the prescribed tags and fingerprint
 
-| Flow | Where to capture | Required tags | Severity |
-|---|---|---|---|
-| Authentication — magic link send failure | `app/(public)/auth/actions.ts` | `flow=auth.magic_link_send`, `email_domain=<hash>` | error |
-| Authentication — callback exchange failure | `app/(public)/auth/callback/route.ts` | `flow=auth.callback`, `provider=supabase` | error |
-| Authentication — session refresh failure (proxy.ts) | `proxy.ts` | `flow=auth.session_refresh`, `runtime=edge` | warning |
-| RBAC — role check anomaly (e.g., role missing) | RBAC helpers | `flow=auth.rbac` | error |
-| Realtime — channel `CHANNEL_ERROR` / `TIMED_OUT` | chat client + presence | `flow=realtime.channel`, `channel=<name>` | warning |
-| Realtime — repeated reconnect (>3 in 60 s per session) | client | same, `severity=error` | error |
-| Payments — `PAYMENT_INIT_FAILED` | T-Bank init route | `flow=payments.init`, `provider=tbank` | error |
-| Payments — webhook signature invalid | webhook handler | `flow=payments.webhook`, `reason=signature` | error |
-| Payments — webhook idempotency conflict | webhook handler | `flow=payments.webhook`, `reason=conflict` | warning |
-| Payments — recurring rebill failure | rebill cron | `flow=payments.rebill`, `attempt=<n>` | error |
-| Moderation — Sightengine / OpenAI Vision call failure | Inngest `moderate-photo` | `flow=moderation.vision`, `provider=<sightengine\|openai>` | error |
-| Moderation — moderator action persistence failure | admin action handlers | `flow=moderation.action` | error |
-| Image upload — multipart parse / size validation crash | upload route | `flow=image.upload` | error |
-| Image processing — sharp transform error | Inngest `process-photo` step | `flow=image.process`, `variant=<name>`, `step=<name>` | error |
-| Image processing — variant upload to Storage failed | same | `flow=image.process.upload_variant` | error |
-| Image processing — pipeline stuck / DLQ | Inngest failure handler | `flow=image.process.dlq` | fatal |
-| Database — query failure in Route Handler | error boundary | `flow=db.query`, `pg_code=<sqlstate>` | error |
-| Database — RLS denial in unexpected place | error boundary | `flow=db.rls`, severity warning | warning |
-| Rate limiting — limiter unavailable (Upstash down) | rate-limit middleware | `flow=ratelimit.infra` | error |
-| Rate limiting — abuse threshold exceeded by single user | rate-limit middleware | `flow=ratelimit.abuse`, `user_role=<role>` | warning |
-| Server Actions — uncaught exception | action wrapper | `flow=action.<name>` | error |
-| Edge runtime — uncaught exception in proxy.ts | proxy | `flow=edge.proxy` | error |
-| Cron / Background jobs — function failure | Inngest / `withMonitor` | `flow=cron.<name>`, `attempt=<n>` | error |
-| Notifications — channel send failure (push/email) | notif workers | `flow=notif.send`, `channel=<push\|email>` | error |
-| Web Push — service worker uncaught error | `sw.js` | `flow=sw` | warning |
+| Flow                                                    | Where to capture                      | Required tags                                              | Severity |
+| ------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------------- | -------- |
+| Authentication — magic link send failure                | `app/(public)/auth/actions.ts`        | `flow=auth.magic_link_send`, `email_domain=<hash>`         | error    |
+| Authentication — callback exchange failure              | `app/(public)/auth/callback/route.ts` | `flow=auth.callback`, `provider=supabase`                  | error    |
+| Authentication — session refresh failure (proxy.ts)     | `proxy.ts`                            | `flow=auth.session_refresh`, `runtime=edge`                | warning  |
+| RBAC — role check anomaly (e.g., role missing)          | RBAC helpers                          | `flow=auth.rbac`                                           | error    |
+| Realtime — channel `CHANNEL_ERROR` / `TIMED_OUT`        | chat client + presence                | `flow=realtime.channel`, `channel=<name>`                  | warning  |
+| Realtime — repeated reconnect (>3 in 60 s per session)  | client                                | same, `severity=error`                                     | error    |
+| Payments — `PAYMENT_INIT_FAILED`                        | T-Bank init route                     | `flow=payments.init`, `provider=tbank`                     | error    |
+| Payments — webhook signature invalid                    | webhook handler                       | `flow=payments.webhook`, `reason=signature`                | error    |
+| Payments — webhook idempotency conflict                 | webhook handler                       | `flow=payments.webhook`, `reason=conflict`                 | warning  |
+| Payments — recurring rebill failure                     | rebill cron                           | `flow=payments.rebill`, `attempt=<n>`                      | error    |
+| Moderation — Sightengine / OpenAI Vision call failure   | Inngest `moderate-photo`              | `flow=moderation.vision`, `provider=<sightengine\|openai>` | error    |
+| Moderation — moderator action persistence failure       | admin action handlers                 | `flow=moderation.action`                                   | error    |
+| Image upload — multipart parse / size validation crash  | upload route                          | `flow=image.upload`                                        | error    |
+| Image processing — sharp transform error                | Inngest `process-photo` step          | `flow=image.process`, `variant=<name>`, `step=<name>`      | error    |
+| Image processing — variant upload to Storage failed     | same                                  | `flow=image.process.upload_variant`                        | error    |
+| Image processing — pipeline stuck / DLQ                 | Inngest failure handler               | `flow=image.process.dlq`                                   | fatal    |
+| Database — query failure in Route Handler               | error boundary                        | `flow=db.query`, `pg_code=<sqlstate>`                      | error    |
+| Database — RLS denial in unexpected place               | error boundary                        | `flow=db.rls`, severity warning                            | warning  |
+| Rate limiting — limiter unavailable (Upstash down)      | rate-limit middleware                 | `flow=ratelimit.infra`                                     | error    |
+| Rate limiting — abuse threshold exceeded by single user | rate-limit middleware                 | `flow=ratelimit.abuse`, `user_role=<role>`                 | warning  |
+| Server Actions — uncaught exception                     | action wrapper                        | `flow=action.<name>`                                       | error    |
+| Edge runtime — uncaught exception in proxy.ts           | proxy                                 | `flow=edge.proxy`                                          | error    |
+| Cron / Background jobs — function failure               | Inngest / `withMonitor`               | `flow=cron.<name>`, `attempt=<n>`                          | error    |
+| Notifications — channel send failure (push/email)       | notif workers                         | `flow=notif.send`, `channel=<push\|email>`                 | error    |
+| Web Push — service worker uncaught error                | `sw.js`                               | `flow=sw`                                                  | warning  |
 
 For every entry above, **at least one Sentry event MUST be produced per failure**, capped by intelligent fingerprinting and `beforeSend` sampling so a runaway loop does not bankrupt the quota (see "Sampling & Cost Control").
 
@@ -633,6 +644,7 @@ blockAllMedia: true     — all images, videos, canvas are blacked out
 ```
 
 Additionally, the following routes are excluded from replay entirely via `replayIntegration` route blocking:
+
 - `/onboarding` — contains PII during profile creation
 - `/profile/edit` — contains editable PII fields
 - `/admin/*` — contains other users' data visible to moderators
@@ -658,26 +670,33 @@ As a safety net, `scrubPii` in `beforeSend` strips all user fields except `id` e
 
 The following MUST NEVER leave the application process and reach Sentry:
 
-| Category | Forbidden data | Where enforced |
-|---|---|---|
-| **Identity** | Email addresses (any form), phone numbers, full name | `scrubPii` + `setSentryUser` type |
-| **Auth** | Auth tokens, session cookies, magic-link tokens, refresh tokens, API keys | `scrubPii` headers + query params |
-| **Payments** | PAN, CVV, cardholder data, full bank card number | `scrubPii` body fields + server discipline |
-| **Chat content** | Plaintext chat message content, voice message transcripts | `scrubPii` body fields + Replay masking |
-| **Photos** | Photo bytes, photo URLs containing signed tokens | `scrubPii` query params + Replay blockAllMedia |
-| **Location** | Geo coordinates more precise than city-level | Server discipline — never in `extra` |
-| **Demographics** | Date of birth (year is acceptable; full DOB is not) | Server discipline — never in `extra` |
-| **Browser fingerprinting** | User agent strings beyond `family/major-version` | `beforeSend` — truncate UA to `family/major` |
+| Category                   | Forbidden data                                                            | Where enforced                                 |
+| -------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------- |
+| **Identity**               | Email addresses (any form), phone numbers, full name                      | `scrubPii` + `setSentryUser` type              |
+| **Auth**                   | Auth tokens, session cookies, magic-link tokens, refresh tokens, API keys | `scrubPii` headers + query params              |
+| **Payments**               | PAN, CVV, cardholder data, full bank card number                          | `scrubPii` body fields + server discipline     |
+| **Chat content**           | Plaintext chat message content, voice message transcripts                 | `scrubPii` body fields + Replay masking        |
+| **Photos**                 | Photo bytes, photo URLs containing signed tokens                          | `scrubPii` query params + Replay blockAllMedia |
+| **Location**               | Geo coordinates more precise than city-level                              | Server discipline — never in `extra`           |
+| **Demographics**           | Date of birth (year is acceptable; full DOB is not)                       | Server discipline — never in `extra`           |
+| **Browser fingerprinting** | User agent strings beyond `family/major-version`                          | `beforeSend` — truncate UA to `family/major`   |
 
 ### Sanitization rules
 
 1. **Email hashing for tags**: When an email domain is needed for debugging (e.g., `flow=auth.magic_link_send` to detect provider-specific issues), use a SHA-256 hash of the domain only. Never include the full email or the local part.
+
    ```ts
    // ✅ CORRECT
-   tags: { email_domain: await sha256(email.split('@')[1]) }
+   tags: {
+     email_domain: await sha256(email.split('@')[1])
+   }
    // ❌ FORBIDDEN
-   tags: { email }
-   tags: { email_domain: email.split('@')[1] }  // plaintext domain
+   tags: {
+     email
+   }
+   tags: {
+     email_domain: email.split('@')[1]
+   } // plaintext domain
    ```
 
 2. **Payment IDs only**: Tag with `provider_payment_id` (T-Bank `OrderId`). Never include card mask, PAN suffix, or cardholder name.
@@ -688,14 +707,14 @@ The following MUST NEVER leave the application process and reach Sentry:
 
 ### Replay privacy rules
 
-| Rule | Configuration | Cannot be overridden |
-|---|---|---|
-| All text masked | `maskAllText: true` | Per-element |
-| All inputs masked | `maskAllInputs: true` | Per-element |
-| All media blocked | `blockAllMedia: true` | Per-element |
-| Sensitive routes excluded | Route blocklist in `replayIntegration` | Per-route |
-| Network body capture disabled | `networkDetailAllowUrls: []` | Per-request |
-| Lazy-loaded | `lazyLoad: true` | Build-time |
+| Rule                          | Configuration                          | Cannot be overridden |
+| ----------------------------- | -------------------------------------- | -------------------- |
+| All text masked               | `maskAllText: true`                    | Per-element          |
+| All inputs masked             | `maskAllInputs: true`                  | Per-element          |
+| All media blocked             | `blockAllMedia: true`                  | Per-element          |
+| Sensitive routes excluded     | Route blocklist in `replayIntegration` | Per-route            |
+| Network body capture disabled | `networkDetailAllowUrls: []`           | Per-request          |
+| Lazy-loaded                   | `lazyLoad: true`                       | Build-time           |
 
 ### Compliance expectations
 
@@ -712,13 +731,14 @@ The following MUST NEVER leave the application process and reach Sentry:
 
 **Sampling configuration (per environment):**
 
-| Environment | `replaysSessionSampleRate` | `replaysOnErrorSampleRate` | Rationale |
-|---|---|---|---|
-| `production` | **0.01** (1%) | **1.0** (100%) | Cost control; replay on every error session |
-| `staging` | **0.10** (10%) | **1.0** (100%) | Higher sampling for pre-release verification |
-| `development` | **0** (disabled) | **0** (disabled) | No replay locally |
+| Environment   | `replaysSessionSampleRate` | `replaysOnErrorSampleRate` | Rationale                                    |
+| ------------- | -------------------------- | -------------------------- | -------------------------------------------- |
+| `production`  | **0.01** (1%)              | **1.0** (100%)             | Cost control; replay on every error session  |
+| `staging`     | **0.10** (10%)             | **1.0** (100%)             | Higher sampling for pre-release verification |
+| `development` | **0** (disabled)           | **0** (disabled)           | No replay locally                            |
 
 **Replay behavior:**
+
 - 1% of normal user sessions are recorded.
 - When an error occurs in ANY session, that session's replay is captured at 100%.
 - The replay shows the 60 seconds before the error and 30 seconds after.
@@ -728,13 +748,14 @@ The following MUST NEVER leave the application process and reach Sentry:
 
 **Sampling configuration (per environment and runtime):**
 
-| Runtime | Production | Staging | Development |
-|---|---|---|---|
-| Server (Node Route Handlers) | **0.10** | 1.0 | 1.0 |
-| Client (Browser) | **0.05** | 1.0 | 1.0 |
-| Edge (proxy.ts) | **0.02** | 1.0 | 1.0 |
+| Runtime                      | Production | Staging | Development |
+| ---------------------------- | ---------- | ------- | ----------- |
+| Server (Node Route Handlers) | **0.10**   | 1.0     | 1.0         |
+| Client (Browser)             | **0.05**   | 1.0     | 1.0         |
+| Edge (proxy.ts)              | **0.02**   | 1.0     | 1.0         |
 
 **Critical-path override:** The server `tracesSampler` (function form) always samples the following at 1.0 even in production:
+
 - `/api/auth/callback` — auth is critical; every trace matters
 - `/api/payments/*` — payment traces at 1.0 for audit trail
 - `/api/photos/*` — photo pipeline traces at 1.0 for debugging regressions
@@ -792,14 +813,14 @@ These filters prevent extension-caused errors (`ResizeObserver loop limit exceed
 
 ### Bundle-Size Optimization Strategy
 
-| Technique | Where | Savings |
-|---|---|---|
-| `disableLogger: true` | `withSentryConfig` | Strips Sentry's internal console logger from client bundle (~2 KB gzipped) |
-| `lazyLoad: true` for Replay | Client config | Replay bundle (~35 KB gzipped) only downloaded when session is sampled |
-| Tree-shaking | SDK design | `@sentry/nextjs` tree-shakes unused integrations by default |
-| No `@sentry/integrations` extras | Package policy | Each extra integration adds ~3–10 KB; must be explicitly justified in PR |
-| Edge config — no Replay, no Node integrations | Edge config | Keeps edge bundle minimal (edge has strict size limits) |
-| `widenClientFileUpload: true` | `withSentryConfig` | One-time build cost; source maps not in runtime bundle |
+| Technique                                     | Where              | Savings                                                                    |
+| --------------------------------------------- | ------------------ | -------------------------------------------------------------------------- |
+| `disableLogger: true`                         | `withSentryConfig` | Strips Sentry's internal console logger from client bundle (~2 KB gzipped) |
+| `lazyLoad: true` for Replay                   | Client config      | Replay bundle (~35 KB gzipped) only downloaded when session is sampled     |
+| Tree-shaking                                  | SDK design         | `@sentry/nextjs` tree-shakes unused integrations by default                |
+| No `@sentry/integrations` extras              | Package policy     | Each extra integration adds ~3–10 KB; must be explicitly justified in PR   |
+| Edge config — no Replay, no Node integrations | Edge config        | Keeps edge bundle minimal (edge has strict size limits)                    |
+| `widenClientFileUpload: true`                 | `withSentryConfig` | One-time build cost; source maps not in runtime bundle                     |
 
 **Bundle budget impact:** The Sentry SDK (without Replay) adds approximately 20–25 KB gzipped to the initial client bundle. With Replay lazy-loaded, the incremental cost for non-sampled sessions is zero beyond the base SDK. This is within the 150 KB budget for `/feed` initial JS.
 
@@ -809,33 +830,33 @@ These filters prevent extension-caused errors (`ResizeObserver loop limit exceed
 
 ### Tracing
 
-* `tracesSampleRate`:
-  * Production: **0.10** server, **0.05** client, **0.02** edge.
-  * Staging: **1.0**.
-  * Development: **1.0** locally, **0** in CI.
-* `tracePropagationTargets` MUST include the canonical app domains and the Supabase project URL so distributed traces span backend ↔ database where Supabase RPC tracing is available.
-* All Server Actions, Route Handlers, and Inngest functions are auto-traced. Manual `Sentry.startSpan` is required only when wrapping a unit of work that is otherwise opaque (e.g., a single `step.run` in image processing).
+- `tracesSampleRate`:
+  - Production: **0.10** server, **0.05** client, **0.02** edge.
+  - Staging: **1.0**.
+  - Development: **1.0** locally, **0** in CI.
+- `tracePropagationTargets` MUST include the canonical app domains and the Supabase project URL so distributed traces span backend ↔ database where Supabase RPC tracing is available.
+- All Server Actions, Route Handlers, and Inngest functions are auto-traced. Manual `Sentry.startSpan` is required only when wrapping a unit of work that is otherwise opaque (e.g., a single `step.run` in image processing).
 
 ### Release tracking
 
-* A release is created on every Vercel deploy by the official Vercel ↔ Sentry integration.
-* Release name MUST be `nikah-help@<git-sha>` (Vercel injects `VERCEL_GIT_COMMIT_SHA`).
-* Source maps MUST be uploaded for every release (handled by `withSentryConfig`).
-* Releases MUST be finalized with `setCommits: { auto: true }` so "first seen in commit X" works.
-* **Release Health** (sessions, crash-free users) MUST be enabled. The deploy is gated on crash-free users `>= 99.5%` over the first 30 minutes (see "Deployment Verification").
+- A release is created on every Vercel deploy by the official Vercel ↔ Sentry integration.
+- Release name MUST be `nikah-help@<git-sha>` (Vercel injects `VERCEL_GIT_COMMIT_SHA`).
+- Source maps MUST be uploaded for every release (handled by `withSentryConfig`).
+- Releases MUST be finalized with `setCommits: { auto: true }` so "first seen in commit X" works.
+- **Release Health** (sessions, crash-free users) MUST be enabled. The deploy is gated on crash-free users `>= 99.5%` over the first 30 minutes (see "Deployment Verification").
 
 ### Session Replay (selective)
 
-* Production: `replaysSessionSampleRate = 0.01`, `replaysOnErrorSampleRate = 1.0`. We replay 1% of normal sessions and 100% of sessions where an error occurred.
-* Staging: `replaysSessionSampleRate = 0.1`, `replaysOnErrorSampleRate = 1.0`.
-* Development: replay disabled.
-* Replay MUST mask all text, mask all inputs, and block all media. Privacy-sensitive routes (`/onboarding`, `/profile/edit`, `/admin/*`, `/chat/*`) MUST additionally be excluded from session sampling via `Sentry.replayIntegration({ ... })` rules.
+- Production: `replaysSessionSampleRate = 0.01`, `replaysOnErrorSampleRate = 1.0`. We replay 1% of normal sessions and 100% of sessions where an error occurred.
+- Staging: `replaysSessionSampleRate = 0.1`, `replaysOnErrorSampleRate = 1.0`.
+- Development: replay disabled.
+- Replay MUST mask all text, mask all inputs, and block all media. Privacy-sensitive routes (`/onboarding`, `/profile/edit`, `/admin/*`, `/chat/*`) MUST additionally be excluded from session sampling via `Sentry.replayIntegration({ ... })` rules.
 
 ### Bundle size discipline
 
-* The browser SDK MUST use tree-shaking. Replay is loaded **lazily** via the lazy-load pattern (`import('@sentry/nextjs').then(...)` inside `replayIntegration({ lazyLoad: true })`) so it only ships when sampled.
-* No `@sentry/integrations` extras unless explicitly justified in a PR.
-* `disableLogger: true` MUST be set in `withSentryConfig` to strip the SDK's internal logger from the client bundle.
+- The browser SDK MUST use tree-shaking. Replay is loaded **lazily** via the lazy-load pattern (`import('@sentry/nextjs').then(...)` inside `replayIntegration({ lazyLoad: true })`) so it only ships when sampled.
+- No `@sentry/integrations` extras unless explicitly justified in a PR.
+- `disableLogger: true` MUST be set in `withSentryConfig` to strip the SDK's internal logger from the client bundle.
 
 ---
 
@@ -843,41 +864,41 @@ These filters prevent extension-caused errors (`ResizeObserver loop limit exceed
 
 ### Severity levels
 
-| Level | Definition | Examples |
-|---|---|---|
-| `fatal` | Money/data loss in progress, user-blocking system outage | Stuck DLQ, payment provider returning 5xx > 5 min |
-| `error` | Unhandled exception or 5xx that affected at least one user | Server Action threw, sharp crashed, webhook handler crashed |
-| `warning` | Recoverable failure or anomaly | Single Realtime reconnect, single rate-limit infra blip |
-| `info` | Notable business event | New release deployed, cron run completed |
-| `debug` | Diagnostic only — production sample rate 0 | Per-step image processing trace |
+| Level     | Definition                                                 | Examples                                                    |
+| --------- | ---------------------------------------------------------- | ----------------------------------------------------------- |
+| `fatal`   | Money/data loss in progress, user-blocking system outage   | Stuck DLQ, payment provider returning 5xx > 5 min           |
+| `error`   | Unhandled exception or 5xx that affected at least one user | Server Action threw, sharp crashed, webhook handler crashed |
+| `warning` | Recoverable failure or anomaly                             | Single Realtime reconnect, single rate-limit infra blip     |
+| `info`    | Notable business event                                     | New release deployed, cron run completed                    |
+| `debug`   | Diagnostic only — production sample rate 0                 | Per-step image processing trace                             |
 
 ### Alerting rules (Sentry → Slack `#alerts-prod`)
 
-| Trigger | Channel | Severity |
-|---|---|---|
-| Any new `fatal` issue | `#alerts-prod` + PagerDuty | page on-call |
-| Crash-free users < 99.5% over 30 min | `#alerts-prod` + PagerDuty | page on-call |
-| `flow=payments.*` error count > 5 in 5 min | `#alerts-prod` + `#payments` | page on-call |
-| `flow=image.process.dlq` any occurrence | `#alerts-prod` | notify on-call |
-| `flow=auth.callback` error rate > 2% over 10 min | `#alerts-prod` | notify on-call |
-| `flow=realtime.channel` error rate > 5% per minute | `#chat` | notify channel owner |
-| `flow=ratelimit.infra` any occurrence | `#alerts-prod` | notify on-call |
-| `flow=cron.*` missed run (Sentry Crons) | `#alerts-prod` | notify on-call |
-| `SYSTEM_DATABASE_ERROR` > 5 in 10 min | `#alerts-prod` + `#database` | page on-call |
-| New issue first seen in last release | `#release-watch` | informational |
+| Trigger                                            | Channel                      | Severity             |
+| -------------------------------------------------- | ---------------------------- | -------------------- |
+| Any new `fatal` issue                              | `#alerts-prod` + PagerDuty   | page on-call         |
+| Crash-free users < 99.5% over 30 min               | `#alerts-prod` + PagerDuty   | page on-call         |
+| `flow=payments.*` error count > 5 in 5 min         | `#alerts-prod` + `#payments` | page on-call         |
+| `flow=image.process.dlq` any occurrence            | `#alerts-prod`               | notify on-call       |
+| `flow=auth.callback` error rate > 2% over 10 min   | `#alerts-prod`               | notify on-call       |
+| `flow=realtime.channel` error rate > 5% per minute | `#chat`                      | notify channel owner |
+| `flow=ratelimit.infra` any occurrence              | `#alerts-prod`               | notify on-call       |
+| `flow=cron.*` missed run (Sentry Crons)            | `#alerts-prod`               | notify on-call       |
+| `SYSTEM_DATABASE_ERROR` > 5 in 10 min              | `#alerts-prod` + `#database` | page on-call         |
+| New issue first seen in last release               | `#release-watch`             | informational        |
 
 ### Error ownership
 
 Every Sentry project area has a documented owner. Sentry's "Ownership Rules" MUST be configured so that issues are auto-assigned by `flow` tag.
 
-| `flow` prefix | Owner |
-|---|---|
-| `auth.*` | Auth squad |
-| `payments.*` | Payments squad |
-| `realtime.*`, chat | Chat squad |
-| `image.*`, `moderation.*` | Trust & Safety squad |
-| `ratelimit.*`, `db.*`, `cron.*`, `edge.*` | Platform squad |
-| `notif.*`, `sw` | Growth squad |
+| `flow` prefix                             | Owner                |
+| ----------------------------------------- | -------------------- |
+| `auth.*`                                  | Auth squad           |
+| `payments.*`                              | Payments squad       |
+| `realtime.*`, chat                        | Chat squad           |
+| `image.*`, `moderation.*`                 | Trust & Safety squad |
+| `ratelimit.*`, `db.*`, `cron.*`, `edge.*` | Platform squad       |
+| `notif.*`, `sw`                           | Growth squad         |
 
 Unassigned issues MUST be triaged within one business day. The on-call owns triage by default.
 
@@ -894,10 +915,10 @@ Unassigned issues MUST be triaged within one business day. The on-call owns tria
 
 After every production deploy, the deployer (human or bot) MUST verify:
 
-* The new release appears in Sentry with source maps attached.
-* Within 15 minutes: no new `fatal` issues, no `error` count > 3× the previous release's baseline.
-* Crash-free users `>= 99.5%` (Release Health).
-* No `flow=payments.*` errors in the first 30 minutes.
+- The new release appears in Sentry with source maps attached.
+- Within 15 minutes: no new `fatal` issues, no `error` count > 3× the previous release's baseline.
+- Crash-free users `>= 99.5%` (Release Health).
+- No `flow=payments.*` errors in the first 30 minutes.
 
 If any check fails, the on-call MUST decide: continue with a hotfix OR rollback via Vercel "Promote a previous deployment". This is a one-click operation; rollback is the default if in doubt.
 
@@ -950,17 +971,17 @@ The introduction of Sentry as a hard mandate is staged to minimize risk:
 
 ### Required Environment Variables
 
-| Variable | Scope | Purpose |
-|---|---|---|
-| `SENTRY_DSN` | server-only | Server, Edge, and Inngest init |
-| `NEXT_PUBLIC_SENTRY_DSN` | public | Browser client init (same project, public DSN by design) |
-| `SENTRY_AUTH_TOKEN` | server-only, **build-time only** | Source-map upload by `@sentry/cli` |
-| `SENTRY_ORG` | server-only | Org slug |
-| `SENTRY_PROJECT` | server-only | Project slug |
-| `NEXT_PUBLIC_SENTRY_ENV` | public | `production` / `staging` / `development` |
-| `SENTRY_RELEASE` | server-only (auto-injected by Vercel integration) | Release identifier (`nikah-help@<sha>`) |
-| `NEXT_PUBLIC_SENTRY_RELEASE` | public (auto-injected) | Same value, accessible in browser bundle |
-| `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA` | public (Vercel-auto) | Commit SHA for release tagging in client bundle |
+| Variable                            | Scope                                             | Purpose                                                  |
+| ----------------------------------- | ------------------------------------------------- | -------------------------------------------------------- |
+| `SENTRY_DSN`                        | server-only                                       | Server, Edge, and Inngest init                           |
+| `NEXT_PUBLIC_SENTRY_DSN`            | public                                            | Browser client init (same project, public DSN by design) |
+| `SENTRY_AUTH_TOKEN`                 | server-only, **build-time only**                  | Source-map upload by `@sentry/cli`                       |
+| `SENTRY_ORG`                        | server-only                                       | Org slug                                                 |
+| `SENTRY_PROJECT`                    | server-only                                       | Project slug                                             |
+| `NEXT_PUBLIC_SENTRY_ENV`            | public                                            | `production` / `staging` / `development`                 |
+| `SENTRY_RELEASE`                    | server-only (auto-injected by Vercel integration) | Release identifier (`nikah-help@<sha>`)                  |
+| `NEXT_PUBLIC_SENTRY_RELEASE`        | public (auto-injected)                            | Same value, accessible in browser bundle                 |
+| `NEXT_PUBLIC_VERCEL_GIT_COMMIT_SHA` | public (Vercel-auto)                              | Commit SHA for release tagging in client bundle          |
 
 ### Vercel Integration
 
@@ -1005,11 +1026,13 @@ git push → Vercel build starts
 ### Deployment Tagging
 
 Every Sentry event carries:
+
 - `release` — `nikah-help@<git-sha>`
 - `environment` — `production` / `staging` / `development`
 - `dist` — build ID (auto-generated by Vercel)
 
 These tags enable:
+
 - **"First seen in release X"** — pinpoint which deploy introduced a regression
 - **"This issue is new in the latest release"** — automatic alert on new issues
 - **Release comparison** — side-by-side error counts between two releases
@@ -1059,15 +1082,15 @@ Before promoting a deployment to production, the following MUST be confirmed:
 
 Three Sentry environments MUST be configured: `development`, `staging`, `production`. The `environment` field in `Sentry.init` is set from `process.env.NEXT_PUBLIC_SENTRY_ENV` which is wired from Vercel:
 
-| Vercel target | Sentry `environment` | Sample rates | Replay |
-|---|---|---|---|
-| Production | `production` | traces 0.10/0.05/0.02 | 1% / 100% on-error |
-| Preview (PRs) | `staging` | 1.0 | 10% / 100% on-error |
-| Development (local) | `development` | 1.0 | 0% |
+| Vercel target       | Sentry `environment` | Sample rates          | Replay              |
+| ------------------- | -------------------- | --------------------- | ------------------- |
+| Production          | `production`         | traces 0.10/0.05/0.02 | 1% / 100% on-error  |
+| Preview (PRs)       | `staging`            | 1.0                   | 10% / 100% on-error |
+| Development (local) | `development`        | 1.0                   | 0%                  |
 
-* Each environment uses the **same project** (so issues group across environments) but distinct `environment` tags so filters and alerts can scope to production only.
-* Alerts MUST be scoped to `environment:production` unless explicitly cross-environment.
-* Local development MUST default `SENTRY_DSN=""` so engineers do not pollute production projects. Setting it explicitly opts in.
+- Each environment uses the **same project** (so issues group across environments) but distinct `environment` tags so filters and alerts can scope to production only.
+- Alerts MUST be scoped to `environment:production` unless explicitly cross-environment.
+- Local development MUST default `SENTRY_DSN=""` so engineers do not pollute production projects. Setting it explicitly opts in.
 
 ---
 
@@ -1075,40 +1098,40 @@ Three Sentry environments MUST be configured: `development`, `staging`, `product
 
 ### Variables
 
-| Var | Scope | Purpose |
-|---|---|---|
-| `SENTRY_DSN` | server-only | Server, Edge, and Inngest init |
-| `NEXT_PUBLIC_SENTRY_DSN` | public | Browser client init (same project, public DSN by design) |
-| `SENTRY_AUTH_TOKEN` | server-only, **build-time only** | Source-map upload by `@sentry/cli` |
-| `SENTRY_ORG` | server-only | Org slug |
-| `SENTRY_PROJECT` | server-only | Project slug |
-| `NEXT_PUBLIC_SENTRY_ENV` | public | `production` / `staging` / `development` |
-| `SENTRY_RELEASE` | server-only (auto-injected by Vercel integration) | Release identifier (`nikah-help@<sha>`) |
-| `NEXT_PUBLIC_SENTRY_RELEASE` | public (auto-injected) | Same value, accessible in browser bundle |
-| `SENTRY_TUNNEL_ROUTE` | implicit | `/monitoring` — set in `withSentryConfig` |
+| Var                          | Scope                                             | Purpose                                                  |
+| ---------------------------- | ------------------------------------------------- | -------------------------------------------------------- |
+| `SENTRY_DSN`                 | server-only                                       | Server, Edge, and Inngest init                           |
+| `NEXT_PUBLIC_SENTRY_DSN`     | public                                            | Browser client init (same project, public DSN by design) |
+| `SENTRY_AUTH_TOKEN`          | server-only, **build-time only**                  | Source-map upload by `@sentry/cli`                       |
+| `SENTRY_ORG`                 | server-only                                       | Org slug                                                 |
+| `SENTRY_PROJECT`             | server-only                                       | Project slug                                             |
+| `NEXT_PUBLIC_SENTRY_ENV`     | public                                            | `production` / `staging` / `development`                 |
+| `SENTRY_RELEASE`             | server-only (auto-injected by Vercel integration) | Release identifier (`nikah-help@<sha>`)                  |
+| `NEXT_PUBLIC_SENTRY_RELEASE` | public (auto-injected)                            | Same value, accessible in browser bundle                 |
+| `SENTRY_TUNNEL_ROUTE`        | implicit                                          | `/monitoring` — set in `withSentryConfig`                |
 
 ### Rules
 
-* `SENTRY_AUTH_TOKEN` MUST be a **scoped** token (only `project:releases`, `project:write` on this project). It MUST never be exposed at runtime.
-* DSNs MUST be rotated annually and immediately if a leak is suspected.
-* The Vercel ↔ Sentry integration owns env injection for preview and production. Engineers MUST NOT set DSNs manually in Vercel except for hotfix scenarios.
-* No DSNs in `.env.local.example`. Provide placeholders only.
+- `SENTRY_AUTH_TOKEN` MUST be a **scoped** token (only `project:releases`, `project:write` on this project). It MUST never be exposed at runtime.
+- DSNs MUST be rotated annually and immediately if a leak is suspected.
+- The Vercel ↔ Sentry integration owns env injection for preview and production. Engineers MUST NOT set DSNs manually in Vercel except for hotfix scenarios.
+- No DSNs in `.env.local.example`. Provide placeholders only.
 
 ### CI/CD
 
-* GitHub Actions or the Vercel build pipeline runs `sentry-cli releases new`, `sentry-cli releases set-commits --auto`, `sentry-cli releases finalize`, and source-map upload — all of this is handled by `withSentryConfig` when `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` are present at build time.
-* The build MUST fail if source-map upload fails on a production deploy. (`silent: !process.env.CI` and CI exits non-zero on upload error.)
-* Preview deploys MAY skip source-map upload to save quota; staging deploys MUST upload.
+- GitHub Actions or the Vercel build pipeline runs `sentry-cli releases new`, `sentry-cli releases set-commits --auto`, `sentry-cli releases finalize`, and source-map upload — all of this is handled by `withSentryConfig` when `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and `SENTRY_PROJECT` are present at build time.
+- The build MUST fail if source-map upload fails on a production deploy. (`silent: !process.env.CI` and CI exits non-zero on upload error.)
+- Preview deploys MAY skip source-map upload to save quota; staging deploys MUST upload.
 
 ---
 
 ## Requirement: Sampling & Cost Control
 
-* Use `tracesSampler` (function form) where finer control is needed — e.g., always sample `flow=payments.*` and `flow=auth.callback` at 1.0 even in production.
-* Use `beforeSend` to drop known-noise issues (e.g., `ResizeObserver loop limit exceeded`, browser-extension stack frames).
-* Configure **per-issue rate limits** on the project so a single runaway loop cannot exhaust the monthly event quota.
-* Configure **spike protection** at the project level.
-* Replay MUST use the lazy-load pattern; do not include the full Replay bundle on every page.
+- Use `tracesSampler` (function form) where finer control is needed — e.g., always sample `flow=payments.*` and `flow=auth.callback` at 1.0 even in production.
+- Use `beforeSend` to drop known-noise issues (e.g., `ResizeObserver loop limit exceeded`, browser-extension stack frames).
+- Configure **per-issue rate limits** on the project so a single runaway loop cannot exhaust the monthly event quota.
+- Configure **spike protection** at the project level.
+- Replay MUST use the lazy-load pattern; do not include the full Replay bundle on every page.
 
 ---
 
@@ -1132,10 +1155,7 @@ Sentry.init({
     if (name.includes('/api/photos/')) return 1.0
     return process.env.NEXT_PUBLIC_SENTRY_ENV === 'production' ? 0.1 : 1.0
   },
-  tracePropagationTargets: [
-    /^https:\/\/.*\.supabase\.co/,
-    /^https?:\/\/localhost/,
-  ],
+  tracePropagationTargets: [/^https:\/\/.*\.supabase\.co/, /^https?:\/\/localhost/],
   beforeSend(event) {
     return scrubPii(event)
   },
@@ -1250,67 +1270,67 @@ The following checklist MUST be satisfied before the platform is considered prod
 
 ### SDK setup
 
-* [ ] `@sentry/nextjs` installed (latest)
-* [ ] `@sentry/deno` available in Edge Functions
-* [ ] `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts` present and committed
-* [ ] `instrumentation.ts` registers Node + Edge configs and exports `onRequestError`
-* [ ] `next.config.ts` wraps export with `withSentryConfig`
-* [ ] `lib/sentry/` module committed: `index.ts`, `types.ts`, `capture.ts`, `scrub.ts`, `monitor.ts`, `user.ts`
+- [ ] `@sentry/nextjs` installed (latest)
+- [ ] `@sentry/deno` available in Edge Functions
+- [ ] `sentry.client.config.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts` present and committed
+- [ ] `instrumentation.ts` registers Node + Edge configs and exports `onRequestError`
+- [ ] `next.config.ts` wraps export with `withSentryConfig`
+- [ ] `lib/sentry/` module committed: `index.ts`, `types.ts`, `capture.ts`, `scrub.ts`, `monitor.ts`, `user.ts`
 
 ### Source maps & releases
 
-* [ ] `SENTRY_AUTH_TOKEN` configured in Vercel project (build-time only)
-* [ ] `widenClientFileUpload: true`, `hideSourceMaps: true`, `disableLogger: true`
-* [ ] Vercel ↔ Sentry integration installed at the project level
-* [ ] Release name = `nikah-help@<sha>` and `setCommits: { auto: true }` finalize
+- [ ] `SENTRY_AUTH_TOKEN` configured in Vercel project (build-time only)
+- [ ] `widenClientFileUpload: true`, `hideSourceMaps: true`, `disableLogger: true`
+- [ ] Vercel ↔ Sentry integration installed at the project level
+- [ ] Release name = `nikah-help@<sha>` and `setCommits: { auto: true }` finalize
 
 ### Environments
 
-* [ ] `production`, `staging`, `development` environments exist in the Sentry project
-* [ ] Sample rates set per environment as specified above
-* [ ] Alerts scoped to `environment:production`
+- [ ] `production`, `staging`, `development` environments exist in the Sentry project
+- [ ] Sample rates set per environment as specified above
+- [ ] Alerts scoped to `environment:production`
 
 ### PII / privacy
 
-* [ ] `sendDefaultPii: false` in all configs
-* [ ] `beforeSend` and `beforeSendTransaction` use `scrubPii` from `lib/sentry/scrub`
-* [ ] Replay masks all text, all inputs, all media
-* [ ] Replay disabled on `/onboarding`, `/profile/edit`, `/admin/*`, `/chat/*`
-* [ ] `setUser` only sets `id` — enforced by `setSentryUser` type contract
-* [ ] Project-level Data Scrubbing + Advanced Data Scrubbing rules configured
-* [ ] `denyUrls` filtering active on client config
-* [ ] `networkDetailAllowUrls: []` in replay config (no request body capture)
+- [ ] `sendDefaultPii: false` in all configs
+- [ ] `beforeSend` and `beforeSendTransaction` use `scrubPii` from `lib/sentry/scrub`
+- [ ] Replay masks all text, all inputs, all media
+- [ ] Replay disabled on `/onboarding`, `/profile/edit`, `/admin/*`, `/chat/*`
+- [ ] `setUser` only sets `id` — enforced by `setSentryUser` type contract
+- [ ] Project-level Data Scrubbing + Advanced Data Scrubbing rules configured
+- [ ] `denyUrls` filtering active on client config
+- [ ] `networkDetailAllowUrls: []` in replay config (no request body capture)
 
 ### Coverage
 
-* [ ] Auth callback failures captured
-* [ ] Magic-link send failures captured
-* [ ] Realtime channel `CHANNEL_ERROR` / `TIMED_OUT` / disconnect-storm captured
-* [ ] T-Bank init + webhook + rebill failures captured with `provider_payment_id`
-* [ ] Image upload + sharp pipeline + variant upload captured per step
-* [ ] Moderation pipeline (Sightengine / Vision) failures captured
-* [ ] DB query failures bubbled up and captured at boundary
-* [ ] Rate-limiter infra failures captured
-* [ ] Server Action wrapper captures uncaught exceptions
-* [ ] Edge runtime (`proxy.ts`) captures uncaught exceptions
-* [ ] Inngest functions and Vercel Cron jobs wrapped with `Sentry.withMonitor`
-* [ ] Notification send failures captured
+- [ ] Auth callback failures captured
+- [ ] Magic-link send failures captured
+- [ ] Realtime channel `CHANNEL_ERROR` / `TIMED_OUT` / disconnect-storm captured
+- [ ] T-Bank init + webhook + rebill failures captured with `provider_payment_id`
+- [ ] Image upload + sharp pipeline + variant upload captured per step
+- [ ] Moderation pipeline (Sightengine / Vision) failures captured
+- [ ] DB query failures bubbled up and captured at boundary
+- [ ] Rate-limiter infra failures captured
+- [ ] Server Action wrapper captures uncaught exceptions
+- [ ] Edge runtime (`proxy.ts`) captures uncaught exceptions
+- [ ] Inngest functions and Vercel Cron jobs wrapped with `Sentry.withMonitor`
+- [ ] Notification send failures captured
 
 ### Operations
 
-* [ ] Severity rubric documented (here)
-* [ ] Alert rules created in Sentry as listed
-* [ ] Ownership rules configured by `flow` tag
-* [ ] On-call rotation includes Sentry triage SLA (1 business day for unowned issues)
-* [ ] Release Health gate (`crash-free users ≥ 99.5%` over 30 min) integrated into deploy verification
-* [ ] Rollback runbook references the Sentry release diff
+- [ ] Severity rubric documented (here)
+- [ ] Alert rules created in Sentry as listed
+- [ ] Ownership rules configured by `flow` tag
+- [ ] On-call rotation includes Sentry triage SLA (1 business day for unowned issues)
+- [ ] Release Health gate (`crash-free users ≥ 99.5%` over 30 min) integrated into deploy verification
+- [ ] Rollback runbook references the Sentry release diff
 
 ### Cost control
 
-* [ ] Project-level spike protection enabled
-* [ ] Per-issue rate limits set
-* [ ] Replay uses `lazyLoad: true`
-* [ ] `disableLogger: true`, `tunnelRoute: '/monitoring'`
+- [ ] Project-level spike protection enabled
+- [ ] Per-issue rate limits set
+- [ ] Replay uses `lazyLoad: true`
+- [ ] `disableLogger: true`, `tunnelRoute: '/monitoring'`
 
 ---
 
@@ -1320,29 +1340,29 @@ The following items are explicitly deferred to future phases. Each deferral name
 
 ### Deferred to Phase 2 — Extended flow coverage
 
-| Item | Reason deferred | Current guarantee |
-|---|---|---|
-| Feature `actions.ts` beyond auth (profile, feed, likes, blocks, reports) | Already flow through `handleActionError → logError → Sentry` chain. They land in Sentry with `error_code` and `trace_id` tags but without a `flow` tag. | Errors are captured and searchable by `error_code`; they just won't match flow-based alert rules until `flow` tags are added. |
-| `lib/inngest/functions/photo-delete.ts`, `chat-delete.ts`, `like-revoke.ts` | DB failures surface via Inngest's built-in retry; blast radius is low (single-user operations, not multi-user pipelines). | Inngest retry with exponential backoff provides resilience. If all retries fail, the Inngest dashboard shows the failure. Phase 2 wraps step-level operations with `captureSentryException`. |
-| Payment webhook route | Payment module not yet implemented. | N/A — will be Sentry-instrumented from day one when payment module is built. |
-| `public/sw.js` service worker | Plain JS, no bundler — requires dedicated tooling decision (how to inject DSN, how to tree-shake `@sentry/browser` for a service worker context). | Service worker errors are rare and surfaced via browser DevTools. Phase 2 evaluates `@sentry/browser` lightweight init or a custom `fetch`-based reporter. |
+| Item                                                                        | Reason deferred                                                                                                                                         | Current guarantee                                                                                                                                                                            |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Feature `actions.ts` beyond auth (profile, feed, likes, blocks, reports)    | Already flow through `handleActionError → logError → Sentry` chain. They land in Sentry with `error_code` and `trace_id` tags but without a `flow` tag. | Errors are captured and searchable by `error_code`; they just won't match flow-based alert rules until `flow` tags are added.                                                                |
+| `lib/inngest/functions/photo-delete.ts`, `chat-delete.ts`, `like-revoke.ts` | DB failures surface via Inngest's built-in retry; blast radius is low (single-user operations, not multi-user pipelines).                               | Inngest retry with exponential backoff provides resilience. If all retries fail, the Inngest dashboard shows the failure. Phase 2 wraps step-level operations with `captureSentryException`. |
+| Payment webhook route                                                       | Payment module not yet implemented.                                                                                                                     | N/A — will be Sentry-instrumented from day one when payment module is built.                                                                                                                 |
+| `public/sw.js` service worker                                               | Plain JS, no bundler — requires dedicated tooling decision (how to inject DSN, how to tree-shake `@sentry/browser` for a service worker context).       | Service worker errors are rare and surfaced via browser DevTools. Phase 2 evaluates `@sentry/browser` lightweight init or a custom `fetch`-based reporter.                                   |
 
 ### Deferred to Phase 3 — Operational enhancements
 
-| Item | Reason deferred | Current guarantee |
-|---|---|---|
-| Supabase Edge Functions | No Edge Functions exist yet. The current architecture uses Inngest for background work and Route Handlers for sync work. | When Edge Functions are introduced, they will use `@sentry/deno` from day one per this document's requirements. |
+| Item                                               | Reason deferred                                                                                                                                     | Current guarantee                                                                                                                                                     |
+| -------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Supabase Edge Functions                            | No Edge Functions exist yet. The current architecture uses Inngest for background work and Route Handlers for sync work.                            | When Edge Functions are introduced, they will use `@sentry/deno` from day one per this document's requirements.                                                       |
 | Breadcrumb API (`addBreadcrumb` for user journeys) | Requires design work: which user actions get breadcrumbs, how to avoid PII in breadcrumb data/message, how to keep breadcrumb volume within limits. | Basic breadcrumbs are auto-generated by the SDK (navigation, clicks, console). `SentryExtra.channel` and `step` fields provide structured context on manual captures. |
-| Custom dashboards per squad | Requires Sentry Dashboards configuration per squad. | The `flow` taxonomy and ownership rules provide filtering in the default Sentry issue list per squad. |
-| End-to-end distributed tracing verification | Requires all services to be live and instrumented before trace completeness can be measured. | Distributed tracing is enabled (trace propagation headers, `tracePropagationTargets`); trace completeness will be verified during Phase 3. |
+| Custom dashboards per squad                        | Requires Sentry Dashboards configuration per squad.                                                                                                 | The `flow` taxonomy and ownership rules provide filtering in the default Sentry issue list per squad.                                                                 |
+| End-to-end distributed tracing verification        | Requires all services to be live and instrumented before trace completeness can be measured.                                                        | Distributed tracing is enabled (trace propagation headers, `tracePropagationTargets`); trace completeness will be verified during Phase 3.                            |
 
 ### Deferred to Phase 4 — Hard enforcement
 
-| Item | Reason deferred | Current guarantee |
-|---|---|---|
+| Item                                                 | Reason deferred                                                                                                                                             | Current guarantee                                                                               |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | CI check that build fails without `withSentryConfig` | Need operational confidence in the Sentry setup first — a CI gate that blocks deploys when Sentry is misconfigured should not be the first line of defense. | Code review enforces Sentry config presence. The checklist in this document is the manual gate. |
-| PR template "Sentry impact" line | Requires team adoption of Sentry workflow first. | Code review catches missing Sentry instrumentation. |
-| Automated cost/anomaly detection | Requires historical data to establish baselines. | Manual quarterly review of sample rates and cost. |
+| PR template "Sentry impact" line                     | Requires team adoption of Sentry workflow first.                                                                                                            | Code review catches missing Sentry instrumentation.                                             |
+| Automated cost/anomaly detection                     | Requires historical data to establish baselines.                                                                                                            | Manual quarterly review of sample rates and cost.                                               |
 
 ---
 
@@ -1350,35 +1370,35 @@ The following items are explicitly deferred to future phases. Each deferral name
 
 The audit of the existing documentation found the following gaps. They are addressed by this document and by the cross-references added in each affected file.
 
-| Gap | Risk | Resolution |
-|---|---|---|
-| `09-error-handling.md` reported Sentry only for `status >= 500`, but multiple **expected** failure paths (payment webhook signature mismatch, moderation step failure) are 4xx by HTTP convention — they were silent. | Payment fraud and moderation regressions invisible. | This doc mandates `flow`-based reporting independent of HTTP status for the listed flows. `09-error-handling.md` updated to require `Sentry.captureException` regardless of status when the `flow` is on the mandatory list. |
-| `04-chat-realtime.md` did not require capturing `CHANNEL_ERROR` / `TIMED_OUT`. | Chat outages invisible. | This doc requires capture; `04-chat-realtime.md` updated. |
-| `06-image-processing.md` and `13-photo-variants.md` describe the Inngest pipeline but do not require per-step Sentry capture. | A regression in a single sharp step is masked by Inngest's retry behavior. | This doc requires per-step capture with `step` tag; both files updated. |
-| `10-rate-limiting.md` had no requirement to alert when the limiter infra (Upstash) is down — failures default to "fail open" which is silent. | DDoS surface opens silently. | This doc adds `flow=ratelimit.infra` with alerting; `10-rate-limiting.md` updated. |
-| `05-payments.md` did not name Sentry as the alert sink for webhook anomalies. | Money loss invisible until reconciliation. | This doc adds `flow=payments.*` mandatory capture; `05-payments.md` updated. |
-| `08-moderation.md` had no observability requirements. | Moderation pipeline degradations invisible. | This doc adds `flow=moderation.*` mandatory capture; `08-moderation.md` updated. |
-| `01-auth.md` did not mandate magic-link failure capture; auth failures are deliberately silent to users. | Operators have no signal when auth is broken. | `01-auth.md` updated to require server-side capture even when the user-facing message remains generic. |
-| No release-health gate on deploys. | Bad releases promoted past detection window. | This doc adds Release Health gate; `07-infrastructure.md` updated. |
-| No environment separation policy. | Staging noise drowns production alerts. | This doc defines three environments with distinct sampling. |
-| No PII contract. | Compliance and reputational risk. | This doc defines a four-layer PII defense. |
-| No `lib/sentry/` centralized module. | Ad-hoc `Sentry.captureException` scattered across the codebase; no type safety; no audit trail. | This doc mandates `lib/sentry/` as the sole API surface for Sentry in application code. |
-| No flow taxonomy. | Events ungrouped by business domain; no alert routing by flow. | This doc defines the `FlowTag` union as the canonical taxonomy. |
-| No deferred-items documentation. | Unclear what is intentionally unscoped vs. a gap. | This doc includes the "Intentionally Deferred Items" section. |
+| Gap                                                                                                                                                                                                                   | Risk                                                                                            | Resolution                                                                                                                                                                                                                   |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `09-error-handling.md` reported Sentry only for `status >= 500`, but multiple **expected** failure paths (payment webhook signature mismatch, moderation step failure) are 4xx by HTTP convention — they were silent. | Payment fraud and moderation regressions invisible.                                             | This doc mandates `flow`-based reporting independent of HTTP status for the listed flows. `09-error-handling.md` updated to require `Sentry.captureException` regardless of status when the `flow` is on the mandatory list. |
+| `04-chat-realtime.md` did not require capturing `CHANNEL_ERROR` / `TIMED_OUT`.                                                                                                                                        | Chat outages invisible.                                                                         | This doc requires capture; `04-chat-realtime.md` updated.                                                                                                                                                                    |
+| `06-image-processing.md` and `13-photo-variants.md` describe the Inngest pipeline but do not require per-step Sentry capture.                                                                                         | A regression in a single sharp step is masked by Inngest's retry behavior.                      | This doc requires per-step capture with `step` tag; both files updated.                                                                                                                                                      |
+| `10-rate-limiting.md` had no requirement to alert when the limiter infra (Upstash) is down — failures default to "fail open" which is silent.                                                                         | DDoS surface opens silently.                                                                    | This doc adds `flow=ratelimit.infra` with alerting; `10-rate-limiting.md` updated.                                                                                                                                           |
+| `05-payments.md` did not name Sentry as the alert sink for webhook anomalies.                                                                                                                                         | Money loss invisible until reconciliation.                                                      | This doc adds `flow=payments.*` mandatory capture; `05-payments.md` updated.                                                                                                                                                 |
+| `08-moderation.md` had no observability requirements.                                                                                                                                                                 | Moderation pipeline degradations invisible.                                                     | This doc adds `flow=moderation.*` mandatory capture; `08-moderation.md` updated.                                                                                                                                             |
+| `01-auth.md` did not mandate magic-link failure capture; auth failures are deliberately silent to users.                                                                                                              | Operators have no signal when auth is broken.                                                   | `01-auth.md` updated to require server-side capture even when the user-facing message remains generic.                                                                                                                       |
+| No release-health gate on deploys.                                                                                                                                                                                    | Bad releases promoted past detection window.                                                    | This doc adds Release Health gate; `07-infrastructure.md` updated.                                                                                                                                                           |
+| No environment separation policy.                                                                                                                                                                                     | Staging noise drowns production alerts.                                                         | This doc defines three environments with distinct sampling.                                                                                                                                                                  |
+| No PII contract.                                                                                                                                                                                                      | Compliance and reputational risk.                                                               | This doc defines a four-layer PII defense.                                                                                                                                                                                   |
+| No `lib/sentry/` centralized module.                                                                                                                                                                                  | Ad-hoc `Sentry.captureException` scattered across the codebase; no type safety; no audit trail. | This doc mandates `lib/sentry/` as the sole API surface for Sentry in application code.                                                                                                                                      |
+| No flow taxonomy.                                                                                                                                                                                                     | Events ungrouped by business domain; no alert routing by flow.                                  | This doc defines the `FlowTag` union as the canonical taxonomy.                                                                                                                                                              |
+| No deferred-items documentation.                                                                                                                                                                                      | Unclear what is intentionally unscoped vs. a gap.                                               | This doc includes the "Intentionally Deferred Items" section.                                                                                                                                                                |
 
 ---
 
 ## Cross-References
 
-* [00-overview.md](00-overview.md) — Tech stack, observability section
-* [01-auth.md](01-auth.md) — Magic-link and callback failure capture
-* [04-chat-realtime.md](04-chat-realtime.md) — Realtime/WebSocket capture
-* [05-payments.md](05-payments.md) — T-Bank failures
-* [06-image-processing.md](06-image-processing.md) — Pipeline per-step capture
-* [07-infrastructure.md](07-infrastructure.md) — DSN/env vars, source maps, deploy gate
-* [08-moderation.md](08-moderation.md) — Moderation pipeline capture
-* [09-error-handling.md](09-error-handling.md) — `AppError`, structured logging, Sentry mapping
-* [10-rate-limiting.md](10-rate-limiting.md) — Limiter infra failures
-* [11-idempotency.md](11-idempotency.md) — Webhook conflict capture
-* [12-notifications.md](12-notifications.md) — Channel send failure capture
-* [13-photo-variants.md](13-photo-variants.md) — Variant pipeline capture
+- [00-overview.md](00-overview.md) — Tech stack, observability section
+- [01-auth.md](01-auth.md) — Magic-link and callback failure capture
+- [04-chat-realtime.md](04-chat-realtime.md) — Realtime/WebSocket capture
+- [05-payments.md](05-payments.md) — T-Bank failures
+- [06-image-processing.md](06-image-processing.md) — Pipeline per-step capture
+- [07-infrastructure.md](07-infrastructure.md) — DSN/env vars, source maps, deploy gate
+- [08-moderation.md](08-moderation.md) — Moderation pipeline capture
+- [09-error-handling.md](09-error-handling.md) — `AppError`, structured logging, Sentry mapping
+- [10-rate-limiting.md](10-rate-limiting.md) — Limiter infra failures
+- [11-idempotency.md](11-idempotency.md) — Webhook conflict capture
+- [12-notifications.md](12-notifications.md) — Channel send failure capture
+- [13-photo-variants.md](13-photo-variants.md) — Variant pipeline capture

@@ -7,10 +7,11 @@ This file defines the complete photo upload, processing, storage, delivery, and 
 **Privacy guarantee:** photo bytes are never served as direct Supabase Storage URLs. Every image is streamed through `/api/photos/stream`, a Route Handler that enforces access control server-side and serves pre-blurred variants when the viewer is not authorised to see the original. Storage object URLs never appear in the browser's network tab or DevTools.
 
 > **MANDATORY OBSERVABILITY (image pipeline):** The pipeline is async (Inngest) and multi-step (sharp transforms → Storage uploads → moderation). Silent step failures cause photos to get stuck "Processing…" with no operator signal. Per [14-sentry-observability.md](14-sentry-observability.md):
-> * Every Inngest `step.run` MUST be wrapped so a failing step is captured with `flow=image.process`, `step=<step-name>`, `variant=<name>`, `photo_id=<uuid>`. Severity: error.
-> * Multipart-parse / upload-route crashes report under `flow=image.upload`. Severity: error.
-> * Variant upload to Storage failure: `flow=image.process.upload_variant`. Severity: error.
-> * Photos that exit Inngest's retry budget into the DLQ: `flow=image.process.dlq`. Severity: **fatal**, alerts on-call.
+>
+> - Every Inngest `step.run` MUST be wrapped so a failing step is captured with `flow=image.process`, `step=<step-name>`, `variant=<name>`, `photo_id=<uuid>`. Severity: error.
+> - Multipart-parse / upload-route crashes report under `flow=image.upload`. Severity: error.
+> - Variant upload to Storage failure: `flow=image.process.upload_variant`. Severity: error.
+> - Photos that exit Inngest's retry budget into the DLQ: `flow=image.process.dlq`. Severity: **fatal**, alerts on-call.
 >
 > **Photo bytes, signed Storage URLs, EXIF data with GPS, and any face-recognition descriptors MUST NEVER be sent to Sentry.** Only opaque ids. Replay is masked across all media (`blockAllMedia: true`).
 
@@ -24,14 +25,14 @@ This file defines the complete photo upload, processing, storage, delivery, and 
 **When** they select a file for upload
 **Then** the following constraints are validated BEFORE upload:
 
-| Constraint | Value |
-|---|---|
-| Accepted formats | JPEG, PNG, WebP, AVIF, HEIC |
-| Maximum file size | 10 MB |
-| Minimum short side | 1000 px (server rejects files below threshold; Zod schema mirrors this on the client) |
-| Maximum photos per profile | 6 (enforced by Server Action + deferred trigger) |
-| Upscaling | FORBIDDEN — `withoutEnlargement: true` on every `sharp.resize()` |
-| HEIC support | Requires `sharp` build with `libheif`. If unavailable on Vercel runtime, reject HEIC client-side and show "Convert your photo to JPEG/PNG before uploading" |
+| Constraint                 | Value                                                                                                                                                       |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accepted formats           | JPEG, PNG, WebP, AVIF, HEIC                                                                                                                                 |
+| Maximum file size          | 10 MB                                                                                                                                                       |
+| Minimum short side         | 1000 px (server rejects files below threshold; Zod schema mirrors this on the client)                                                                       |
+| Maximum photos per profile | 6 (enforced by Server Action + deferred trigger)                                                                                                            |
+| Upscaling                  | FORBIDDEN — `withoutEnlargement: true` on every `sharp.resize()`                                                                                            |
+| HEIC support               | Requires `sharp` build with `libheif`. If unavailable on Vercel runtime, reject HEIC client-side and show "Convert your photo to JPEG/PNG before uploading" |
 
 ---
 
@@ -100,55 +101,55 @@ export const runtime = 'nodejs'
 
 ### Variant 1: Avatar
 
-| Property | Value |
-|---|---|
-| Resolution | **100 × 100 px** |
-| Format | **AVIF** with **WebP fallback** |
-| Blur | **Never blurred** (visible even in private mode, to all viewers) |
-| Cache | `Cache-Control: private, max-age=3600, immutable` in `/api/photos/stream` response |
+| Property   | Value                                                                              |
+| ---------- | ---------------------------------------------------------------------------------- |
+| Resolution | **100 × 100 px**                                                                   |
+| Format     | **AVIF** with **WebP fallback**                                                    |
+| Blur       | **Never blurred** (visible even in private mode, to all viewers)                   |
+| Cache      | `Cache-Control: private, max-age=3600, immutable` in `/api/photos/stream` response |
 
 ### Variant 2: Cover Image
 
-| Property | Value |
-|---|---|
-| Aspect ratio | **4:5** |
-| Resolution | **400 × 500 px** |
-| Format | **AVIF** with **WebP fallback** |
-| Cropping | If original ratio differs → **crop to 4:5 centered**, then resize to 400×500 |
+| Property     | Value                                                                        |
+| ------------ | ---------------------------------------------------------------------------- |
+| Aspect ratio | **4:5**                                                                      |
+| Resolution   | **400 × 500 px**                                                             |
+| Format       | **AVIF** with **WebP fallback**                                              |
+| Cropping     | If original ratio differs → **crop to 4:5 centered**, then resize to 400×500 |
 
 ### Variant 3: Cover Blurred
 
-| Property | Value |
-|---|---|
-| Base | Same crop and resize as Cover (400 × 500, 4:5) |
-| Blur | Gaussian blur, **sigma = 40 px** |
-| Format | **AVIF** with **WebP fallback** |
-| Purpose | Served by `/api/photos/stream` when viewer is not authorised to see the full cover |
+| Property | Value                                                                              |
+| -------- | ---------------------------------------------------------------------------------- |
+| Base     | Same crop and resize as Cover (400 × 500, 4:5)                                     |
+| Blur     | Gaussian blur, **sigma = 40 px**                                                   |
+| Format   | **AVIF** with **WebP fallback**                                                    |
+| Purpose  | Served by `/api/photos/stream` when viewer is not authorised to see the full cover |
 
 ### Variant 4: Full-Size Image
 
-| Property | Value |
-|---|---|
-| Minimum short side | **800 px** |
-| Maximum resolution | **1200 × 1500 px** |
-| Aspect ratio | **4:5** (cropped) |
-| Processing | Crop to 4:5 ratio; if result exceeds 1200×1500 → resize down to fit within limits |
+| Property           | Value                                                                             |
+| ------------------ | --------------------------------------------------------------------------------- |
+| Minimum short side | **800 px**                                                                        |
+| Maximum resolution | **1200 × 1500 px**                                                                |
+| Aspect ratio       | **4:5** (cropped)                                                                 |
+| Processing         | Crop to 4:5 ratio; if result exceeds 1200×1500 → resize down to fit within limits |
 
 ### Variant 5: Full-Size Blurred
 
-| Property | Value |
-|---|---|
-| Base | Same crop and resize as Full-Size (1200 × 1500, 4:5) |
-| Blur | Gaussian blur, **sigma = 60 px** |
-| Format | **AVIF** with **WebP fallback** |
-| Purpose | Served by `/api/photos/stream` when viewer is not authorised to see the full image |
+| Property | Value                                                                              |
+| -------- | ---------------------------------------------------------------------------------- |
+| Base     | Same crop and resize as Full-Size (1200 × 1500, 4:5)                               |
+| Blur     | Gaussian blur, **sigma = 60 px**                                                   |
+| Format   | **AVIF** with **WebP fallback**                                                    |
+| Purpose  | Served by `/api/photos/stream` when viewer is not authorised to see the full image |
 
 ### Compression Settings
 
-| Format | Quality |
-|---|---|
-| AVIF | `quality: 60` |
-| WebP | `quality: 80` |
+| Format | Quality       |
+| ------ | ------------- |
+| AVIF   | `quality: 60` |
+| WebP   | `quality: 80` |
 
 ### Implementation
 
@@ -176,9 +177,7 @@ export async function processImage(buffer: Buffer): Promise<ProcessedVariants> {
   const { width = 0, height = 0 } = metadata
 
   // --- Avatar: 100×100 ---
-  const avatar = image
-    .clone()
-    .resize(100, 100, { fit: 'cover', withoutEnlargement: true })
+  const avatar = image.clone().resize(100, 100, { fit: 'cover', withoutEnlargement: true })
   const avatarAvif = await avatar.clone().avif({ quality: 60 }).toBuffer()
   const avatarWebp = await avatar.clone().webp({ quality: 80 }).toBuffer()
 
@@ -205,11 +204,16 @@ export async function processImage(buffer: Buffer): Promise<ProcessedVariants> {
   const fullBlurredWebp = await full.clone().blur(60).webp({ quality: 80 }).toBuffer()
 
   return {
-    avatarAvif, avatarWebp,
-    coverAvif, coverWebp,
-    coverBlurredAvif, coverBlurredWebp,
-    fullAvif, fullWebp,
-    fullBlurredAvif, fullBlurredWebp,
+    avatarAvif,
+    avatarWebp,
+    coverAvif,
+    coverWebp,
+    coverBlurredAvif,
+    coverBlurredWebp,
+    fullAvif,
+    fullWebp,
+    fullBlurredAvif,
+    fullBlurredWebp,
   }
 }
 ```
@@ -233,10 +237,10 @@ profile-photos/{userId}/{photoId}-full-blurred.webp
 
 When the process pipeline writes the 10 files via `supabase.storage.from('profile-photos').upload(...)`, each call MUST pass the variant's intended `cacheControl` so any direct Storage delivery (signed URLs, dev tools, etc.) honours the same caching policy that `/api/photos/stream` would set:
 
-| Variant | `cacheControl` written to Storage |
-|---|---|
-| `avatar` (avif/webp) | `private, max-age=3600, immutable` |
-| `cover`, `cover_blurred`, `full`, `full_blurred` (avif/webp) | `private, no-store` |
+| Variant                                                      | `cacheControl` written to Storage  |
+| ------------------------------------------------------------ | ---------------------------------- |
+| `avatar` (avif/webp)                                         | `private, max-age=3600, immutable` |
+| `cover`, `cover_blurred`, `full`, `full_blurred` (avif/webp) | `private, no-store`                |
 
 The values are sourced from the single `PHOTO_VARIANTS` table in `lib/image-processing/photo-variants.ts` (`VariantConfig.cacheControl`) and propagate through `GeneratedFile.cacheControl` to the upload call. **No per-call literal string duplication.**
 
@@ -244,11 +248,26 @@ The values are sourced from the single `PHOTO_VARIANTS` table in `lib/image-proc
 
 ```json
 {
-  "avatar":        { "avif": "profile-photos/{uid}/{pid}-avatar.avif",         "webp": "profile-photos/{uid}/{pid}-avatar.webp" },
-  "cover":         { "avif": "profile-photos/{uid}/{pid}-cover.avif",          "webp": "profile-photos/{uid}/{pid}-cover.webp" },
-  "cover_blurred": { "avif": "profile-photos/{uid}/{pid}-cover-blurred.avif",  "webp": "profile-photos/{uid}/{pid}-cover-blurred.webp" },
-  "full":          { "avif": "profile-photos/{uid}/{pid}-full.avif",           "webp": "profile-photos/{uid}/{pid}-full.webp" },
-  "full_blurred":  { "avif": "profile-photos/{uid}/{pid}-full-blurred.avif",   "webp": "profile-photos/{uid}/{pid}-full-blurred.webp" }
+  "avatar": {
+    "avif": "profile-photos/{uid}/{pid}-avatar.avif",
+    "webp": "profile-photos/{uid}/{pid}-avatar.webp"
+  },
+  "cover": {
+    "avif": "profile-photos/{uid}/{pid}-cover.avif",
+    "webp": "profile-photos/{uid}/{pid}-cover.webp"
+  },
+  "cover_blurred": {
+    "avif": "profile-photos/{uid}/{pid}-cover-blurred.avif",
+    "webp": "profile-photos/{uid}/{pid}-cover-blurred.webp"
+  },
+  "full": {
+    "avif": "profile-photos/{uid}/{pid}-full.avif",
+    "webp": "profile-photos/{uid}/{pid}-full.webp"
+  },
+  "full_blurred": {
+    "avif": "profile-photos/{uid}/{pid}-full-blurred.avif",
+    "webp": "profile-photos/{uid}/{pid}-full-blurred.webp"
+  }
 }
 ```
 
@@ -274,13 +293,13 @@ The Route Handler downloads the correct Storage object (full or pre-blurred) usi
 
 The Route Handler evaluates conditions in priority order. The first match wins.
 
-| Priority | Condition | Avatar | Cover / Full |
-|---|---|---|---|
-| 1 | Viewer is the photo owner (`viewer_id = photo.profile_id`) | Full | Full |
-| 2 | `profile.private_mode = false` | Full | Full |
-| 3 | Mutual match exists between viewer and owner | Full | Full |
-| 4 | Owner sent a like to viewer (`likes`: `from_user_id = owner, to_user_id = viewer`) | Full | Full |
-| 5 | None of the above (private profile, no relationship) | Full | **Blurred** |
+| Priority | Condition                                                                          | Avatar | Cover / Full |
+| -------- | ---------------------------------------------------------------------------------- | ------ | ------------ |
+| 1        | Viewer is the photo owner (`viewer_id = photo.profile_id`)                         | Full   | Full         |
+| 2        | `profile.private_mode = false`                                                     | Full   | Full         |
+| 3        | Mutual match exists between viewer and owner                                       | Full   | Full         |
+| 4        | Owner sent a like to viewer (`likes`: `from_user_id = owner, to_user_id = viewer`) | Full   | Full         |
+| 5        | None of the above (private profile, no relationship)                               | Full   | **Blurred**  |
 
 **Avatar is always unblurred, regardless of private mode.** Rules 3–5 do not apply to it.
 
@@ -356,13 +375,13 @@ const paramsSchema = z.object({
 export async function GET(request: NextRequest) {
   // 1. Authenticate viewer
   const supabase = createServerClient(/* cookies */)
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
   if (!user) return new Response(null, { status: 401 })
 
   // 2. Parse and validate params
-  const parsed = paramsSchema.safeParse(
-    Object.fromEntries(request.nextUrl.searchParams)
-  )
+  const parsed = paramsSchema.safeParse(Object.fromEntries(request.nextUrl.searchParams))
   if (!parsed.success) return new Response(null, { status: 400 })
   const { photoId, variant, fmt } = parsed.data
 
@@ -379,9 +398,7 @@ export async function GET(request: NextRequest) {
   if (!row || !row.can_view) return new Response(null, { status: 404 })
 
   // 5. Resolve variant key (avatar is always full; cover/full respect blur)
-  const variantKey = variant === 'avatar' || row.show_full
-    ? variant
-    : `${variant}_blurred`
+  const variantKey = variant === 'avatar' || row.show_full ? variant : `${variant}_blurred`
 
   const storagePath = row.variants?.[variantKey]?.[fmt]
   if (!storagePath) return new Response(null, { status: 404 })
@@ -394,9 +411,8 @@ export async function GET(request: NextRequest) {
 
   // 7. Stream to browser
   const contentType = fmt === 'avif' ? 'image/avif' : 'image/webp'
-  const cacheControl = variant === 'avatar'
-    ? 'private, max-age=3600, immutable'
-    : 'private, no-store'
+  const cacheControl =
+    variant === 'avatar' ? 'private, max-age=3600, immutable' : 'private, no-store'
 
   return new Response(file, {
     headers: {
@@ -414,14 +430,14 @@ The heavy authz logic is factored into a Postgres function `get_photo_stream_con
 
 ### Response Headers
 
-| Header | Value | Purpose |
-|---|---|---|
-| `Content-Type` | `image/avif` or `image/webp` | Correct MIME type |
-| `Content-Disposition` | `inline; filename="photo"` | Prevents "Save As" from suggesting a meaningful filename; inline stops auto-download |
-| `Cache-Control` (avatar) | `private, max-age=3600, immutable` | Browser-only cache; CDN bypass due to `private` |
-| `Cache-Control` (cover/full) | `private, no-store` | Browser does not write bytes to disk cache; CDN bypass |
-| `X-Content-Type-Options` | `nosniff` | Prevents MIME-type guessing by the browser |
-| `X-Robots-Tag` | `noindex, nofollow` | Prevents crawlers from indexing streamed bytes |
+| Header                       | Value                              | Purpose                                                                              |
+| ---------------------------- | ---------------------------------- | ------------------------------------------------------------------------------------ |
+| `Content-Type`               | `image/avif` or `image/webp`       | Correct MIME type                                                                    |
+| `Content-Disposition`        | `inline; filename="photo"`         | Prevents "Save As" from suggesting a meaningful filename; inline stops auto-download |
+| `Cache-Control` (avatar)     | `private, max-age=3600, immutable` | Browser-only cache; CDN bypass due to `private`                                      |
+| `Cache-Control` (cover/full) | `private, no-store`                | Browser does not write bytes to disk cache; CDN bypass                               |
+| `X-Content-Type-Options`     | `nosniff`                          | Prevents MIME-type guessing by the browser                                           |
+| `X-Robots-Tag`               | `noindex, nofollow`                | Prevents crawlers from indexing streamed bytes                                       |
 
 > `Cache-Control: private` instructs Cloudflare (and any other CDN) to pass the request through without caching. Only the user's own browser may cache — and `no-store` disables disk persistence even there.
 
@@ -448,6 +464,7 @@ Covered by [Requirement: Upload Flow](#requirement-upload-flow).
 **Given** an existing `photos` row at position N
 **When** the user uploads a new file targeting position N
 **Then** the Server Action `replacePhoto({ position, fileMeta })`:
+
 1. Generates new `photoId` and a signed upload URL for the original
 2. Returns `{ newPhotoId, signedUrl, oldPhotoId }`
 3. Client uploads to Storage
@@ -462,6 +479,7 @@ Covered by [Requirement: Upload Flow](#requirement-upload-flow).
 **When** they tap "Delete" on a photo
 **Then** a confirmation dialog appears: "This photo will be permanently deleted."
 **And** on confirm: Server Action `deletePhoto({ photoId })`:
+
 1. Verifies ownership via RLS
 2. If the photo is at position 1 (avatar) AND another approved photo exists: silently promotes the next approved photo to position 1
 3. If no other approved photo exists AND `is_published = true`: blocks the deletion with toast "Cannot delete the only approved photo while profile is published. Add a new photo first or unpublish."
@@ -475,6 +493,7 @@ Covered by [Requirement: Upload Flow](#requirement-upload-flow).
 **When** they drag a photo to a new position
 **Then** the client computes the new ordering and calls Server Action `reorderPhotos({ orderedPhotoIds })`
 **And** the action:
+
 1. Verifies all `photoIds` belong to the user (RLS)
 2. Verifies the array length matches the user's photo count exactly
 3. UPDATEs `position` for each row in a **single SQL statement** using `UPDATE ... FROM (VALUES ...)` — Postgres defers UNIQUE index checks to statement end, so swapping positions doesn't transiently violate `idx_photos_profile_position`
@@ -606,7 +625,7 @@ export const photoModerateFn = inngest.createFunction(
       // UPDATE photos SET moderation_status = decision, moderation_result = result
       return decision
     })
-  }
+  },
 )
 ```
 
@@ -626,15 +645,15 @@ export const photoModerateFn = inngest.createFunction(
 
 ### Thresholds and Actions
 
-| Category | Threshold | Action | `moderation_reason` |
-|---|---|---|---|
-| Explicit Nudity | ≥ 90 | Auto-reject | `explicit_nudity` |
-| Suggestive | ≥ 85 | Reject | `suggestive_content` |
-| Violence | ≥ 90 | Reject | `violence` |
-| Hate Symbols | ≥ 95 | Reject | `hate_symbols` |
-| `face_count` ≠ 1 | — | Auto-reject | `face_count_invalid` |
-| `detected_gender ∈ {male,female}` and disagrees with `profiles.gender` | — | Reject | `gender_mismatch` |
-| `detected_gender = 'uncertain'` (provider could not classify) | — | Manual review | `gender_uncertain` |
+| Category                                                               | Threshold | Action        | `moderation_reason`  |
+| ---------------------------------------------------------------------- | --------- | ------------- | -------------------- |
+| Explicit Nudity                                                        | ≥ 90      | Auto-reject   | `explicit_nudity`    |
+| Suggestive                                                             | ≥ 85      | Reject        | `suggestive_content` |
+| Violence                                                               | ≥ 90      | Reject        | `violence`           |
+| Hate Symbols                                                           | ≥ 95      | Reject        | `hate_symbols`       |
+| `face_count` ≠ 1                                                       | —         | Auto-reject   | `face_count_invalid` |
+| `detected_gender ∈ {male,female}` and disagrees with `profiles.gender` | —         | Reject        | `gender_mismatch`    |
+| `detected_gender = 'uncertain'` (provider could not classify)          | —         | Manual review | `gender_uncertain`   |
 
 > **Decision:** The decision and the `moderation_reason` are produced by the **application** (`evaluateModeration` in `lib/inngest/functions/photo-moderate.ts`), not by the moderation provider. The provider's free-text `reason` field is preserved in `moderation_result` for audit but is not what the user/moderator sees — `moderation_reason` is the canonical machine-readable code from the table above. This way the i18n layer can localise reject reasons without depending on whatever language the LLM happens to return.
 

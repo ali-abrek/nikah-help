@@ -80,9 +80,7 @@ export function buildProfileTitle(profile: ProfileSeoData, lang: Lang): string {
  */
 export function buildGenericTitle(pageName: string, lang: Lang): string {
   const tagline =
-    lang === 'ru'
-      ? NIKAH_INVARIANT_RU.muslimNikahDating
-      : NIKAH_INVARIANT_EN.muslimNikahDating
+    lang === 'ru' ? NIKAH_INVARIANT_RU.muslimNikahDating : NIKAH_INVARIANT_EN.muslimNikahDating
   return `${pageName} ${BRAND_SEPARATOR} ${tagline} ${BRAND_SEPARATOR} ${SITE_NAME}`
 }
 
@@ -109,16 +107,12 @@ export function buildProfileMetaDescription(profile: Record<string, unknown>, la
   const city = typeof profile.city === 'string' ? profile.city : ''
   const country = typeof profile.country === 'string' ? profile.country : ''
   const gender = typeof profile.gender === 'string' ? profile.gender : ''
-  const age = computeAge(
-    typeof profile.birth_date === 'string' ? profile.birth_date : null,
-  )
+  const age = computeAge(typeof profile.birth_date === 'string' ? profile.birth_date : null)
 
   if (lang === 'ru') {
     const locationParts = [city, country].filter(Boolean).join(', ')
     const lookFor =
-      gender === 'female'
-        ? NIKAH_INVARIANT_RU.femaleLookingFor
-        : NIKAH_INVARIANT_RU.maleLookingFor
+      gender === 'female' ? NIKAH_INVARIANT_RU.femaleLookingFor : NIKAH_INVARIANT_RU.maleLookingFor
 
     let desc = ''
     if (name) desc += `${name}`
@@ -131,9 +125,7 @@ export function buildProfileMetaDescription(profile: Record<string, unknown>, la
   // English fallback
   const locationParts = [city, country].filter(Boolean).join(', ')
   const lookFor =
-    gender === 'female'
-      ? NIKAH_INVARIANT_EN.femaleLookingFor
-      : NIKAH_INVARIANT_EN.maleLookingFor
+    gender === 'female' ? NIKAH_INVARIANT_EN.femaleLookingFor : NIKAH_INVARIANT_EN.maleLookingFor
 
   let desc = ''
   if (name) desc += `${name}`

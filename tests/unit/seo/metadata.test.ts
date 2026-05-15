@@ -94,9 +94,7 @@ describe('buildGenericTitle', () => {
   })
 
   it('builds generic page title in English', () => {
-    expect(buildGenericTitle('Settings', 'en')).toBe(
-      'Settings | Muslim Nikah Dating | Nikah Help',
-    )
+    expect(buildGenericTitle('Settings', 'en')).toBe('Settings | Muslim Nikah Dating | Nikah Help')
   })
 })
 

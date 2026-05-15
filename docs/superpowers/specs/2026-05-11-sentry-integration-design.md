@@ -69,11 +69,11 @@ nikah-help/
 
 Three patterns cover all Sentry usage in the codebase:
 
-| Pattern | Helper | When to use |
-|---|---|---|
-| Exception at a boundary | `captureSentryException(err, opts)` | Every `catch` that must not be silent |
-| Cron job heartbeat | `withSentryMonitor(slug, fn, schedule)` | All Vercel Cron routes |
-| User identity for session context | `setSentryUser(id)` | Authenticated Server Components/route handlers |
+| Pattern                           | Helper                                  | When to use                                    |
+| --------------------------------- | --------------------------------------- | ---------------------------------------------- |
+| Exception at a boundary           | `captureSentryException(err, opts)`     | Every `catch` that must not be silent          |
+| Cron job heartbeat                | `withSentryMonitor(slug, fn, schedule)` | All Vercel Cron routes                         |
+| User identity for session context | `setSentryUser(id)`                     | Authenticated Server Components/route handlers |
 
 `logError` in `lib/errors/logger.ts` calls `captureSentryException` internally — every `AppError` with `status >= 500` already flows through it. The update adds `flow` tag derivation so no route files need touching for upload/process/DB error tracking.
 
@@ -134,7 +134,7 @@ export interface SentryExtra {
 
 export interface CaptureOptions {
   flow: FlowTag
-  severity?: SentrySeverity    // default: 'error'
+  severity?: SentrySeverity // default: 'error'
   tags?: Record<string, string>
   extra?: SentryExtra
 }
@@ -143,6 +143,7 @@ export interface CaptureOptions {
 ### 3.2 `capture.ts`
 
 `captureSentryException(err, opts)`:
+
 - Checks `SENTRY_DSN` / `NEXT_PUBLIC_SENTRY_DSN` is set; silently no-ops if absent (dev without config)
 - Calls `Sentry.captureException(err, { level, tags: { flow, ...tags }, extra })`
 - Uses dynamic import of `@sentry/nextjs` so edge/client bundles only pull it in when called
@@ -170,6 +171,7 @@ Codes not in the map emit without a `flow` tag so they still land in Sentry — 
 `scrubPii(event)` — used as `beforeSend` and `beforeSendTransaction` in all three configs.
 
 Operations (in order):
+
 1. **Header scrubbing** — removes `cookie`, `authorization`, `x-api-key`, and any header whose lowercased name contains `token`, `secret`, `key`. Retains `x-user-id`, `x-user-role`, `content-type`, `x-forwarded-for` (truncated to first IP only).
 2. **Query string scrubbing** — strips params: `code`, `token`, `access_token`, `refresh_token`, `apikey`. Strips full value of any param matching the pattern `.*token.*` or `.*secret.*`. Strips signed Supabase Storage URLs (URL contains `?token=` or `X-Amz-Signature`).
 3. **Request body field scrubbing** — removes: `email`, `password`, `phone`, `chat_message`, `message_text`, `photo_url`, `token`. Applies one level deep on `event.request?.data` only.
@@ -179,6 +181,7 @@ Operations (in order):
 ### 3.4 `monitor.ts`
 
 `withSentryMonitor(slug, handler, schedule)`:
+
 - Wraps a Vercel Cron handler with `Sentry.withMonitor(slug, handler, { schedule: { type: 'crontab', value: schedule } })`
 - The slug convention is `cron.<route-name>` e.g. `cron.expire-suspensions`
 - On success: Sentry receives a check-in heartbeat (job ran on time)
@@ -285,14 +288,14 @@ export { onRequestError } from '@sentry/nextjs'
 import { withSentryConfig } from '@sentry/nextjs'
 
 export default withSentryConfig(nextConfig, {
-  org:              process.env.SENTRY_ORG,
-  project:          process.env.SENTRY_PROJECT,
-  authToken:        process.env.SENTRY_AUTH_TOKEN,
-  silent:           !process.env.CI,
-  widenClientFileUpload: false,        // MVP — smaller builds, revisit in Phase 2
-  hideSourceMaps:   true,
-  disableLogger:    true,
-  tunnelRoute:      '/monitoring',
+  org: process.env.SENTRY_ORG,
+  project: process.env.SENTRY_PROJECT,
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  widenClientFileUpload: false, // MVP — smaller builds, revisit in Phase 2
+  hideSourceMaps: true,
+  disableLogger: true,
+  tunnelRoute: '/monitoring',
   reactComponentAnnotation: { enabled: true },
 })
 ```
@@ -316,11 +319,11 @@ Add `/monitoring` to the proxy matcher negative lookahead so the Sentry tunnel b
 
 ### New resolvers in `lib/env.ts`
 
-| Variable | Scope | Purpose |
-|---|---|---|
-| `NEXT_PUBLIC_SENTRY_DSN` | public | Browser client init (distinct from server DSN) |
-| `NEXT_PUBLIC_SENTRY_ENV` | public | `production` / `staging` / `development` |
-| `SENTRY_RELEASE` | server (auto-injected) | `nikah-help@<sha>` — set by Vercel integration |
+| Variable                 | Scope                  | Purpose                                        |
+| ------------------------ | ---------------------- | ---------------------------------------------- |
+| `NEXT_PUBLIC_SENTRY_DSN` | public                 | Browser client init (distinct from server DSN) |
+| `NEXT_PUBLIC_SENTRY_ENV` | public                 | `production` / `staging` / `development`       |
+| `SENTRY_RELEASE`         | server (auto-injected) | `nikah-help@<sha>` — set by Vercel integration |
 
 `SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT` already have resolvers; `NEXT_PUBLIC_SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_ENV` are new.
 
@@ -341,6 +344,7 @@ Add `/monitoring` to the proxy matcher negative lookahead so the Sentry tunnel b
 ## 7. `lib/errors/logger.ts` Update
 
 `logError` is updated to:
+
 1. Use `captureSentryException(error.cause ?? error, { flow: deriveFlow(error.code), severity: 'error', extra: { traceId: error.traceId, logContext: safeLogContext(error.logContext) } })` instead of the ad-hoc lazy import
 2. `deriveFlow(code)` performs the code-to-flow mapping from §3.2
 3. `safeLogContext` strips any string value that matches known PII patterns (email-like, UUID-like auth tokens) before placing it in `extra`
@@ -353,29 +357,35 @@ Add `/monitoring` to the proxy matcher negative lookahead so the Sentry tunnel b
 ### 8.1 Auth
 
 **`app/api/auth/callback/route.ts`**
+
 - `exchangeCodeForSession` error → `captureSentryException(error, { flow: 'auth.callback', severity: 'error', tags: { step: 'exchange' } })`
 - `block_rebind_failed` → `captureSentryException(rebindErr, { flow: 'auth.callback', severity: 'warning', tags: { step: 'block_rebind' } })`
 
 **`features/auth/server/send-magic-link.ts`**
+
 - Ratelimit unavailable (catch in `getAuthRatelimit`) → `captureSentryException(err, { flow: 'auth.magic_link_send', severity: 'error', tags: { step: 'ratelimit_init' } })`
 - Ratelimit call failed (catch in `authRatelimit.limit`) → same, `tags: { step: 'ratelimit_call' }`
 - OTP threw (`supabase.auth.signInWithOtp` catch) → same, `tags: { step: 'otp_send' }`
 - BAN01 warn — remains as breadcrumb-level log, not an exception
 
 **`proxy.ts`** (edge runtime)
+
 - `getClaims()` returns `error` → `captureSentryException(error, { flow: 'auth.session_refresh', severity: 'warning' })` before redirecting. Uses dynamic `import('@sentry/nextjs')` guarded on `SENTRY_DSN` being set.
 - Outer `catch` → `captureSentryException(e, { flow: 'edge.proxy', severity: 'error' })`
 
 ### 8.2 Realtime
 
 **`features/chat/hooks/useChatChannel.ts`**
+
 - `useChatChannel` subscribe callback: `CHANNEL_ERROR` → `captureSentryException` at `warning`; `TIMED_OUT` → same. Reconnect counter via `useRef<{count: number; windowStart: number}>` — if ≥3 reconnects within 60 s, severity escalates to `error`.
 - `useChatUpdates` subscribe callback: same pattern, `CHANNEL_ERROR` and `TIMED_OUT`.
 
 **`features/chat/hooks/usePresence.ts`**
+
 - `CHANNEL_ERROR` and `TIMED_OUT` → `captureSentryException` at `warning` with `flow: 'realtime.channel'`, `tags: { channel: \`chat:${chatId}:presence\` }`
 
 **`features/likes/hooks/useMatchListener.ts`**
+
 - `CHANNEL_ERROR` and `TIMED_OUT` → `captureSentryException` at `warning` with `flow: 'realtime.channel'`, `tags: { channel: \`user:${userId}\` }`
 
 All three hooks: replace `console.warn` with Sentry capture. Retain the retry logic — Sentry capture does not suppress the reconnect.
@@ -383,16 +393,19 @@ All three hooks: replace `console.warn` with Sentry capture. Retain the retry lo
 ### 8.3 Rate limiting
 
 **`lib/ratelimit/with-rate-limit.ts`**
+
 - Outer catch (limiter unavailable, failing open) → replace `console.warn` with `captureSentryException(error, { flow: 'ratelimit.infra', severity: 'error' })`
 
 ### 8.4 Inngest / background jobs
 
 **`lib/inngest/functions/photo-moderate.ts`**
+
 - `moderate` step: wrap OpenAI call in explicit try/catch → `captureSentryException(err, { flow: 'moderation.vision', severity: 'error', extra: { provider: 'openai', photoId, step: 'moderate' } })` then rethrow
 - `update-status` step: wrap DB update → `captureSentryException(err, { flow: 'moderation.action', severity: 'error', extra: { photoId, step: 'update-status' } })` then rethrow
 - `onFailure` handler: `captureSentryException` with `severity: 'error'`, `flow: 'moderation.vision'`, `extra: { attempt: event.data.attempt, photoId }`
 
 **`lib/inngest/functions/notification-dispatch.ts`**
+
 - `send-web-push` step: replace `console.error` (non-410/404 case) with `captureSentryException(err, { flow: 'notif.send', severity: 'warning', extra: { channel: 'push', subscriptionId: sub.id } })`
 - `send-email` step: replace `console.error` with `captureSentryException(emailErr, { flow: 'notif.send', severity: 'error', extra: { channel: 'email' } })`
 - `onFailure` handler: `captureSentryException` with `severity: 'error'`, `flow: 'notif.send'`, `extra: { attempt: event.data.attempt }`
@@ -405,7 +418,9 @@ All three routes export their `GET` handler wrapped with `withSentryMonitor`:
 // expire-suspensions
 export const GET = withSentryMonitor(
   'cron.expire-suspensions',
-  async (request) => { /* existing logic */ },
+  async (request) => {
+    /* existing logic */
+  },
   '0 2 * * *',
 )
 ```
@@ -418,17 +433,17 @@ The existing `handleRouteError` calls inside each cron handler are preserved —
 
 No route files need changes. The code-to-flow mapping in `logError` (§7) automatically attributes:
 
-| `AppError.code` | Sentry `flow` tag |
-|---|---|
-| `PHOTO_UPLOAD_FAILED` | `image.upload` |
-| `PHOTO_DOWNLOAD_FAILED` | `image.upload` |
-| `EXTERNAL_SUPABASE_STORAGE_FAILED` | `image.upload` |
-| `PHOTO_PROCESSING_FAILED` | `image.process` |
-| `PHOTO_MODERATION_FAILED` | `image.process` |
-| `SYSTEM_DATABASE_ERROR` | `db.query` |
+| `AppError.code`                                      | Sentry `flow` tag   |
+| ---------------------------------------------------- | ------------------- |
+| `PHOTO_UPLOAD_FAILED`                                | `image.upload`      |
+| `PHOTO_DOWNLOAD_FAILED`                              | `image.upload`      |
+| `EXTERNAL_SUPABASE_STORAGE_FAILED`                   | `image.upload`      |
+| `PHOTO_PROCESSING_FAILED`                            | `image.process`     |
+| `PHOTO_MODERATION_FAILED`                            | `image.process`     |
+| `SYSTEM_DATABASE_ERROR`                              | `db.query`          |
 | `EXTERNAL_OPENAI_FAILED` / `EXTERNAL_OPENAI_TIMEOUT` | `moderation.vision` |
-| `EXTERNAL_TBANK_FAILED` | `payments.init` |
-| `EXTERNAL_RESEND_FAILED` | `notif.send` |
+| `EXTERNAL_TBANK_FAILED`                              | `payments.init`     |
+| `EXTERNAL_RESEND_FAILED`                             | `notif.send`        |
 
 ---
 
@@ -436,12 +451,12 @@ No route files need changes. The code-to-flow mapping in `logError` (§7) automa
 
 ### Four-layer defense
 
-| Layer | Enforced at |
-|---|---|
-| `sendDefaultPii: false` | All three SDK configs |
-| `scrubPii` via `beforeSend`/`beforeSendTransaction` | All three SDK configs |
-| Replay: `maskAllText`, `maskAllInputs`, `blockAllMedia` | Client config only |
-| `setSentryUser` id-only TypeScript contract | `lib/sentry/user.ts` |
+| Layer                                                   | Enforced at           |
+| ------------------------------------------------------- | --------------------- |
+| `sendDefaultPii: false`                                 | All three SDK configs |
+| `scrubPii` via `beforeSend`/`beforeSendTransaction`     | All three SDK configs |
+| Replay: `maskAllText`, `maskAllInputs`, `blockAllMedia` | Client config only    |
+| `setSentryUser` id-only TypeScript contract             | `lib/sentry/user.ts`  |
 
 ### `scrubPii` operations (§3.3)
 
@@ -459,11 +474,11 @@ No `Record<string, unknown>` escape hatch. All extra metadata fields are named a
 
 ## 11. Environment Separation
 
-| `NEXT_PUBLIC_SENTRY_ENV` | Server traces | Client traces | Edge traces | Replay session | Replay on-error |
-|---|---|---|---|---|---|
-| `production` | 0.10 (1.0 for critical paths) | 0.05 | 0.02 | 0.01 | 1.0 |
-| `staging` | 1.0 | 1.0 | 1.0 | 0.10 | 1.0 |
-| `development` | 1.0 | 1.0 | 1.0 | 0 | 0 |
+| `NEXT_PUBLIC_SENTRY_ENV` | Server traces                 | Client traces | Edge traces | Replay session | Replay on-error |
+| ------------------------ | ----------------------------- | ------------- | ----------- | -------------- | --------------- |
+| `production`             | 0.10 (1.0 for critical paths) | 0.05          | 0.02        | 0.01           | 1.0             |
+| `staging`                | 1.0                           | 1.0           | 1.0         | 0.10           | 1.0             |
+| `development`            | 1.0                           | 1.0           | 1.0         | 0              | 0               |
 
 Same Sentry project, distinct `environment` tags. Alerts scoped to `environment:production`. No DSN in `.env.local.example` — engineers opt in by setting it explicitly.
 
@@ -489,21 +504,22 @@ Same Sentry project, distinct `environment` tags. Alerts scoped to `environment:
 
 ## 14. What is Out of Scope (Phase 2)
 
-| Item | Reason deferred |
-|---|---|
-| `lib/inngest/functions/photo-delete.ts`, `chat-delete.ts`, `like-revoke.ts` | DB failures surface via Inngest retry; low blast radius |
-| All feature `actions.ts` beyond auth | Already flow through `handleActionError → logError → Sentry` chain |
-| `public/sw.js` service worker | Plain JS, no bundler — requires dedicated tooling decision |
-| Supabase Edge Functions | No functions exist yet |
-| Payment webhook route | Payment module not yet implemented |
-| Breadcrumb API | `SentryExtra.channel` and `step` fields are the foundation; full breadcrumb API is Phase 3 |
-| Sentry ownership rules / alert routing | Operational configuration, not code |
+| Item                                                                        | Reason deferred                                                                            |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `lib/inngest/functions/photo-delete.ts`, `chat-delete.ts`, `like-revoke.ts` | DB failures surface via Inngest retry; low blast radius                                    |
+| All feature `actions.ts` beyond auth                                        | Already flow through `handleActionError → logError → Sentry` chain                         |
+| `public/sw.js` service worker                                               | Plain JS, no bundler — requires dedicated tooling decision                                 |
+| Supabase Edge Functions                                                     | No functions exist yet                                                                     |
+| Payment webhook route                                                       | Payment module not yet implemented                                                         |
+| Breadcrumb API                                                              | `SentryExtra.channel` and `step` fields are the foundation; full breadcrumb API is Phase 3 |
+| Sentry ownership rules / alert routing                                      | Operational configuration, not code                                                        |
 
 ---
 
 ## 15. Developer Guide (outline for `docs/sentry-integration.md`)
 
 The developer guide covers:
+
 1. Required environment variables and where to get them
 2. Local development — setting `NEXT_PUBLIC_SENTRY_ENV=development` to enable tracing without polluting production
 3. How to use `captureSentryException` at a new call site
@@ -533,10 +549,10 @@ After implementation and before merging to production:
 
 ## 17. Risks & Mitigations
 
-| Risk | Mitigation |
-|---|---|
-| `scrubPii` has a performance regression in edge runtime | Edge config receives the same function; it's synchronous O(1) field deletion — no iteration over large structures |
-| Sentry DSN absent in a branch deploy — silent failures | `captureSentryException` no-ops cleanly when DSN is absent; `onRequestError` also guards |
-| `withSentryConfig` wrapping breaks existing `next.config.ts` options | All existing options (`serverExternalPackages`, `images`, `headers`) pass through to `nextConfig` unchanged |
-| Reconnect storm counter creates stale `useRef` state across channel teardown | Counter is colocated with the channel `useEffect` — cleaned up on `removeChannel` via the effect's return function |
+| Risk                                                                         | Mitigation                                                                                                                                                        |
+| ---------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scrubPii` has a performance regression in edge runtime                      | Edge config receives the same function; it's synchronous O(1) field deletion — no iteration over large structures                                                 |
+| Sentry DSN absent in a branch deploy — silent failures                       | `captureSentryException` no-ops cleanly when DSN is absent; `onRequestError` also guards                                                                          |
+| `withSentryConfig` wrapping breaks existing `next.config.ts` options         | All existing options (`serverExternalPackages`, `images`, `headers`) pass through to `nextConfig` unchanged                                                       |
+| Reconnect storm counter creates stale `useRef` state across channel teardown | Counter is colocated with the channel `useEffect` — cleaned up on `removeChannel` via the effect's return function                                                |
 | `onFailure` Inngest handler fires after retries and creates double-reporting | Individual step captures use `severity: 'warning'`; `onFailure` uses `severity: 'error'`. No deduplication needed — two different signals with different severity |

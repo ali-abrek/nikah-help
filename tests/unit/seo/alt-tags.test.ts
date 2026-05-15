@@ -33,7 +33,13 @@ describe('buildImageAltTag', () => {
 
   it('builds Russian alt tag for female user', () => {
     const alt = buildImageAltTag(
-      { name: 'Амина', gender: 'female', city: 'Ташкент', country: 'Узбекистан', birth_date: '2003-07-21' },
+      {
+        name: 'Амина',
+        gender: 'female',
+        city: 'Ташкент',
+        country: 'Узбекистан',
+        birth_date: '2003-07-21',
+      },
       'ru',
     )
     expect(alt).toBe(
@@ -46,7 +52,9 @@ describe('buildImageAltTag', () => {
       { name: 'Ali', gender: 'male', city: 'Moscow', country: 'Russia', birth_date: '1993-03-15' },
       'en',
     )
-    expect(alt).toBe(`Ali, ${maleAge}, Moscow, Russia. Muslim man looking for a Muslim woman for nikah.`)
+    expect(alt).toBe(
+      `Ali, ${maleAge}, Moscow, Russia. Muslim man looking for a Muslim woman for nikah.`,
+    )
   })
 
   it('handles missing optional fields gracefully', () => {

@@ -7,10 +7,11 @@ This file defines the complete error handling system for the Nikah Help API — 
 **Target audience:** AI development agents (Claude Code) and senior fullstack engineers.
 
 > **MANDATORY OBSERVABILITY:** This file is paired with [14-sentry-observability.md](14-sentry-observability.md), which defines the Sentry mandate. Every error path described here MUST satisfy the Sentry coverage requirements. In particular:
-> * **No silent failures.** Every `catch` block MUST either (a) report via `captureSentryException` from `lib/sentry/` (or via `logError` for `AppError` instances), or (b) be a documented intentional suppression with an explanatory comment naming the risk and compensating control. Empty `catch {}` is a defect.
-> * Direct calls to `Sentry.captureException` outside `lib/sentry/` are FORBIDDEN. Use the centralized helpers only.
-> * Errors crossing a boundary MUST be `AppError` instances with `code`, `status`, `traceId`, `logContext.flow`, and `cause`.
-> * 4xx errors on the mandatory-flow list (auth callback, payments, moderation, image pipeline, rate-limiter infra, cron) MUST still report to Sentry. The `shouldReportToSentry` helper below enforces this, using the code-to-flow mapping from `lib/sentry/capture.ts`.
+>
+> - **No silent failures.** Every `catch` block MUST either (a) report via `captureSentryException` from `lib/sentry/` (or via `logError` for `AppError` instances), or (b) be a documented intentional suppression with an explanatory comment naming the risk and compensating control. Empty `catch {}` is a defect.
+> - Direct calls to `Sentry.captureException` outside `lib/sentry/` are FORBIDDEN. Use the centralized helpers only.
+> - Errors crossing a boundary MUST be `AppError` instances with `code`, `status`, `traceId`, `logContext.flow`, and `cause`.
+> - 4xx errors on the mandatory-flow list (auth callback, payments, moderation, image pipeline, rate-limiter infra, cron) MUST still report to Sentry. The `shouldReportToSentry` helper below enforces this, using the code-to-flow mapping from `lib/sentry/capture.ts`.
 
 ---
 
@@ -119,112 +120,112 @@ All codes are uppercase with underscores. The registry below is the **single sou
 
 #### AUTH — Authentication & Authorization
 
-| Code | HTTP | Meaning |
-|---|---|---|
-| `AUTH_UNAUTHORIZED` | 401 | No valid session (not logged in, session expired, cookie missing) |
-| `AUTH_FORBIDDEN` | 403 | Authenticated but role insufficient (e.g., user accessing admin routes) |
-| `AUTH_SUSPENDED` | 403 | Account is suspended/blocked by moderator. Redirect to `/blocked` |
-| `AUTH_EMAIL_BANNED` | 403 | Email is on the moderator banlist. Cannot register |
-| `AUTH_MAGIC_LINK_EXPIRED` | 401 | Magic Link code has expired |
-| `AUTH_MAGIC_LINK_INVALID` | 401 | Magic Link code is invalid or already used |
-| `AUTH_SESSION_EXPIRED` | 401 | Session cookie expired. Client must re-authenticate |
+| Code                      | HTTP | Meaning                                                                 |
+| ------------------------- | ---- | ----------------------------------------------------------------------- |
+| `AUTH_UNAUTHORIZED`       | 401  | No valid session (not logged in, session expired, cookie missing)       |
+| `AUTH_FORBIDDEN`          | 403  | Authenticated but role insufficient (e.g., user accessing admin routes) |
+| `AUTH_SUSPENDED`          | 403  | Account is suspended/blocked by moderator. Redirect to `/blocked`       |
+| `AUTH_EMAIL_BANNED`       | 403  | Email is on the moderator banlist. Cannot register                      |
+| `AUTH_MAGIC_LINK_EXPIRED` | 401  | Magic Link code has expired                                             |
+| `AUTH_MAGIC_LINK_INVALID` | 401  | Magic Link code is invalid or already used                              |
+| `AUTH_SESSION_EXPIRED`    | 401  | Session cookie expired. Client must re-authenticate                     |
 
 #### VALIDATION — Input Validation
 
-| Code | HTTP | Meaning |
-|---|---|---|
-| `VALIDATION_INVALID_INPUT` | 422 | Generic validation failure. `details` map contains per-field errors |
-| `VALIDATION_FILE_TOO_LARGE` | 422 | Upload exceeds size limit (photo > 10 MB, voice > 5 MB) |
-| `VALIDATION_FILE_UNSUPPORTED_FORMAT` | 422 | Upload format not allowed (e.g., non-JPEG/PNG/WebP/AVIF) |
-| `VALIDATION_IMAGE_TOO_SMALL` | 422 | Image dimensions below minimum (short side < 1000 px) |
-| `VALIDATION_UNDERAGE` | 422 | Birth date fails ≥18 check at server level |
+| Code                                 | HTTP | Meaning                                                             |
+| ------------------------------------ | ---- | ------------------------------------------------------------------- |
+| `VALIDATION_INVALID_INPUT`           | 422  | Generic validation failure. `details` map contains per-field errors |
+| `VALIDATION_FILE_TOO_LARGE`          | 422  | Upload exceeds size limit (photo > 10 MB, voice > 5 MB)             |
+| `VALIDATION_FILE_UNSUPPORTED_FORMAT` | 422  | Upload format not allowed (e.g., non-JPEG/PNG/WebP/AVIF)            |
+| `VALIDATION_IMAGE_TOO_SMALL`         | 422  | Image dimensions below minimum (short side < 1000 px)               |
+| `VALIDATION_UNDERAGE`                | 422  | Birth date fails ≥18 check at server level                          |
 
 #### BUSINESS — Domain Logic
 
-| Code | HTTP | Meaning |
-|---|---|---|
-| `LIKE_LIMIT_REACHED` | 409 | Free-tier male user has sent 3 lifetime likes. Offer subscription |
-| `LIKE_ALREADY_SENT` | 409 | Duplicate like (idempotency hit or race) |
-| `LIKE_OWN_PROFILE` | 422 | User attempted to like their own profile |
-| `LIKE_TARGET_UNPUBLISHED` | 422 | Target profile is not published |
-| `LIKE_BLOCKED` | 422 | Like rejected because one party blocked the other |
-| `LIKE_GENDER_MISMATCH` | 422 | Target is same gender (enforced at DB level) |
-| `MATCH_NOT_FOUND` | 404 | Match does not exist or was revoked |
-| `CHAT_NOT_PARTICIPANT` | 403 | User is not a participant of this chat |
-| `MESSAGE_EDIT_WINDOW_EXPIRED` | 409 | Edit attempted after 5-minute window |
-| `MESSAGE_NOT_OWNER` | 403 | Edit/delete attempted on another user's message |
-| `MESSAGE_NOT_TEXT` | 422 | Edit attempted on image or voice message |
-| `MESSAGE_ALREADY_DELETED` | 409 | Edit/delete attempted on tombstoned message |
-| `PHOTO_MAX_COUNT` | 409 | Profile already has 6 photos |
-| `PHOTO_NOT_OWNER` | 403 | Photo operation on another user's photo |
-| `PHOTO_ONLY_APPROVED_DELETED` | 409 | Cannot delete the only approved photo while profile is published |
-| `PHOTO_POSITION_TAKEN` | 409 | Upload targeted a position that already has an approved photo |
-| `PHOTO_STILL_PROCESSING` | 409 | Photo is still being processed or moderated |
-| `PROFILE_NOT_PUBLISHED` | 422 | Action requires a published profile (e.g., sending like) |
-| `PROFILE_GENDER_IMMUTABLE` | 422 | Attempt to change gender post-onboarding |
-| `PROFILE_ONBOARDING_INCOMPLETE` | 409 | Authenticated user reached a feature that requires `onboarding_completed = true` (e.g. `/api/feed`). Client should redirect to `/onboarding`. |
-| `PROFILE_NO_APPROVED_PHOTO` | 422 | Attempt to publish a profile that has zero approved photos. Returned by `togglePublish` when transitioning `false → true`. |
-| `BLOCK_ALREADY_EXISTS` | 409 | User already blocked |
-| `BLOCK_SELF` | 422 | Attempt to block own profile |
-| `BIO_RATE_LIMITED` | 429 | AI bio regeneration exceeded 3 per 24h |
-| `BIO_REGENERATION_IN_FLIGHT` | 409 | Another regeneration is already in progress |
-| `SUBSCRIPTION_ALREADY_ACTIVE` | 409 | User already has an active subscription |
-| `SUBSCRIPTION_NOT_FOUND` | 404 | No subscription exists for cancellation |
-| `REPORT_RATE_LIMITED` | 429 | Exceeded 5 reports per day |
-| `REPORT_SELF` | 422 | Attempt to report own profile or own photo |
-| `CHAT_INITIATION_LIMIT` | 429 | Exceeded 10 new chat initiations per day |
+| Code                            | HTTP | Meaning                                                                                                                                       |
+| ------------------------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `LIKE_LIMIT_REACHED`            | 409  | Free-tier male user has sent 3 lifetime likes. Offer subscription                                                                             |
+| `LIKE_ALREADY_SENT`             | 409  | Duplicate like (idempotency hit or race)                                                                                                      |
+| `LIKE_OWN_PROFILE`              | 422  | User attempted to like their own profile                                                                                                      |
+| `LIKE_TARGET_UNPUBLISHED`       | 422  | Target profile is not published                                                                                                               |
+| `LIKE_BLOCKED`                  | 422  | Like rejected because one party blocked the other                                                                                             |
+| `LIKE_GENDER_MISMATCH`          | 422  | Target is same gender (enforced at DB level)                                                                                                  |
+| `MATCH_NOT_FOUND`               | 404  | Match does not exist or was revoked                                                                                                           |
+| `CHAT_NOT_PARTICIPANT`          | 403  | User is not a participant of this chat                                                                                                        |
+| `MESSAGE_EDIT_WINDOW_EXPIRED`   | 409  | Edit attempted after 5-minute window                                                                                                          |
+| `MESSAGE_NOT_OWNER`             | 403  | Edit/delete attempted on another user's message                                                                                               |
+| `MESSAGE_NOT_TEXT`              | 422  | Edit attempted on image or voice message                                                                                                      |
+| `MESSAGE_ALREADY_DELETED`       | 409  | Edit/delete attempted on tombstoned message                                                                                                   |
+| `PHOTO_MAX_COUNT`               | 409  | Profile already has 6 photos                                                                                                                  |
+| `PHOTO_NOT_OWNER`               | 403  | Photo operation on another user's photo                                                                                                       |
+| `PHOTO_ONLY_APPROVED_DELETED`   | 409  | Cannot delete the only approved photo while profile is published                                                                              |
+| `PHOTO_POSITION_TAKEN`          | 409  | Upload targeted a position that already has an approved photo                                                                                 |
+| `PHOTO_STILL_PROCESSING`        | 409  | Photo is still being processed or moderated                                                                                                   |
+| `PROFILE_NOT_PUBLISHED`         | 422  | Action requires a published profile (e.g., sending like)                                                                                      |
+| `PROFILE_GENDER_IMMUTABLE`      | 422  | Attempt to change gender post-onboarding                                                                                                      |
+| `PROFILE_ONBOARDING_INCOMPLETE` | 409  | Authenticated user reached a feature that requires `onboarding_completed = true` (e.g. `/api/feed`). Client should redirect to `/onboarding`. |
+| `PROFILE_NO_APPROVED_PHOTO`     | 422  | Attempt to publish a profile that has zero approved photos. Returned by `togglePublish` when transitioning `false → true`.                    |
+| `BLOCK_ALREADY_EXISTS`          | 409  | User already blocked                                                                                                                          |
+| `BLOCK_SELF`                    | 422  | Attempt to block own profile                                                                                                                  |
+| `BIO_RATE_LIMITED`              | 429  | AI bio regeneration exceeded 3 per 24h                                                                                                        |
+| `BIO_REGENERATION_IN_FLIGHT`    | 409  | Another regeneration is already in progress                                                                                                   |
+| `SUBSCRIPTION_ALREADY_ACTIVE`   | 409  | User already has an active subscription                                                                                                       |
+| `SUBSCRIPTION_NOT_FOUND`        | 404  | No subscription exists for cancellation                                                                                                       |
+| `REPORT_RATE_LIMITED`           | 429  | Exceeded 5 reports per day                                                                                                                    |
+| `REPORT_SELF`                   | 422  | Attempt to report own profile or own photo                                                                                                    |
+| `CHAT_INITIATION_LIMIT`         | 429  | Exceeded 10 new chat initiations per day                                                                                                      |
 
 #### PHOTO — Photo Pipeline
 
-| Code | HTTP | Meaning |
-|---|---|---|
-| `PHOTO_PROCESSING_FAILED` | 500 | sharp pipeline failed (corrupted file, OOM) |
-| `PHOTO_MODERATION_FAILED` | 500 | Moderation provider (OpenAI / DeepSeek) returned an error |
-| `PHOTO_UPLOAD_FAILED` | 500 | Supabase Storage upload failed |
-| `PHOTO_DOWNLOAD_FAILED` | 500 | Could not download original for processing |
+| Code                      | HTTP | Meaning                                                   |
+| ------------------------- | ---- | --------------------------------------------------------- |
+| `PHOTO_PROCESSING_FAILED` | 500  | sharp pipeline failed (corrupted file, OOM)               |
+| `PHOTO_MODERATION_FAILED` | 500  | Moderation provider (OpenAI / DeepSeek) returned an error |
+| `PHOTO_UPLOAD_FAILED`     | 500  | Supabase Storage upload failed                            |
+| `PHOTO_DOWNLOAD_FAILED`   | 500  | Could not download original for processing                |
 
 #### PAYMENT — T-Bank
 
-| Code | HTTP | Meaning |
-|---|---|---|
-| `PAYMENT_INIT_FAILED` | 502 | T-Bank Init API returned `Success: false` |
-| `PAYMENT_SIGNATURE_INVALID` | 403 | Incoming webhook has invalid signature |
-| `PAYMENT_AMOUNT_MISMATCH` | 422 | Client-specified amount doesn't match pricing plan |
-| `PAYMENT_ORDER_EXPIRED` | 409 | OrderId has expired (T-Bank timeout) |
+| Code                        | HTTP | Meaning                                            |
+| --------------------------- | ---- | -------------------------------------------------- |
+| `PAYMENT_INIT_FAILED`       | 502  | T-Bank Init API returned `Success: false`          |
+| `PAYMENT_SIGNATURE_INVALID` | 403  | Incoming webhook has invalid signature             |
+| `PAYMENT_AMOUNT_MISMATCH`   | 422  | Client-specified amount doesn't match pricing plan |
+| `PAYMENT_ORDER_EXPIRED`     | 409  | OrderId has expired (T-Bank timeout)               |
 
 #### RATE_LIMIT — Rate Limiting
 
-| Code | HTTP | Meaning |
-|---|---|---|
-| `RATE_LIMIT_TOO_MANY_REQUESTS` | 429 | Generic rate limit hit (Upstash) |
-| `RATE_LIMIT_AUTH_CALLBACK` | 429 | Auth callback called too frequently |
-| `RATE_LIMIT_MESSAGE_SEND` | 429 | Exceeded 30 messages/minute |
+| Code                           | HTTP | Meaning                             |
+| ------------------------------ | ---- | ----------------------------------- |
+| `RATE_LIMIT_TOO_MANY_REQUESTS` | 429  | Generic rate limit hit (Upstash)    |
+| `RATE_LIMIT_AUTH_CALLBACK`     | 429  | Auth callback called too frequently |
+| `RATE_LIMIT_MESSAGE_SEND`      | 429  | Exceeded 30 messages/minute         |
 
 #### EXTERNAL — Third-Party Services
 
-| Code | HTTP | Meaning |
-|---|---|---|
-| `EXTERNAL_OPENAI_FAILED` | 502 | OpenAI API error or timeout |
-| `EXTERNAL_DEEPSEEK_FAILED` | 502 | DeepSeek API error or timeout (fallback for moderation) |
-| `EXTERNAL_OPENAI_TIMEOUT` | 504 | OpenAI timed out (60s). Fallback provider used if available |
-| `EXTERNAL_TBANK_FAILED` | 502 | T-Bank API unreachable or returned unexpected error |
-| `EXTERNAL_RESEND_FAILED` | 502 | Resend email API error |
-| `EXTERNAL_SUPABASE_STORAGE_FAILED` | 502 | Supabase Storage operation failed |
+| Code                               | HTTP | Meaning                                                     |
+| ---------------------------------- | ---- | ----------------------------------------------------------- |
+| `EXTERNAL_OPENAI_FAILED`           | 502  | OpenAI API error or timeout                                 |
+| `EXTERNAL_DEEPSEEK_FAILED`         | 502  | DeepSeek API error or timeout (fallback for moderation)     |
+| `EXTERNAL_OPENAI_TIMEOUT`          | 504  | OpenAI timed out (60s). Fallback provider used if available |
+| `EXTERNAL_TBANK_FAILED`            | 502  | T-Bank API unreachable or returned unexpected error         |
+| `EXTERNAL_RESEND_FAILED`           | 502  | Resend email API error                                      |
+| `EXTERNAL_SUPABASE_STORAGE_FAILED` | 502  | Supabase Storage operation failed                           |
 
 #### SYSTEM — Infrastructure
 
-| Code | HTTP | Meaning |
-|---|---|---|
-| `SYSTEM_INTERNAL_ERROR` | 500 | Unhandled server error. Generic fallback |
-| `SYSTEM_DATABASE_ERROR` | 500 | Postgres query error |
-| `SYSTEM_TIMEOUT` | 504 | Route Handler exceeded Vercel timeout |
-| `SYSTEM_MAINTENANCE` | 503 | Planned maintenance mode |
+| Code                    | HTTP | Meaning                                  |
+| ----------------------- | ---- | ---------------------------------------- |
+| `SYSTEM_INTERNAL_ERROR` | 500  | Unhandled server error. Generic fallback |
+| `SYSTEM_DATABASE_ERROR` | 500  | Postgres query error                     |
+| `SYSTEM_TIMEOUT`        | 504  | Route Handler exceeded Vercel timeout    |
+| `SYSTEM_MAINTENANCE`    | 503  | Planned maintenance mode                 |
 
 #### NOT_FOUND
 
-| Code | HTTP | Meaning |
-|---|---|---|
-| `NOT_FOUND` | 404 | Resource does not exist (profile, photo, chat, etc.). Deliberately ambiguous — does not reveal whether the resource exists but is hidden |
+| Code        | HTTP | Meaning                                                                                                                                  |
+| ----------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `NOT_FOUND` | 404  | Resource does not exist (profile, photo, chat, etc.). Deliberately ambiguous — does not reveal whether the resource exists but is hidden |
 
 ---
 
@@ -248,6 +249,7 @@ All error codes MUST map to a status code. The canonical mapping lives in `lib/e
 ```
 
 Rules:
+
 - Never return `400 Bad Request` — use `422 Unprocessable Entity` for all input/validation errors.
 - Never return `403` for a resource that doesn't exist outside the user's visibility — use `404` to avoid leaking existence.
 - `409 Conflict` is the primary business-logic error status (limits, duplicates, state conflicts).
@@ -529,9 +531,7 @@ export async function parseApiError(response: Response): Promise<ErrorResponse> 
  * For Server Actions: unwrap the discriminated union.
  * Returns the error or throws if successful (so it works in catch blocks).
  */
-export function getActionError(
-  result: { success: false; error: ErrorResponse }
-): ErrorResponse {
+export function getActionError(result: { success: false; error: ErrorResponse }): ErrorResponse {
   return result.error
 }
 ```
@@ -562,7 +562,9 @@ export function useSendLike() {
       // Only errors with `details` need additional per-field rendering.
       if (error.code === 'LIKE_LIMIT_REACHED') {
         // Show modal with subscription CTA, not just toast
-        toast.error(error.message, { action: { label: 'Подписка', onClick: () => router.push('/subscription') } })
+        toast.error(error.message, {
+          action: { label: 'Подписка', onClick: () => router.push('/subscription') },
+        })
       } else {
         toast.error(error.message)
       }
@@ -597,16 +599,18 @@ import { captureSentryException } from '@/lib/sentry'
 
 export function logError(error: AppError) {
   // 1. Structured console log (appears in Vercel Logs)
-  console.error(JSON.stringify({
-    level: 'error',
-    code: error.code,
-    status: error.status,
-    message: error.message,
-    trace_id: error.traceId,
-    context: error.logContext ?? {},
-    // cause.message is logged, but NOT cause.stack (too verbose for Vercel Logs)
-    cause: error.cause?.message ?? null,
-  }))
+  console.error(
+    JSON.stringify({
+      level: 'error',
+      code: error.code,
+      status: error.status,
+      message: error.message,
+      trace_id: error.traceId,
+      context: error.logContext ?? {},
+      // cause.message is logged, but NOT cause.stack (too verbose for Vercel Logs)
+      cause: error.cause?.message ?? null,
+    }),
+  )
 
   // 2. Sentry — MANDATORY. See 14-sentry-observability.md.
   //    Uses the centralized captureSentryException helper from lib/sentry/.
@@ -668,27 +672,27 @@ function shouldReportToSentry(error: AppError): boolean {
 
 ### What gets logged
 
-| Property | Console (Vercel Logs) | Sentry |
-|---|---|---|
-| `code` | ✅ | ✅ (tag) |
-| `status` | ✅ | ✅ |
-| `message` | ✅ | ✅ |
-| `trace_id` | ✅ | ✅ (tag) |
-| `logContext` | ✅ | ✅ (extra) |
-| `cause.message` | ✅ | ✅ |
-| `cause.stack` | ❌ | ✅ |
-| User email / PII | ❌ NEVER | ❌ NEVER |
-| Request body | ❌ NEVER (may contain PII) | ❌ NEVER |
+| Property         | Console (Vercel Logs)      | Sentry     |
+| ---------------- | -------------------------- | ---------- |
+| `code`           | ✅                         | ✅ (tag)   |
+| `status`         | ✅                         | ✅         |
+| `message`        | ✅                         | ✅         |
+| `trace_id`       | ✅                         | ✅ (tag)   |
+| `logContext`     | ✅                         | ✅ (extra) |
+| `cause.message`  | ✅                         | ✅         |
+| `cause.stack`    | ❌                         | ✅         |
+| User email / PII | ❌ NEVER                   | ❌ NEVER   |
+| Request body     | ❌ NEVER (may contain PII) | ❌ NEVER   |
 
 ### Alert thresholds (Sentry → Slack)
 
-| Condition | Action |
-|---|---|
-| `SYSTEM_INTERNAL_ERROR` rate > 20/min for 5 min | Alert |
-| `SYSTEM_DATABASE_ERROR` > 5 occurrences in 10 min | Alert |
-| `EXTERNAL_*_FAILED` > 10 occurrences in 5 min | Alert |
-| `PHOTO_PROCESSING_FAILED` > 50 in 1 hour | Alert |
-| `PAYMENT_INIT_FAILED` > 5 in 5 min | Alert |
+| Condition                                         | Action |
+| ------------------------------------------------- | ------ |
+| `SYSTEM_INTERNAL_ERROR` rate > 20/min for 5 min   | Alert  |
+| `SYSTEM_DATABASE_ERROR` > 5 occurrences in 10 min | Alert  |
+| `EXTERNAL_*_FAILED` > 10 occurrences in 5 min     | Alert  |
+| `PHOTO_PROCESSING_FAILED` > 50 in 1 hour          | Alert  |
+| `PAYMENT_INIT_FAILED` > 5 in 5 min                | Alert  |
 
 ---
 
@@ -831,6 +835,7 @@ export async function GET(request: Request) {
 ```
 
 Response (422):
+
 ```json
 {
   "code": "VALIDATION_INVALID_INPUT",
@@ -850,7 +855,9 @@ Response (422):
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createServerSupabase()
-    const { data: { user } } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
     if (!user) {
       throw new AppError('AUTH_UNAUTHORIZED')
@@ -864,6 +871,7 @@ export async function GET(request: NextRequest) {
 ```
 
 Response (401):
+
 ```json
 {
   "code": "AUTH_UNAUTHORIZED",
@@ -913,6 +921,7 @@ export async function sendLike(fromUserId: string, toUserId: string) {
 ```
 
 Response (409):
+
 ```json
 {
   "code": "LIKE_LIMIT_REACHED",
@@ -942,6 +951,7 @@ export async function processImage(buffer: Buffer): Promise<ProcessedVariants> {
 ```
 
 Response (500):
+
 ```json
 {
   "code": "PHOTO_PROCESSING_FAILED",
@@ -964,6 +974,7 @@ Note: `PHOTO_PROCESSING_FAILED` has status 500, so Sentry is alerted. The client
 **Then** follow this checklist:
 
 1. **Add the code** to every locale file:
+
    ```json
    // messages/ru.json → "errors"
    "CHAT_INITIATION_LIMIT": "Вы можете начать не более 10 новых чатов в сутки"
@@ -973,6 +984,7 @@ Note: `PHOTO_PROCESSING_FAILED` has status 500, so Sentry is alerted. The client
    ```
 
 2. **Map the status** in the registry:
+
    ```typescript
    // lib/errors/registry.ts
    export const STATUS_MAP: Record<ErrorCode, number> = {
@@ -982,6 +994,7 @@ Note: `PHOTO_PROCESSING_FAILED` has status 500, so Sentry is alerted. The client
    ```
 
 3. **Throw it** where the condition is checked:
+
    ```typescript
    throw new AppError('CHAT_INITIATION_LIMIT', {
      logContext: { userId, chatsToday: count },
@@ -989,6 +1002,7 @@ Note: `PHOTO_PROCESSING_FAILED` has status 500, so Sentry is alerted. The client
    ```
 
 4. **Handle it on the frontend** if it needs special UI (modal, redirect, specific action):
+
    ```typescript
    if (error.code === 'CHAT_INITIATION_LIMIT') {
      toast.error(error.message)
@@ -1025,25 +1039,30 @@ import enMessages from '@/messages/en.json'
 describe('error code registry', () => {
   it('should have a translation for every code in both locales', () => {
     for (const code of Object.keys(STATUS_MAP)) {
-      expect(ruMessages.errors).toHaveProperty(code,
-        `Missing RU translation for error code: ${code}`)
-      expect(enMessages.errors).toHaveProperty(code,
-        `Missing EN translation for error code: ${code}`)
+      expect(ruMessages.errors).toHaveProperty(
+        code,
+        `Missing RU translation for error code: ${code}`,
+      )
+      expect(enMessages.errors).toHaveProperty(
+        code,
+        `Missing EN translation for error code: ${code}`,
+      )
     }
   })
 
   it('should not have orphaned translations without a registry entry', () => {
     for (const key of Object.keys(ruMessages.errors)) {
-      expect(STATUS_MAP).toHaveProperty(key,
-        `RU translation exists but no registry entry for: ${key}`)
+      expect(STATUS_MAP).toHaveProperty(
+        key,
+        `RU translation exists but no registry entry for: ${key}`,
+      )
     }
   })
 
   it('should have valid HTTP status for every code', () => {
     const validStatuses = [401, 403, 404, 409, 422, 429, 500, 502, 503, 504]
     for (const [code, status] of Object.entries(STATUS_MAP)) {
-      expect(validStatuses).toContain(status,
-        `Invalid HTTP status ${status} for code: ${code}`)
+      expect(validStatuses).toContain(status, `Invalid HTTP status ${status} for code: ${code}`)
     }
   })
 })

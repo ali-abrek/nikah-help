@@ -7,9 +7,10 @@ This file defines the user-reporting flow (profile or photo), moderator UI and a
 > **Decision:** MVP supports two moderator actions — **Remove photo** and **Block user (permanent)**. Warnings and time-limited suspensions are intentionally NOT exposed in the UI for MVP. The `user_suspensions` schema is kept flexible so they can be added later without a migration.
 
 > **MANDATORY OBSERVABILITY (moderation):** Per [14-sentry-observability.md](14-sentry-observability.md):
-> * `flow=moderation.vision`, `provider=<sightengine|openai>` — vision/moderation API failure inside the `moderate-photo` Inngest function. Severity: error.
-> * `flow=moderation.action` — failure to persist a moderator action (block, remove photo, suspension write). Severity: error.
-> * Reported entity ids and `report_id` are acceptable tags. Reported message text, photo bytes, and reporter/reported emails are NOT.
+>
+> - `flow=moderation.vision`, `provider=<sightengine|openai>` — vision/moderation API failure inside the `moderate-photo` Inngest function. Severity: error.
+> - `flow=moderation.action` — failure to persist a moderator action (block, remove photo, suspension write). Severity: error.
+> - Reported entity ids and `report_id` are acceptable tags. Reported message text, photo bytes, and reporter/reported emails are NOT.
 
 ---
 
@@ -17,10 +18,10 @@ This file defines the user-reporting flow (profile or photo), moderator UI and a
 
 Reports can be filed against two entity kinds:
 
-| Entity | Where the user triggers it |
-|---|---|
-| `profile` | Other user's profile page → kebab menu "Report user" |
-| `photo` | Photo viewer (lightbox) → kebab menu "Report photo" (only on other users' photos) |
+| Entity    | Where the user triggers it                                                        |
+| --------- | --------------------------------------------------------------------------------- |
+| `profile` | Other user's profile page → kebab menu "Report user"                              |
+| `photo`   | Photo viewer (lightbox) → kebab menu "Report photo" (only on other users' photos) |
 
 > **Decision:** Reports on individual chat messages are NOT supported. If a user is being harassed in chat, they should **block the user** (which deletes the chat and the match — see [03 — Block List](./03-profiles-feed.md#requirement-block-list)) and optionally file a `profile` report.
 
@@ -29,6 +30,7 @@ Reports can be filed against two entity kinds:
 **Given** an authenticated user clicks "Report" on a profile or photo
 **When** the Report dialog opens
 **Then** it shows:
+
 - A free-text textarea **"Reason (optional)"**, max 500 characters
 - A "Send" button
 - A "Cancel" button
@@ -40,6 +42,7 @@ Reports can be filed against two entity kinds:
 **Given** the dialog is filled out (or left empty)
 **When** the user submits
 **Then** Server Action `submitReport({ type, entityId, comment })`:
+
 1. Validates inputs via Zod v4 (`type ∈ {'profile','photo'}`, `comment` optional, ≤500 chars)
 2. Resolves `reported_user_id`:
    - For `type = 'profile'`: `entityId` IS the `reported_user_id`
@@ -55,8 +58,8 @@ Reports can be filed against two entity kinds:
 
 The only automatic action is on the photo itself:
 
-| Rule | Action |
-|---|---|
+| Rule                                                   | Action                                                                                    |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
 | ≥ 3 distinct reports against the same photo within 24h | Auto-set `photos.moderation_status = 'manual_review'`, hiding it from feed pending review |
 
 This rule is implemented in a Postgres function fired on `reports` INSERT. No automatic user blocks; humans decide on user blocks.
@@ -70,6 +73,7 @@ This rule is implemented in a Postgres function fired on `reports` INSERT. No au
 **Given** an authenticated user with `role IN ('moderator', 'admin')`
 **When** they open `/admin/reports`
 **Then** they see a paginated, filterable list of reports:
+
 - Filters: `type`, `status`, date range
 - Default sort: `created_at DESC`
 - Each row shows: timestamp, reported user (name + avatar), entity preview (photo thumbnail or profile snippet), reporter comment (truncated), status
@@ -79,6 +83,7 @@ This rule is implemented in a Postgres function fired on `reports` INSERT. No au
 **Given** the moderator clicks a row
 **When** the detail view opens
 **Then** they see:
+
 - The full reported entity (profile snapshot or photo at full resolution)
 - The reporter's comment (if any)
 - The reported user's history: count of prior `resolved` reports against them, current ban state
@@ -97,6 +102,7 @@ This rule is implemented in a Postgres function fired on `reports` INSERT. No au
 **Given** the report concerns a photo
 **When** the moderator clicks "Remove photo"
 **Then**:
+
 1. `photos.moderation_status = 'rejected'`, `moderation_reason = 'moderator_removed'`
 2. The photo's variants are deleted from Storage via Inngest job `photo/delete`
 3. The photo row remains in the DB with `moderation_status = 'rejected'` for audit history
@@ -110,6 +116,7 @@ This rule is implemented in a Postgres function fired on `reports` INSERT. No au
 **When** the moderator clicks "Block user"
 **Then** a confirmation dialog appears: "This action will block {name} permanently. They will not be able to sign in, and their email will be added to the registration blocklist. Continue?"
 **And** on confirm:
+
 1. INSERT into `user_suspensions(user_id, kind = 'permanent_ban', reason_code = 'moderator_block', notes = <optional moderator note>, created_by = me)`
 2. INSERT into `banned_emails(email = <user's email>, reason_code = 'moderator_block', banned_by = me)` (so the email cannot re-register)
 3. The user's profile is unpublished (`is_published = false`)
@@ -125,6 +132,7 @@ This rule is implemented in a Postgres function fired on `reports` INSERT. No au
 **Given** an active permanent ban
 **When** an admin clicks "Lift block" on the user's record
 **Then**:
+
 1. `user_suspensions.lifted_at = now()`, `lifted_by = admin.id` for the active row
 2. `banned_emails.lifted_at = now()`, `lifted_by = admin.id` for matching email row
 3. The user is notified by email: "Your account has been reinstated. You can sign in again."
@@ -143,6 +151,7 @@ A separate panel shows the **complete list of currently-blocked users**, sourced
 **Given** an authenticated user with `role IN ('moderator', 'admin')`
 **When** they open `/admin/blocks`
 **Then** they see a paginated table:
+
 - Columns: User (name + avatar — or "deleted account" if profile gone), Email, Banned at, Banned by (moderator name), Reason, Status (`active`, `lifted`)
 - Filters: `status` (default = active), date range, banned_by
 - Search: by email or name
@@ -162,11 +171,11 @@ A separate panel shows the **complete list of currently-blocked users**, sourced
 
 End-users have their **own** block list (people they personally blocked, separate from moderator action). Schema is `blocks` (see [02 — Database](./02-database.md)). Flow is in [03 — Block List](./03-profiles-feed.md#requirement-block-list).
 
-| Aspect | User-initiated `blocks` | Moderator-initiated `user_suspensions` |
-|---|---|---|
-| Scope | Affects only the blocker's view | Affects everyone (user cannot sign in) |
-| Audience | The blocking user only | Platform-wide |
-| Reversal | Blocker can unblock | Only admin can lift |
+| Aspect      | User-initiated `blocks`                                              | Moderator-initiated `user_suspensions`                                       |
+| ----------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| Scope       | Affects only the blocker's view                                      | Affects everyone (user cannot sign in)                                       |
+| Audience    | The blocking user only                                               | Platform-wide                                                                |
+| Reversal    | Blocker can unblock                                                  | Only admin can lift                                                          |
 | Persistence | Survives target's account deletion via peppered `blocked_email_hash` | `banned_emails` row preserves the (plaintext) email even after data deletion |
 
 ---
@@ -193,6 +202,7 @@ if (claims) {
 ### Page `/blocked`
 
 Renders a public, unauthenticated page showing:
+
 - "This account has been blocked."
 - A "Contact support" mailto link
 - No re-login form
@@ -206,11 +216,11 @@ Renders a public, unauthenticated page showing:
 
 ## Requirement: Notifications Generated by Moderation
 
-| Trigger | Notification type | Channels |
-|---|---|---|
-| Photo removed by moderator | `photo_removed_by_moderator` | In-app + Email |
-| User blocked by moderator | `account_blocked` | Email only (in-app inaccessible) |
-| Block lifted by admin | `account_reinstated` | Email |
+| Trigger                    | Notification type            | Channels                         |
+| -------------------------- | ---------------------------- | -------------------------------- |
+| Photo removed by moderator | `photo_removed_by_moderator` | In-app + Email                   |
+| User blocked by moderator  | `account_blocked`            | Email only (in-app inaccessible) |
+| Block lifted by admin      | `account_reinstated`         | Email                            |
 
 All notifications use i18n keys; texts live in `messages/{locale}.json` under `notifications.moderation.*`.
 

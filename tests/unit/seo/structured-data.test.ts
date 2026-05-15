@@ -27,7 +27,10 @@ describe('buildProfileJsonLd', () => {
     const male = buildProfileJsonLd(profile, 'https://nikahhelp.com')
     expect(male).toContain('"gender":"Male"')
 
-    const female = buildProfileJsonLd({ ...profile, gender: 'female' as const }, 'https://nikahhelp.com')
+    const female = buildProfileJsonLd(
+      { ...profile, gender: 'female' as const },
+      'https://nikahhelp.com',
+    )
     expect(female).toContain('"gender":"Female"')
   })
 
@@ -49,6 +52,8 @@ describe('buildProfileJsonLd', () => {
 
   it('includes url', () => {
     const result = buildProfileJsonLd(profile, 'https://nikahhelp.com')
-    expect(result).toContain('"url":"https://nikahhelp.com/profile/a895e215-96c9-4f2e-a6ee-6eaacc1fe5da')
+    expect(result).toContain(
+      '"url":"https://nikahhelp.com/profile/a895e215-96c9-4f2e-a6ee-6eaacc1fe5da',
+    )
   })
 })

@@ -7,8 +7,9 @@ This file defines the complete rate limiting system for the Nikah Help API — a
 **Target audience:** AI development agents (Claude Code) and senior fullstack engineers.
 
 > **MANDATORY OBSERVABILITY (rate limiting):** A rate limiter that fails open is a silent DDoS surface. Per [14-sentry-observability.md](14-sentry-observability.md):
-> * `flow=ratelimit.infra` — any failure to reach Upstash Redis (timeout, auth error, network). Severity: error. **Any occurrence pages on-call.**
-> * `flow=ratelimit.abuse` — abuse threshold exceeded by a single principal (e.g., > 10× the configured limit in 1 min). Severity: warning. Tag with `user_role` and `route` — not the IP, not the email.
+>
+> - `flow=ratelimit.infra` — any failure to reach Upstash Redis (timeout, auth error, network). Severity: error. **Any occurrence pages on-call.**
+> - `flow=ratelimit.abuse` — abuse threshold exceeded by a single principal (e.g., > 10× the configured limit in 1 min). Severity: warning. Tag with `user_role` and `route` — not the IP, not the email.
 >
 > Normal rate-limited 429 responses MUST NOT be reported as exceptions. Only infra failures and abuse signals.
 
@@ -76,7 +77,7 @@ export function withRateLimit<T>(
       if (!result.success) {
         throw new AppError(options.errorCode ?? 'RATE_LIMIT_TOO_MANY_REQUESTS', {
           logContext: {
-            keys: keys.map(k => `${k.prefix}:${obfuscate(k.value)}`),
+            keys: keys.map((k) => `${k.prefix}:${obfuscate(k.value)}`),
             limit: options.limit,
             window: options.window,
             reset: result.reset,
@@ -91,11 +92,13 @@ export function withRateLimit<T>(
         return handleRouteError(error)
       }
       // Unexpected errors from Upstash → fail open, log, proceed
-      console.warn(JSON.stringify({
-        level: 'warn',
-        message: 'Rate limiter unavailable, failing open',
-        error: (error as Error).message,
-      }))
+      console.warn(
+        JSON.stringify({
+          level: 'warn',
+          message: 'Rate limiter unavailable, failing open',
+          error: (error as Error).message,
+        }),
+      )
       return handler(request, context)
     }
   }
@@ -147,16 +150,16 @@ import type { RateLimitOptions } from './types'
 /** Auth endpoints — very strict. Prevents brute-force Magic Link sending. */
 export const AUTH_STRICT: RateLimitOptions = {
   limit: 10,
-  window: 60,          // 10 requests per minute
+  window: 60, // 10 requests per minute
   keyStrategy: 'ip',
   errorCode: 'RATE_LIMIT_AUTH_CALLBACK',
-  bypassRoles: [],     // No role bypass — auth endpoints have no user yet
+  bypassRoles: [], // No role bypass — auth endpoints have no user yet
 }
 
 /** Sensitive actions — moderate. Likes, reports, blocks. */
 export const ACTION_MODERATE: RateLimitOptions = {
   limit: 30,
-  window: 60,          // 30 requests per minute
+  window: 60, // 30 requests per minute
   keyStrategy: 'user',
   errorCode: 'RATE_LIMIT_TOO_MANY_REQUESTS',
 }
@@ -164,7 +167,7 @@ export const ACTION_MODERATE: RateLimitOptions = {
 /** Chat messages — per-user throughput. */
 export const MESSAGE_SEND: RateLimitOptions = {
   limit: 30,
-  window: 60,          // 30 messages per minute
+  window: 60, // 30 messages per minute
   keyStrategy: 'user',
   errorCode: 'RATE_LIMIT_MESSAGE_SEND',
 }
@@ -172,7 +175,7 @@ export const MESSAGE_SEND: RateLimitOptions = {
 /** Read endpoints — generous. Feed, profile views, photo streaming. */
 export const READ_GENEROUS: RateLimitOptions = {
   limit: 120,
-  window: 60,          // 120 requests per minute
+  window: 60, // 120 requests per minute
   keyStrategy: 'ip+user',
   errorCode: 'RATE_LIMIT_TOO_MANY_REQUESTS',
 }
@@ -180,7 +183,7 @@ export const READ_GENEROUS: RateLimitOptions = {
 /** Photo uploads — prevent abuse. */
 export const PHOTO_UPLOAD: RateLimitOptions = {
   limit: 20,
-  window: 60,          // 20 uploads per minute
+  window: 60, // 20 uploads per minute
   keyStrategy: 'user',
   errorCode: 'RATE_LIMIT_TOO_MANY_REQUESTS',
 }
@@ -188,7 +191,7 @@ export const PHOTO_UPLOAD: RateLimitOptions = {
 /** Webhook endpoints — generous. T-Bank, Inngest callbacks. */
 export const WEBHOOK: RateLimitOptions = {
   limit: 300,
-  window: 60,          // 300 per minute — bursts are normal for webhooks
+  window: 60, // 300 per minute — bursts are normal for webhooks
   keyStrategy: 'ip',
   errorCode: 'RATE_LIMIT_TOO_MANY_REQUESTS',
 }
@@ -208,7 +211,7 @@ import { Redis } from '@upstash/redis'
 const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL!,
   token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-  enableAutoPipelining: true,  // Batch Redis commands in a single HTTP request
+  enableAutoPipelining: true, // Batch Redis commands in a single HTTP request
 })
 
 /**
@@ -219,8 +222,8 @@ const redis = new Redis({
 export const ratelimit = new Ratelimit({
   redis,
   limiter: Ratelimit.slidingWindow(10, '60 s'), // Placeholder — overridden per-call
-  analytics: true,  // Enable for Upstash dashboard visibility
-  timeout: 3000,    // 3s — fail open if Redis is unresponsive
+  analytics: true, // Enable for Upstash dashboard visibility
+  timeout: 3000, // 3s — fail open if Redis is unresponsive
 })
 ```
 
@@ -232,12 +235,12 @@ Keys are composite strings built from the resolved identifiers:
 nikah-help:{endpoint}:{key_type}:{key_value}
 ```
 
-| Part | Value | Example |
-|---|---|---|
-| `nikah-help` | Fixed namespace | `nikah-help` |
-| `{endpoint}` | Route path, normalized | `api/photos/stream`, `api/auth/callback` |
-| `{key_type}` | `ip`, `user`, or `ip+user` | `user` |
-| `{key_value}` | Hashed identifier | `sha256(192.168.1.1)` for IP, `user_id` for user |
+| Part          | Value                      | Example                                          |
+| ------------- | -------------------------- | ------------------------------------------------ |
+| `nikah-help`  | Fixed namespace            | `nikah-help`                                     |
+| `{endpoint}`  | Route path, normalized     | `api/photos/stream`, `api/auth/callback`         |
+| `{key_type}`  | `ip`, `user`, or `ip+user` | `user`                                           |
+| `{key_value}` | Hashed identifier          | `sha256(192.168.1.1)` for IP, `user_id` for user |
 
 When `keyStrategy = 'ip+user'`, two separate keys are checked (AND logic — both must be under limit). This prevents a single IP from exhausting a user's quota and vice versa.
 
@@ -317,7 +320,7 @@ function normalizePath(pathname: string): string {
   return pathname
     .replace(/^\/api\//, '')
     .replace(/\/[0-9a-f-]{36}/g, ':id') // UUID → :id
-    .replace(/\//g, '.')                  // / → .
+    .replace(/\//g, '.') // / → .
 }
 
 async function resolveUserId(request: NextRequest): Promise<string | null> {
@@ -330,6 +333,7 @@ async function resolveUserId(request: NextRequest): Promise<string | null> {
 ### TTL Strategy
 
 The sliding window implementation in `@upstash/ratelimit` handles TTL automatically:
+
 - Each request increments a counter with the configured window as TTL
 - When the window expires, the counter is automatically cleaned up by Redis
 - No manual cleanup needed — no `pg_cron` job for rate limit keys
@@ -365,11 +369,13 @@ response.headers.set('X-RateLimit-Reset', String(result.reset))
 ```
 
 On 429, additionally:
+
 ```
 Retry-After: <seconds until reset>
 ```
 
 These headers enable:
+
 - Frontend: show remaining quota in dev tools
 - Load testing: verify limits are enforced
 - Mobile clients: back off before hitting 429
@@ -377,11 +383,11 @@ These headers enable:
 
 ### Error Codes
 
-| Code | Default For | Customizable? |
-|---|---|---|
+| Code                           | Default For       | Customizable?                     |
+| ------------------------------ | ----------------- | --------------------------------- |
 | `RATE_LIMIT_TOO_MANY_REQUESTS` | Generic limit hit | Yes — pass `errorCode` in options |
-| `RATE_LIMIT_AUTH_CALLBACK` | Auth callback | Yes |
-| `RATE_LIMIT_MESSAGE_SEND` | Message sending | Yes |
+| `RATE_LIMIT_AUTH_CALLBACK`     | Auth callback     | Yes                               |
+| `RATE_LIMIT_MESSAGE_SEND`      | Message sending   | Yes                               |
 
 Custom error codes from `09-error-handling.md` (like `BIO_RATE_LIMITED`, `REPORT_RATE_LIMITED`) are used when the limit is a **business rule** (3 bio regenerations per 24h), not an infrastructure rule. Those go through `AppError`, not the rate limiter wrapper.
 
@@ -396,20 +402,17 @@ Custom error codes from `09-error-handling.md` (like `BIO_RATE_LIMITED`, `REPORT
 import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
 import { AUTH_STRICT } from '@/lib/ratelimit/presets'
 
-export const GET = withRateLimit(
-  async (request: NextRequest) => {
-    const { searchParams } = new URL(request.url)
-    const code = searchParams.get('code')
+export const GET = withRateLimit(async (request: NextRequest) => {
+  const { searchParams } = new URL(request.url)
+  const code = searchParams.get('code')
 
-    if (!code) {
-      return NextResponse.redirect(new URL('/auth?error=auth_callback_failed', request.url))
-    }
+  if (!code) {
+    return NextResponse.redirect(new URL('/auth?error=auth_callback_failed', request.url))
+  }
 
-    // ... exchange code for session
-    return NextResponse.redirect(new URL('/feed', request.url))
-  },
-  AUTH_STRICT,
-)
+  // ... exchange code for session
+  return NextResponse.redirect(new URL('/feed', request.url))
+}, AUTH_STRICT)
 ```
 
 ### Example 2: Authenticated Action (User-based, moderate)
@@ -420,18 +423,15 @@ import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
 import { ACTION_MODERATE } from '@/lib/ratelimit/presets'
 
 // app/api/likes/send/route.ts
-export const POST = withRateLimit(
-  async (request: NextRequest) => {
-    const user = await getAuthenticatedUser(request) // Throws AUTH_UNAUTHORIZED if no session
-    const { targetUserId } = await request.json()
+export const POST = withRateLimit(async (request: NextRequest) => {
+  const user = await getAuthenticatedUser(request) // Throws AUTH_UNAUTHORIZED if no session
+  const { targetUserId } = await request.json()
 
-    // Business logic — throws AppError on limit, block, etc.
-    await sendLike(user.id, targetUserId)
+  // Business logic — throws AppError on limit, block, etc.
+  await sendLike(user.id, targetUserId)
 
-    return NextResponse.json({ success: true })
-  },
-  ACTION_MODERATE,
-)
+  return NextResponse.json({ success: true })
+}, ACTION_MODERATE)
 ```
 
 ### Example 3: Chat Messages (User-based, with custom error code)
@@ -441,15 +441,12 @@ export const POST = withRateLimit(
 import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
 import { MESSAGE_SEND } from '@/lib/ratelimit/presets'
 
-export const POST = withRateLimit(
-  async (request: NextRequest) => {
-    const user = await getAuthenticatedUser(request)
-    const body = await request.json()
-    const message = await sendMessage(user.id, body)
-    return NextResponse.json(message)
-  },
-  MESSAGE_SEND,
-)
+export const POST = withRateLimit(async (request: NextRequest) => {
+  const user = await getAuthenticatedUser(request)
+  const body = await request.json()
+  const message = await sendMessage(user.id, body)
+  return NextResponse.json(message)
+}, MESSAGE_SEND)
 ```
 
 ### Example 4: Read-Heavy Endpoint (ip+user)
@@ -459,16 +456,13 @@ export const POST = withRateLimit(
 import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
 import { READ_GENEROUS } from '@/lib/ratelimit/presets'
 
-export const GET = withRateLimit(
-  async (request: NextRequest) => {
-    const user = await getAuthenticatedUser(request)
-    const { photoId, variant, fmt } = parseParams(request)
+export const GET = withRateLimit(async (request: NextRequest) => {
+  const user = await getAuthenticatedUser(request)
+  const { photoId, variant, fmt } = parseParams(request)
 
-    // ... stream photo bytes
-    return new Response(file, { headers: { 'Content-Type': contentType } })
-  },
-  READ_GENEROUS,
-)
+  // ... stream photo bytes
+  return new Response(file, { headers: { 'Content-Type': contentType } })
+}, READ_GENEROUS)
 ```
 
 ### Example 5: Custom Configuration (inline)
@@ -509,10 +503,10 @@ export async function sendLike(targetUserId: string) {
   if (!claims) throw new AppError('AUTH_UNAUTHORIZED')
 
   // Rate limit check
-  const { success } = await ratelimit.limit(
-    [`nikah-help:likes.send:user:${claims.sub}`],
-    { limit: 30, window: 60 },
-  )
+  const { success } = await ratelimit.limit([`nikah-help:likes.send:user:${claims.sub}`], {
+    limit: 30,
+    window: 60,
+  })
   if (!success) {
     throw new AppError('RATE_LIMIT_TOO_MANY_REQUESTS')
   }
@@ -567,6 +561,7 @@ This avoids a DB round-trip in the rate limiter — the role is already resolved
 ### Unauthenticated User Handling
 
 When `keyStrategy = 'user'` or `ip+user` and no user ID is available:
+
 - `resolveKeys()` falls back to IP-only for that key slot
 - The `x-user-id` header is not set by `proxy.ts` for unauthenticated routes (public routes bypass the proxy)
 - This means unauthenticated requests are effectively IP-limited, which is the correct behavior
@@ -580,15 +575,18 @@ When `keyStrategy = 'user'` or `ip+user` and no user ID is available:
 // This prevents Redis outage from taking down the entire API.
 
 // In the wrapper's catch block:
-console.warn(JSON.stringify({
-  level: 'warn',
-  message: 'Rate limiter unavailable, failing open',
-  error: (error as Error).message,
-}))
+console.warn(
+  JSON.stringify({
+    level: 'warn',
+    message: 'Rate limiter unavailable, failing open',
+    error: (error as Error).message,
+  }),
+)
 return handler(request, context)
 ```
 
 Trade-off: during a Redis outage, rate limiting is disabled. This is acceptable because:
+
 - Redis outage is rare (Upstash SLA: 99.99%)
 - Blocking all requests would be far worse than allowing them
 - The 3s timeout prevents request queuing from overwhelming the server
@@ -599,11 +597,11 @@ Trade-off: during a Redis outage, rate limiting is disabled. This is acceptable 
 
 ### Latency Budget
 
-| Component | Target |
-|---|---|
-| Upstash Redis round-trip (HTTP) | < 10ms (same region) |
-| `resolveKeys()` (no DB queries) | < 0.1ms |
-| `withRateLimit()` overhead (total) | < 15ms |
+| Component                          | Target               |
+| ---------------------------------- | -------------------- |
+| Upstash Redis round-trip (HTTP)    | < 10ms (same region) |
+| `resolveKeys()` (no DB queries)    | < 0.1ms              |
+| `withRateLimit()` overhead (total) | < 15ms               |
 
 ### Optimizations
 
@@ -627,18 +625,20 @@ Every rate limit hit logs structured data:
 
 ```typescript
 // Inside the wrapper, when result.success === false:
-console.warn(JSON.stringify({
-  level: 'warn',
-  event: 'rate_limit.hit',
-  code: options.errorCode ?? 'RATE_LIMIT_TOO_MANY_REQUESTS',
-  path: request.nextUrl.pathname,
-  keys: keys.map(k => `${k.prefix}:${obfuscate(k.value)}`),
-  limit: options.limit,
-  window: options.window,
-  remaining: result.remaining,
-  reset: result.reset,
-  timestamp: new Date().toISOString(),
-}))
+console.warn(
+  JSON.stringify({
+    level: 'warn',
+    event: 'rate_limit.hit',
+    code: options.errorCode ?? 'RATE_LIMIT_TOO_MANY_REQUESTS',
+    path: request.nextUrl.pathname,
+    keys: keys.map((k) => `${k.prefix}:${obfuscate(k.value)}`),
+    limit: options.limit,
+    window: options.window,
+    remaining: result.remaining,
+    reset: result.reset,
+    timestamp: new Date().toISOString(),
+  }),
+)
 ```
 
 ### What NOT to log
@@ -651,6 +651,7 @@ console.warn(JSON.stringify({
 ### Metrics
 
 Upstash dashboard provides:
+
 - Request count per key
 - Blocked vs allowed ratio
 - P99 latency
@@ -665,12 +666,12 @@ Additional monitoring via a periodic Vercel Cron job:
 
 ### Alert Thresholds
 
-| Condition | Action |
-|---|---|
-| Single IP blocked > 100 times in 5 min | Slack alert (possible abuse) |
-| Single user blocked > 50 times in 5 min | Slack alert (possible automation) |
+| Condition                                | Action                                   |
+| ---------------------------------------- | ---------------------------------------- |
+| Single IP blocked > 100 times in 5 min   | Slack alert (possible abuse)             |
+| Single user blocked > 50 times in 5 min  | Slack alert (possible automation)        |
 | Overall block rate > 10% of all requests | Slack alert (misconfiguration or attack) |
-| Redis connection errors > 5 in 5 min | Pager alert (Upstash outage) |
+| Redis connection errors > 5 in 5 min     | Pager alert (Upstash outage)             |
 
 ---
 
@@ -726,14 +727,14 @@ Limits are configuration, not code. To change a limit, update the preset:
 ```typescript
 // Before
 export const MESSAGE_SEND: RateLimitOptions = {
-  limit: 30,   // 30 messages per minute
+  limit: 30, // 30 messages per minute
   window: 60,
   // ...
 }
 
 // After — double the throughput
 export const MESSAGE_SEND: RateLimitOptions = {
-  limit: 60,   // 60 messages per minute
+  limit: 60, // 60 messages per minute
   window: 60,
   // ...
 }
@@ -773,7 +774,9 @@ if (process.env.NEXT_PUBLIC_POSTHOG_KEY) {
         // No PII — only hashed keys
       },
     }),
-  }).catch(() => { /* ignore */ })
+  }).catch(() => {
+    /* ignore */
+  })
 }
 ```
 
@@ -797,4 +800,4 @@ lib/ratelimit/
 
 - [00 — Overview & Architecture Principles](./00-overview.md) — Upstash Redis in tech stack
 - [07 — Infrastructure, Testing & i18n](./07-infrastructure.md) — Vercel Cron jobs
-- [09 — Error Handling System](./09-error-handling.md) — RATE_LIMIT_* error codes
+- [09 — Error Handling System](./09-error-handling.md) — RATE*LIMIT*\* error codes

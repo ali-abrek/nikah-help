@@ -7,9 +7,10 @@ This file defines the complete idempotency system for the Nikah Help API — a r
 **Target audience:** AI development agents (Claude Code) and senior fullstack engineers.
 
 > **MANDATORY OBSERVABILITY (idempotency):** Idempotency conflicts on payment webhooks are a fraud/replay signal. Per [14-sentry-observability.md](14-sentry-observability.md):
-> * `flow=payments.webhook` with `reason=conflict` — webhook idempotency conflict. Severity: warning.
-> * Failure to reach Upstash for the idempotency lookup itself: `flow=ratelimit.infra` (shared infra). Severity: error.
-> * Idempotency key, `provider_payment_id`, and route are acceptable tags. Request bodies MUST NOT be sent.
+>
+> - `flow=payments.webhook` with `reason=conflict` — webhook idempotency conflict. Severity: warning.
+> - Failure to reach Upstash for the idempotency lookup itself: `flow=ratelimit.infra` (shared infra). Severity: error.
+> - Idempotency key, `provider_payment_id`, and route are acceptable tags. Request bodies MUST NOT be sent.
 
 ---
 
@@ -91,7 +92,7 @@ export function withIdempotency<T>(
   handler: (request: NextRequest, context: T) => Promise<NextResponse>,
   options: IdempotencyOptions = {},
 ) {
-  const ttl = options.ttl ?? 86_400       // 24 hours
+  const ttl = options.ttl ?? 86_400 // 24 hours
   const timeout = options.timeout ?? 30_000 // 30 seconds
   const required = options.required ?? false
 
@@ -164,17 +165,18 @@ export function withIdempotency<T>(
       throw new AppError('IDEMPOTENCY_CONFLICT', {
         logContext: { redisKey, timeout },
       })
-
     } catch (error) {
       if (error instanceof AppError) {
         return handleRouteError(error)
       }
       // Redis failure — fail open, proceed without idempotency
-      console.warn(JSON.stringify({
-        level: 'warn',
-        message: 'Idempotency store unavailable, failing open',
-        error: (error as Error).message,
-      }))
+      console.warn(
+        JSON.stringify({
+          level: 'warn',
+          message: 'Idempotency store unavailable, failing open',
+          error: (error as Error).message,
+        }),
+      )
       return handler(request, context)
     }
   }
@@ -219,22 +221,22 @@ import type { IdempotencyOptions } from './types'
 /** Payment endpoints — idempotency is critical. Key is mandatory. */
 export const PAYMENT_CRITICAL: IdempotencyOptions = {
   required: true,
-  ttl: 86_400,    // 24 hours — T-Bank order expiry window
+  ttl: 86_400, // 24 hours — T-Bank order expiry window
   timeout: 60_000, // 60 seconds — payments can be slow
 }
 
 /** User actions — likes, blocks, reports. Best-effort idempotency. */
 export const USER_ACTION: IdempotencyOptions = {
   required: false,
-  ttl: 3600,       // 1 hour
-  timeout: 10_000,  // 10 seconds
+  ttl: 3600, // 1 hour
+  timeout: 10_000, // 10 seconds
 }
 
 /** Chat messages — recommended but not critical. */
 export const MESSAGE_SEND: IdempotencyOptions = {
   required: false,
-  ttl: 600,         // 10 minutes
-  timeout: 5_000,    // 5 seconds
+  ttl: 600, // 10 minutes
+  timeout: 5_000, // 5 seconds
 }
 ```
 
@@ -248,12 +250,12 @@ export const MESSAGE_SEND: IdempotencyOptions = {
 idempotency:{scope}:{userId}:{uuid}
 ```
 
-| Part | Value | Example |
-|---|---|---|
-| `idempotency` | Fixed prefix | `idempotency` |
-| `{scope}` | `user` (authenticated) or `ip` (unauthenticated) | `user` |
-| `{userId}` | User ID from `x-user-id` header, or hashed IP for unauthenticated | `a1b2c3d4...` |
-| `{uuid}` | Client-provided UUID v4 | `550e8400-e29b-41d4-a716-446655440000` |
+| Part          | Value                                                             | Example                                |
+| ------------- | ----------------------------------------------------------------- | -------------------------------------- |
+| `idempotency` | Fixed prefix                                                      | `idempotency`                          |
+| `{scope}`     | `user` (authenticated) or `ip` (unauthenticated)                  | `user`                                 |
+| `{userId}`    | User ID from `x-user-id` header, or hashed IP for unauthenticated | `a1b2c3d4...`                          |
+| `{uuid}`      | Client-provided UUID v4                                           | `550e8400-e29b-41d4-a716-446655440000` |
 
 Full key example: `idempotency:user:a1b2c3d4-e5f6-7890:550e8400-e29b-41d4-a716-446655440000`
 
@@ -267,10 +269,7 @@ import { AppError } from '@/lib/errors/app-error'
 
 const UUID_V4_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-export async function resolveIdempotencyKey(
-  request: NextRequest,
-  key: string,
-): Promise<string> {
+export async function resolveIdempotencyKey(request: NextRequest, key: string): Promise<string> {
   // 1. Validate UUID v4 format
   const trimmed = key.trim()
   if (!UUID_V4_RE.test(trimmed)) {
@@ -370,11 +369,7 @@ interface StoredResponse {
  * Store the successful response in Redis.
  * Overwrites the "pending" marker with the full serialized response.
  */
-export async function storeResult(
-  key: string,
-  response: NextResponse,
-  ttl: number,
-): Promise<void> {
+export async function storeResult(key: string, response: NextResponse, ttl: number): Promise<void> {
   const body = await response.clone().text()
 
   const stored: StoredResponse = {
@@ -429,7 +424,7 @@ export async function waitForResult(
 }
 
 function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
+  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 ```
 
@@ -505,17 +500,18 @@ export function filterHeaders(headers: Headers): Record<string, string> {
 
 ### Error Codes
 
-| Code | HTTP | Meaning |
-|---|---|---|
-| `IDEMPOTENCY_KEY_MISSING` | 422 | `Idempotency-Key` header is required but missing (only when `required: true`) |
-| `IDEMPOTENCY_KEY_INVALID` | 422 | `Idempotency-Key` is not a valid UUID v4 |
-| `IDEMPOTENCY_CONFLICT` | 409 | A concurrent request with the same key is still processing and timed out. Client should generate a new key and retry. |
+| Code                      | HTTP | Meaning                                                                                                               |
+| ------------------------- | ---- | --------------------------------------------------------------------------------------------------------------------- |
+| `IDEMPOTENCY_KEY_MISSING` | 422  | `Idempotency-Key` header is required but missing (only when `required: true`)                                         |
+| `IDEMPOTENCY_KEY_INVALID` | 422  | `Idempotency-Key` is not a valid UUID v4                                                                              |
+| `IDEMPOTENCY_CONFLICT`    | 409  | A concurrent request with the same key is still processing and timed out. Client should generate a new key and retry. |
 
 These codes are defined in the [error code registry](./09-error-handling.md#code-registry).
 
 ### Response Examples
 
 **Missing key (required endpoint):**
+
 ```json
 {
   "code": "IDEMPOTENCY_KEY_MISSING",
@@ -526,6 +522,7 @@ These codes are defined in the [error code registry](./09-error-handling.md#code
 ```
 
 **Invalid key format:**
+
 ```json
 {
   "code": "IDEMPOTENCY_KEY_INVALID",
@@ -536,6 +533,7 @@ These codes are defined in the [error code registry](./09-error-handling.md#code
 ```
 
 **Concurrent request timeout:**
+
 ```json
 {
   "code": "IDEMPOTENCY_CONFLICT",
@@ -586,13 +584,11 @@ async function handler(request: NextRequest): Promise<NextResponse> {
   // ... payment logic
 }
 
-export const POST = withRateLimit(
-  withIdempotency(handler, PAYMENT_CRITICAL),
-  ACTION_MODERATE,
-)
+export const POST = withRateLimit(withIdempotency(handler, PAYMENT_CRITICAL), ACTION_MODERATE)
 ```
 
 Rationale:
+
 1. **Rate limit first.** If an attacker floods requests with different idempotency keys, rate limiting catches it before idempotency touches Redis. Rate limiting is cheaper (single counter increment) than idempotency (lock acquisition + potential polling).
 2. **Idempotency second.** Once rate limiting passes, idempotency ensures the handler runs at most once per key.
 3. **Error handling inner.** The idempotency wrapper catches handler errors and releases the lock. The rate limit wrapper catches AppError from idempotency key validation (422) and returns a proper error response.
@@ -687,13 +683,11 @@ async function handler(request: NextRequest): Promise<NextResponse> {
 }
 
 // Rate limit outer, idempotency inner
-export const POST = withRateLimit(
-  withIdempotency(handler, PAYMENT_CRITICAL),
-  ACTION_MODERATE,
-)
+export const POST = withRateLimit(withIdempotency(handler, PAYMENT_CRITICAL), ACTION_MODERATE)
 ```
 
 Client usage:
+
 ```typescript
 const key = generateIdempotencyKey()
 
@@ -732,10 +726,7 @@ async function handler(request: NextRequest): Promise<NextResponse> {
   return NextResponse.json({ success: true })
 }
 
-export const POST = withRateLimit(
-  withIdempotency(handler, USER_ACTION),
-  ACTION_MODERATE,
-)
+export const POST = withRateLimit(withIdempotency(handler, USER_ACTION), ACTION_MODERATE)
 ```
 
 ### Example 3: Send Message (recommended)
@@ -757,10 +748,7 @@ async function handler(request: NextRequest): Promise<NextResponse> {
   return NextResponse.json(message, { status: 201 })
 }
 
-export const POST = withRateLimit(
-  withIdempotency(handler, IDEMPOTENCY_MESSAGE),
-  RATELIMIT_MESSAGE,
-)
+export const POST = withRateLimit(withIdempotency(handler, IDEMPOTENCY_MESSAGE), RATELIMIT_MESSAGE)
 ```
 
 ---
@@ -774,6 +762,7 @@ Keys are scoped by user ID: `idempotency:user:{userId}:{uuid}`. Two users genera
 ### Key Enumeration
 
 An attacker cannot enumerate idempotency keys to discover other users' operations:
+
 - Keys contain UUIDs, which are unguessable
 - Even if an attacker knows a UUID, they'd need the target user's ID to construct the full key
 - Redis is not directly exposed to clients
@@ -781,6 +770,7 @@ An attacker cannot enumerate idempotency keys to discover other users' operation
 ### Replay Attacks
 
 Stored results are safe to replay:
+
 - Only 2xx responses are cached — never auth tokens or session cookies
 - `Set-Cookie` headers are never cached (not in the allowlist)
 - Result TTL is capped at 24 hours; keys auto-expire
@@ -789,15 +779,18 @@ Stored results are safe to replay:
 
 ```typescript
 // In the wrapper's catch block:
-console.warn(JSON.stringify({
-  level: 'warn',
-  message: 'Idempotency store unavailable, failing open',
-  error: (error as Error).message,
-}))
+console.warn(
+  JSON.stringify({
+    level: 'warn',
+    message: 'Idempotency store unavailable, failing open',
+    error: (error as Error).message,
+  }),
+)
 return handler(request, context)
 ```
 
 During a Redis outage, idempotency is disabled and requests proceed without deduplication. This is acceptable because:
+
 - Redis outage is rare (Upstash SLA: 99.99%)
 - Blocking all mutations would be far worse than risking a duplicate
 - Critical payment endpoints have additional idempotency at the T-Bank API level
@@ -808,13 +801,13 @@ During a Redis outage, idempotency is disabled and requests proceed without dedu
 
 ### Latency Budget
 
-| Component | Target |
-|---|---|
-| `resolveIdempotencyKey()` (no DB) | < 0.1ms |
-| `acquireLock()` — Redis SETNX + EXPIRE (Lua) | < 5ms |
-| `storeResult()` — Redis SET | < 5ms |
-| `waitForResult()` — poll loop (50ms intervals) | 0–30s |
-| `withIdempotency()` overhead (lock acquired) | < 10ms |
+| Component                                      | Target  |
+| ---------------------------------------------- | ------- |
+| `resolveIdempotencyKey()` (no DB)              | < 0.1ms |
+| `acquireLock()` — Redis SETNX + EXPIRE (Lua)   | < 5ms   |
+| `storeResult()` — Redis SET                    | < 5ms   |
+| `waitForResult()` — poll loop (50ms intervals) | 0–30s   |
+| `withIdempotency()` overhead (lock acquired)   | < 10ms  |
 
 ### Optimizations
 
@@ -832,42 +825,52 @@ During a Redis outage, idempotency is disabled and requests proceed without dedu
 
 ```typescript
 // Lock acquired → debug level
-console.debug(JSON.stringify({
-  level: 'debug',
-  event: 'idempotency.lock_acquired',
-  key: obfuscate(redisKey),
-  ttl,
-}))
+console.debug(
+  JSON.stringify({
+    level: 'debug',
+    event: 'idempotency.lock_acquired',
+    key: obfuscate(redisKey),
+    ttl,
+  }),
+)
 
 // Lock not acquired → info level (concurrent request)
-console.info(JSON.stringify({
-  level: 'info',
-  event: 'idempotency.lock_conflict',
-  key: obfuscate(redisKey),
-}))
+console.info(
+  JSON.stringify({
+    level: 'info',
+    event: 'idempotency.lock_conflict',
+    key: obfuscate(redisKey),
+  }),
+)
 
 // Result served from cache → info level
-console.info(JSON.stringify({
-  level: 'info',
-  event: 'idempotency.cache_hit',
-  key: obfuscate(redisKey),
-}))
+console.info(
+  JSON.stringify({
+    level: 'info',
+    event: 'idempotency.cache_hit',
+    key: obfuscate(redisKey),
+  }),
+)
 
 // Timeout waiting for result → warn level
-console.warn(JSON.stringify({
-  level: 'warn',
-  event: 'idempotency.timeout',
-  key: obfuscate(redisKey),
-  timeout,
-}))
+console.warn(
+  JSON.stringify({
+    level: 'warn',
+    event: 'idempotency.timeout',
+    key: obfuscate(redisKey),
+    timeout,
+  }),
+)
 
 // Redis failure → warn level
-console.warn(JSON.stringify({
-  level: 'warn',
-  event: 'idempotency.redis_failure',
-  action: 'fail_open',
-  error: (error as Error).message,
-}))
+console.warn(
+  JSON.stringify({
+    level: 'warn',
+    event: 'idempotency.redis_failure',
+    action: 'fail_open',
+    error: (error as Error).message,
+  }),
+)
 ```
 
 ### What NOT to log
@@ -879,10 +882,10 @@ console.warn(JSON.stringify({
 
 ### Alert Thresholds
 
-| Condition | Action |
-|---|---|
-| `idempotency.timeout` > 10 in 5 min | Slack alert (handler is too slow or stuck) |
-| `idempotency.redis_failure` > 5 in 5 min | Pager alert (Upstash outage) |
+| Condition                                                 | Action                                                   |
+| --------------------------------------------------------- | -------------------------------------------------------- |
+| `idempotency.timeout` > 10 in 5 min                       | Slack alert (handler is too slow or stuck)               |
+| `idempotency.redis_failure` > 5 in 5 min                  | Pager alert (Upstash outage)                             |
 | Single user with > 100 distinct idempotency keys in 5 min | Slack alert (possible abuse — generating excessive keys) |
 
 ---
@@ -900,10 +903,14 @@ const bodyHash = createHash('sha256')
   .digest('hex')
 
 // Store alongside the result:
-await redis.set(key, JSON.stringify({
-  ...stored,
-  bodyHash,
-}), { ex: ttl })
+await redis.set(
+  key,
+  JSON.stringify({
+    ...stored,
+    bodyHash,
+  }),
+  { ex: ttl },
+)
 
 // On cache hit, verify the body matches:
 if (cached.bodyHash !== bodyHash) {
@@ -921,8 +928,8 @@ The `IdempotencyOptions` already supports `ttl`. For dynamic TTL based on endpoi
 // Short TTL for non-critical operations
 export const REPORT_SUBMIT: IdempotencyOptions = {
   required: false,
-  ttl: 300,        // 5 minutes
-  timeout: 5_000,   // 5 seconds
+  ttl: 300, // 5 minutes
+  timeout: 5_000, // 5 seconds
 }
 ```
 
@@ -958,5 +965,5 @@ lib/idempotency/
 - [00 — Overview & Architecture Principles](./00-overview.md) — Upstash Redis in tech stack
 - [05 — Payments (T-Bank)](./05-payments.md) — payment idempotency requirements
 - [07 — Infrastructure, Testing & i18n](./07-infrastructure.md) — Vercel Cron jobs, monitoring
-- [09 — Error Handling System](./09-error-handling.md) — IDEMPOTENCY_* error codes, AppError class
+- [09 — Error Handling System](./09-error-handling.md) — IDEMPOTENCY\_\* error codes, AppError class
 - [10 — Rate Limiting System](./10-rate-limiting.md) — withRateLimit() wrapper, composition order

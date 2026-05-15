@@ -22,7 +22,7 @@ This file is the canonical registry. Every value that affects image generation o
 // ── Formats ──────────────────────────────────────────────────────
 
 export const FORMATS = ['avif', 'webp'] as const
-export type ImageFormat = typeof FORMATS[number]
+export type ImageFormat = (typeof FORMATS)[number]
 
 // ── Compression ──────────────────────────────────────────────────
 
@@ -50,13 +50,7 @@ export const UPLOAD = {
   minShortSide: 1000,
 
   /** Accepted MIME types for the file input and server validation. */
-  acceptedMimeTypes: [
-    'image/jpeg',
-    'image/png',
-    'image/webp',
-    'image/avif',
-    'image/heic',
-  ] as const,
+  acceptedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/heic'] as const,
 
   /** Maximum number of photos per profile. Enforced by DB trigger. */
   maxPhotosPerProfile: 6,
@@ -226,14 +220,14 @@ export type PublicVariant = NonNullable<VariantConfig['publicName']>
 
 /** Variants that are directly requestable via ?variant= query param. */
 export const PUBLIC_VARIANTS = Object.values(PHOTO_VARIANTS)
-  .filter(v => v.publicName !== null)
-  .map(v => v.publicName!) as PublicVariant[]
+  .filter((v) => v.publicName !== null)
+  .map((v) => v.publicName!) as PublicVariant[]
 
 // ── Lookup Helpers ────────────────────────────────────────────────
 
 /** Get variant config by its public name. */
 export function getVariantByPublicName(name: PublicVariant): VariantConfig {
-  const variant = Object.values(PHOTO_VARIANTS).find(v => v.publicName === name)
+  const variant = Object.values(PHOTO_VARIANTS).find((v) => v.publicName === name)
   if (!variant) throw new Error(`Unknown public variant: ${name}`)
   return variant
 }
@@ -302,13 +296,14 @@ export function buildVariantsJsonb(
 
 ### Why `fileSuffix` and `jsonbKey` Are Separate
 
-| Context | Format | Example |
-|---|---|---|
-| Storage path (file name) | Hyphenated suffix | `{userId}/{photoId}-cover-blurred.avif` |
-| `photos.variants` jsonb column | Underscore key | `{ "cover_blurred": { "avif": "...", "webp": "..." } }` |
+| Context                          | Format                 | Example                                                          |
+| -------------------------------- | ---------------------- | ---------------------------------------------------------------- |
+| Storage path (file name)         | Hyphenated suffix      | `{userId}/{photoId}-cover-blurred.avif`                          |
+| `photos.variants` jsonb column   | Underscore key         | `{ "cover_blurred": { "avif": "...", "webp": "..." } }`          |
 | Stream handler `?variant=` param | Underscore public name | `?variant=cover` (server resolves to `cover_blurred` internally) |
 
 This distinction is intentional:
+
 - **Hyphens in file names** — URL-friendly, readable in Supabase Storage dashboard
 - **Underscores in jsonb keys** — valid JavaScript/TypeScript property access: `variants.cover_blurred.avif`
 - **Public names** — short, user-visible in API URLs
@@ -317,13 +312,13 @@ This distinction is intentional:
 
 ## Requirement: Variant Quick Reference
 
-| Variant | Dimensions | Ratio | Fit | Blur | AVIF Q | WebP Q | Cache |
-|---|---|---|---|---|---|---|---|
-| `avatar` | 100 × 100 | 1:1 | cover | — | 60 | 80 | `private, max-age=3600, immutable` |
-| `cover` | 400 × 500 | 4:5 | cover | — | 60 | 80 | `private, no-store` |
-| `cover_blurred` | 400 × 500 | 4:5 | cover | σ=40 | 60 | 80 | `private, no-store` |
-| `full` | 1200 × 1500 max | 4:5 | inside | — | 60 | 80 | `private, no-store` |
-| `full_blurred` | 1200 × 1500 max | 4:5 | inside | σ=60 | 60 | 80 | `private, no-store` |
+| Variant         | Dimensions      | Ratio | Fit    | Blur | AVIF Q | WebP Q | Cache                              |
+| --------------- | --------------- | ----- | ------ | ---- | ------ | ------ | ---------------------------------- |
+| `avatar`        | 100 × 100       | 1:1   | cover  | —    | 60     | 80     | `private, max-age=3600, immutable` |
+| `cover`         | 400 × 500       | 4:5   | cover  | —    | 60     | 80     | `private, no-store`                |
+| `cover_blurred` | 400 × 500       | 4:5   | cover  | σ=40 | 60     | 80     | `private, no-store`                |
+| `full`          | 1200 × 1500 max | 4:5   | inside | —    | 60     | 80     | `private, no-store`                |
+| `full_blurred`  | 1200 × 1500 max | 4:5   | inside | σ=60 | 60     | 80     | `private, no-store`                |
 
 **Total: 5 variants × 2 formats = 10 files per photo.**
 
@@ -549,8 +544,7 @@ export async function POST(request: NextRequest) {
       .replace('{userId}', userId)
       .replace('{photoId}', photoId)
 
-    const { data: file, error: downloadError } = await supabase
-      .storage
+    const { data: file, error: downloadError } = await supabase.storage
       .from(STORAGE.bucket)
       .download(originalPath)
 
@@ -567,27 +561,25 @@ export async function POST(request: NextRequest) {
     await validateUpload(buffer)
 
     // 3. Mark as processing
-    await supabase
-      .from('photos')
-      .update({ status: 'processing' })
-      .eq('id', photoId)
+    await supabase.from('photos').update({ status: 'processing' }).eq('id', photoId)
 
     // 4. Generate all variants
     const result = await processImage(buffer, userId, photoId)
 
     // 5. Upload all 10 variant files
     for (const file of result.files) {
-      const { error: uploadError } = await supabase
-        .storage
+      const { error: uploadError } = await supabase.storage
         .from(STORAGE.bucket)
         .upload(file.path, file.buffer, {
           contentType: file.contentType,
-          cacheControl: PHOTO_VARIANTS[
-            Object.keys(PHOTO_VARIANTS).find(
-              k => PHOTO_VARIANTS[k].fileSuffix ===
-                file.path.split('/').pop()?.split('.')[0]?.replace(`${photoId}-`, '')
-            ) ?? 'avatar'
-          ].cacheControl,
+          cacheControl:
+            PHOTO_VARIANTS[
+              Object.keys(PHOTO_VARIANTS).find(
+                (k) =>
+                  PHOTO_VARIANTS[k].fileSuffix ===
+                  file.path.split('/').pop()?.split('.')[0]?.replace(`${photoId}-`, ''),
+              ) ?? 'avatar'
+            ].cacheControl,
           upsert: true,
         })
 
@@ -600,10 +592,7 @@ export async function POST(request: NextRequest) {
     }
 
     // 6. Delete original from Storage
-    await supabase
-      .storage
-      .from(STORAGE.bucket)
-      .remove([originalPath])
+    await supabase.storage.from(STORAGE.bucket).remove([originalPath])
 
     // 7. Update photos row: mark processed, store variant paths, clear storage_path
     await supabase
@@ -617,7 +606,6 @@ export async function POST(request: NextRequest) {
       .eq('id', photoId)
 
     return NextResponse.json({ success: true, photoId })
-
   } catch (error) {
     return handleRouteError(error)
   }
@@ -658,9 +646,10 @@ export async function GET(request: NextRequest) {
     const fmt = searchParams.get('fmt') as ImageFormat | null
 
     // Validate params
-    if (!photoId) throw new AppError('VALIDATION_INVALID_INPUT', {
-      details: { photoId: 'Required' },
-    })
+    if (!photoId)
+      throw new AppError('VALIDATION_INVALID_INPUT', {
+        details: { photoId: 'Required' },
+      })
     if (!variantParam || !['avatar', 'cover', 'full'].includes(variantParam)) {
       throw new AppError('VALIDATION_INVALID_INPUT', {
         details: { variant: 'Must be avatar, cover, or full' },
@@ -698,10 +687,7 @@ export async function GET(request: NextRequest) {
     }
 
     // 5. Download from Storage
-    const { data: file, error } = await supabase
-      .storage
-      .from(STORAGE.bucket)
-      .download(path)
+    const { data: file, error } = await supabase.storage.from(STORAGE.bucket).download(path)
 
     if (error || !file) {
       throw new AppError('PHOTO_DOWNLOAD_FAILED', {
@@ -720,7 +706,6 @@ export async function GET(request: NextRequest) {
         'X-Robots-Tag': 'noindex, nofollow',
       },
     })
-
   } catch (error) {
     return handleRouteError(error)
   }
@@ -838,7 +823,7 @@ export function PhotoGrid({ photos, isOwner }: PhotoGridProps) {
         gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
       }}
     >
-      {photos.map(photo => (
+      {photos.map((photo) => (
         <Photo
           key={photo.id}
           photoId={photo.id}
@@ -884,26 +869,28 @@ describe('processImage', () => {
     // Create a 2000×2500 test image (4:5 ratio) with solid color
     const testImage = await sharp({
       create: { width: 2000, height: 2500, channels: 3, background: '#4488cc' },
-    }).jpeg().toBuffer()
+    })
+      .jpeg()
+      .toBuffer()
 
     const result = await processImage(testImage, userId, photoId)
 
     // 5 variants × 2 formats = 10 files
-    expect(result.files).toHaveLength(
-      Object.keys(PHOTO_VARIANTS).length * FORMATS.length,
-    )
+    expect(result.files).toHaveLength(Object.keys(PHOTO_VARIANTS).length * FORMATS.length)
   })
 
   it('should produce avatar at exactly 100×100', async () => {
     const testImage = await sharp({
       create: { width: 2000, height: 2500, channels: 3, background: '#4488cc' },
-    }).jpeg().toBuffer()
+    })
+      .jpeg()
+      .toBuffer()
 
     const result = await processImage(testImage, userId, photoId)
 
     for (const format of FORMATS) {
       const avatarFile = result.files.find(
-        f => f.path.includes('-avatar') && f.path.endsWith(`.${format}`),
+        (f) => f.path.includes('-avatar') && f.path.endsWith(`.${format}`),
       )
       expect(avatarFile).toBeDefined()
 
@@ -916,13 +903,15 @@ describe('processImage', () => {
   it('should produce cover at exactly 400×500', async () => {
     const testImage = await sharp({
       create: { width: 2000, height: 2500, channels: 3, background: '#4488cc' },
-    }).jpeg().toBuffer()
+    })
+      .jpeg()
+      .toBuffer()
 
     const result = await processImage(testImage, userId, photoId)
 
     for (const format of FORMATS) {
       const coverFile = result.files.find(
-        f => f.path.includes('-cover.') && !f.path.includes('blurred'),
+        (f) => f.path.includes('-cover.') && !f.path.includes('blurred'),
       )
       expect(coverFile).toBeDefined()
 
@@ -935,7 +924,9 @@ describe('processImage', () => {
   it('should apply blur to blurred variants', async () => {
     const testImage = await sharp({
       create: { width: 2000, height: 2500, channels: 3, background: '#4488cc' },
-    }).jpeg().toBuffer()
+    })
+      .jpeg()
+      .toBuffer()
 
     // Generate only blurred variants
     const coverBlurredConfig = PHOTO_VARIANTS.cover_blurred
@@ -949,13 +940,15 @@ describe('processImage', () => {
     // Create an image smaller than the full variant
     const smallImage = await sharp({
       create: { width: 200, height: 250, channels: 3, background: '#4488cc' },
-    }).jpeg().toBuffer()
+    })
+      .jpeg()
+      .toBuffer()
 
     const result = await processImage(smallImage, userId, photoId)
 
     // Full variant should NOT be upscaled to 1200×1500
     const fullFile = result.files.find(
-      f => f.path.includes('-full.') && !f.path.includes('blurred'),
+      (f) => f.path.includes('-full.') && !f.path.includes('blurred'),
     )
     const meta = await sharp(fullFile!.buffer).metadata()
     expect(meta.width!).toBeLessThanOrEqual(200)
@@ -965,30 +958,32 @@ describe('processImage', () => {
   it('should use correct compression settings', async () => {
     const testImage = await sharp({
       create: { width: 2000, height: 2500, channels: 3, background: '#4488cc' },
-    }).jpeg().toBuffer()
+    })
+      .jpeg()
+      .toBuffer()
 
     const result = await processImage(testImage, userId, photoId)
 
     // AVIF files should exist with quality 60
-    const avifFiles = result.files.filter(f => f.path.endsWith('.avif'))
+    const avifFiles = result.files.filter((f) => f.path.endsWith('.avif'))
     expect(avifFiles.length).toBe(Object.keys(PHOTO_VARIANTS).length)
 
     // WebP files should exist with quality 80
-    const webpFiles = result.files.filter(f => f.path.endsWith('.webp'))
+    const webpFiles = result.files.filter((f) => f.path.endsWith('.webp'))
     expect(webpFiles.length).toBe(Object.keys(PHOTO_VARIANTS).length)
   })
 
   it('should produce valid jsonb structure', async () => {
     const testImage = await sharp({
       create: { width: 2000, height: 2500, channels: 3, background: '#4488cc' },
-    }).jpeg().toBuffer()
+    })
+      .jpeg()
+      .toBuffer()
 
     const result = await processImage(testImage, userId, photoId)
 
     // All 5 variant keys present
-    expect(Object.keys(result.variantsJsonb)).toHaveLength(
-      Object.keys(PHOTO_VARIANTS).length,
-    )
+    expect(Object.keys(result.variantsJsonb)).toHaveLength(Object.keys(PHOTO_VARIANTS).length)
 
     // Each variant has avif and webp paths
     for (const [key, paths] of Object.entries(result.variantsJsonb)) {
@@ -1026,12 +1021,12 @@ describe('photo variant config', () => {
   })
 
   it('should have unique jsonb keys', () => {
-    const keys = Object.values(PHOTO_VARIANTS).map(v => v.jsonbKey)
+    const keys = Object.values(PHOTO_VARIANTS).map((v) => v.jsonbKey)
     expect(new Set(keys).size).toBe(keys.length)
   })
 
   it('should have unique file suffixes', () => {
-    const suffixes = Object.values(PHOTO_VARIANTS).map(v => v.fileSuffix)
+    const suffixes = Object.values(PHOTO_VARIANTS).map((v) => v.fileSuffix)
     expect(new Set(suffixes).size).toBe(suffixes.length)
   })
 
@@ -1076,8 +1071,7 @@ describe('photo variant config', () => {
 
   it('should map fileSuffixes to hyphenated paths', () => {
     // jsonb keys use underscore, file suffixes use hyphen
-    const blurredVariants = Object.values(PHOTO_VARIANTS)
-      .filter(v => v.jsonbKey.includes('_'))
+    const blurredVariants = Object.values(PHOTO_VARIANTS).filter((v) => v.jsonbKey.includes('_'))
 
     for (const v of blurredVariants) {
       expect(v.fileSuffix).toContain('-')
@@ -1136,12 +1130,18 @@ Every file that needs variant information imports from exactly one place:
 
 ```typescript
 // ✅ The only allowed import
-import { PHOTO_VARIANTS, COMPRESSION, FORMATS, UPLOAD, STORAGE } from '@/lib/image-processing/photo-variants'
+import {
+  PHOTO_VARIANTS,
+  COMPRESSION,
+  FORMATS,
+  UPLOAD,
+  STORAGE,
+} from '@/lib/image-processing/photo-variants'
 
 // ❌ Banned — hardcoded values anywhere else
-const AVATAR_SIZE = 100                    // Use PHOTO_VARIANTS.avatar.width
-const MAX_PHOTOS = 6                        // Use UPLOAD.maxPhotosPerProfile
-const quality = { avif: 60, webp: 80 }      // Use COMPRESSION
+const AVATAR_SIZE = 100 // Use PHOTO_VARIANTS.avatar.width
+const MAX_PHOTOS = 6 // Use UPLOAD.maxPhotosPerProfile
+const quality = { avif: 60, webp: 80 } // Use COMPRESSION
 ```
 
 ### CI Enforcement
@@ -1185,8 +1185,7 @@ describe('photo variant consistency', () => {
   })
 
   it('should have matching publicName for directly requestable variants', () => {
-    const publicVariants = Object.values(PHOTO_VARIANTS)
-      .filter(v => v.publicName !== null)
+    const publicVariants = Object.values(PHOTO_VARIANTS).filter((v) => v.publicName !== null)
 
     for (const v of publicVariants) {
       expect(['avatar', 'cover', 'full']).toContain(v.publicName)
@@ -1202,7 +1201,7 @@ describe('photo variant consistency', () => {
     // The minimum upload dimension must be larger than the largest variant
     // so we never need to upscale
     const maxVariantDim = Math.max(
-      ...Object.values(PHOTO_VARIANTS).map(v => Math.max(v.width, v.height)),
+      ...Object.values(PHOTO_VARIANTS).map((v) => Math.max(v.width, v.height)),
     )
     expect(UPLOAD.minShortSide).toBeGreaterThanOrEqual(maxVariantDim)
   })
@@ -1221,23 +1220,23 @@ describe('photo variant consistency', () => {
 
 ### Optimized Image Sizes
 
-| Variant | Dimensions | Typical AVIF Size | Typical WebP Size |
-|---|---|---|---|
-| Avatar | 100 × 100 | ~2 KB | ~3 KB |
-| Cover | 400 × 500 | ~15 KB | ~25 KB |
-| Cover Blurred | 400 × 500 | ~8 KB | ~12 KB |
-| Full | ≤1200 × 1500 | ~80 KB | ~140 KB |
-| Full Blurred | ≤1200 × 1500 | ~35 KB | ~55 KB |
+| Variant       | Dimensions   | Typical AVIF Size | Typical WebP Size |
+| ------------- | ------------ | ----------------- | ----------------- |
+| Avatar        | 100 × 100    | ~2 KB             | ~3 KB             |
+| Cover         | 400 × 500    | ~15 KB            | ~25 KB            |
+| Cover Blurred | 400 × 500    | ~8 KB             | ~12 KB            |
+| Full          | ≤1200 × 1500 | ~80 KB            | ~140 KB           |
+| Full Blurred  | ≤1200 × 1500 | ~35 KB            | ~55 KB            |
 
 AVIF is ~40% smaller than WebP at equivalent quality. The `<picture>` element ensures AVIF-capable browsers get the smaller file.
 
 ### Cache Strategy
 
-| Variant | Cache-Control | Rationale |
-|---|---|---|
-| Avatar | `private, max-age=3600, immutable` | Square crop won't change. Cache for 1 hour. |
-| Cover / Full (unblurred) | `private, no-store` | Visibility depends on relationship state (match, block, private mode). Must revalidate every request. |
-| Cover / Full (blurred) | `private, no-store` | Same — blur vs unblur depends on authz. |
+| Variant                  | Cache-Control                      | Rationale                                                                                             |
+| ------------------------ | ---------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Avatar                   | `private, max-age=3600, immutable` | Square crop won't change. Cache for 1 hour.                                                           |
+| Cover / Full (unblurred) | `private, no-store`                | Visibility depends on relationship state (match, block, private mode). Must revalidate every request. |
+| Cover / Full (blurred)   | `private, no-store`                | Same — blur vs unblur depends on authz.                                                               |
 
 Avatar is immutable because it's always unblurred and never changes dimensions. Cover/full must revalidate because the blur decision changes based on live relationship state.
 
@@ -1281,7 +1280,7 @@ tests/unit/lib/image-processing/
 - [03 — Profiles, Feed & Matching](./03-profiles-feed.md) — avatar display, private mode, blur rules
 - [06 — Image Processing & Storage](./06-image-processing.md) — full pipeline, moderation, blur decision matrix
 - [08 — Reports, Moderation & Suspensions](./08-moderation.md) — photo moderation, auto-triage, moderator actions
-- [09 — Error Handling System](./09-error-handling.md) — PHOTO_* error codes, VALIDATION_FILE_* codes
+- [09 — Error Handling System](./09-error-handling.md) — PHOTO*\* error codes, VALIDATION_FILE*\* codes
 - [10 — Rate Limiting System](./10-rate-limiting.md) — PHOTO_UPLOAD preset, READ_GENEROUS for stream
 - [11 — Idempotency System](./11-idempotency.md) — batch photo upload idempotency
 - [12 — Notification System](./12-notifications.md) — photo_approved, photo_rejected, photo_removed_by_moderator types

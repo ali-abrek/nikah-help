@@ -5,10 +5,11 @@
 This file defines the real-time chat architecture, message types, Supabase Realtime v2 usage (Changes, Broadcast, Presence), notification dispatch system, voice messages, and chat deletion.
 
 > **MANDATORY OBSERVABILITY (realtime):** Per [14-sentry-observability.md](14-sentry-observability.md), the chat client MUST capture Realtime channel failures so silent disconnect storms are visible:
-> * `flow=realtime.channel`, `channel=<name>` — every `CHANNEL_ERROR` and `TIMED_OUT` callback. Severity: warning.
-> * Same flow, severity error — when a single session reconnects more than 3 times in 60 s.
-> * Message-send and read-receipt route handlers report 5xx via the standard `AppError` → Sentry path.
-> * Plaintext message content is **NEVER** sent to Sentry. Only `chat_id`, `message_id`, and `from_user_id` (id, not email) are acceptable tags. Replay is disabled on `/chat/*` (see PII rules in 14).
+>
+> - `flow=realtime.channel`, `channel=<name>` — every `CHANNEL_ERROR` and `TIMED_OUT` callback. Severity: warning.
+> - Same flow, severity error — when a single session reconnects more than 3 times in 60 s.
+> - Message-send and read-receipt route handlers report 5xx via the standard `AppError` → Sentry path.
+> - Plaintext message content is **NEVER** sent to Sentry. Only `chat_id`, `message_id`, and `from_user_id` (id, not email) are acceptable tags. Replay is disabled on `/chat/*` (see PII rules in 14).
 
 ---
 
@@ -34,32 +35,32 @@ This file defines the real-time chat architecture, message types, Supabase Realt
 
 ## Requirement: Message Types
 
-| Type | Upload Method | Delivery |
-|---|---|---|
-| Text | INSERT into `messages` via Server Action | Realtime Changes |
+| Type  | Upload Method                                                     | Delivery                                    |
+| ----- | ----------------------------------------------------------------- | ------------------------------------------- |
+| Text  | INSERT into `messages` via Server Action                          | Realtime Changes                            |
 | Image | Direct upload to Supabase Storage → signed URL path in `messages` | Realtime Changes + Cloudflare CDN for image |
-| Voice | Direct upload to Supabase Storage → path in `messages` | Realtime Changes + Cloudflare CDN for audio |
+| Voice | Direct upload to Supabase Storage → path in `messages`            | Realtime Changes + Cloudflare CDN for audio |
 
 ### Content Limits
 
 All limits validated server-side in the `sendMessage` Server Action and mirrored on the client via Zod v4:
 
-| Type | Limit | Notes |
-|---|---|---|
-| Text | **≤ 4000 characters** | Counted by `Array.from(str).length` (correct for emoji/CJK) |
-| Text | Empty / whitespace-only rejected | Trim + reject |
-| Image | **≤ 8 MB** per file | Accepted: JPEG, PNG, WebP, AVIF, HEIC. Same `sharp` rules as profile photos can be applied for thumbnail generation (Inngest async — not blocking send) |
-| Image dimensions | Reject < 200×200 px (likely accidental icon) | |
-| Voice | **≤ 90 seconds** duration | Enforced client-side by `MediaRecorder` stop-timer; server re-validates by reading audio metadata in Inngest |
-| Voice | **≤ 5 MB** per file | Hard cap on upload |
-| Send rate per user | **30 messages / minute** | Upstash Ratelimit on `sendMessage` |
-| New chat initiations / day | **10** | Anti-spam against pretend-mass-mutual flow |
+| Type                       | Limit                                        | Notes                                                                                                                                                   |
+| -------------------------- | -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Text                       | **≤ 4000 characters**                        | Counted by `Array.from(str).length` (correct for emoji/CJK)                                                                                             |
+| Text                       | Empty / whitespace-only rejected             | Trim + reject                                                                                                                                           |
+| Image                      | **≤ 8 MB** per file                          | Accepted: JPEG, PNG, WebP, AVIF, HEIC. Same `sharp` rules as profile photos can be applied for thumbnail generation (Inngest async — not blocking send) |
+| Image dimensions           | Reject < 200×200 px (likely accidental icon) |                                                                                                                                                         |
+| Voice                      | **≤ 90 seconds** duration                    | Enforced client-side by `MediaRecorder` stop-timer; server re-validates by reading audio metadata in Inngest                                            |
+| Voice                      | **≤ 5 MB** per file                          | Hard cap on upload                                                                                                                                      |
+| Send rate per user         | **30 messages / minute**                     | Upstash Ratelimit on `sendMessage`                                                                                                                      |
+| New chat initiations / day | **10**                                       | Anti-spam against pretend-mass-mutual flow                                                                                                              |
 
 ### Edit & Delete Rules
 
-| Action | Allowed for | Notes |
-|---|---|---|
-| **Edit** | Text messages only (own) | Image / voice messages CANNOT be edited — replace by delete + new message |
+| Action     | Allowed for                              | Notes                                                                     |
+| ---------- | ---------------------------------------- | ------------------------------------------------------------------------- |
+| **Edit**   | Text messages only (own)                 | Image / voice messages CANNOT be edited — replace by delete + new message |
 | **Delete** | All types (own only): text, image, voice | Creates a tombstone — the message row stays so quote-replies remain valid |
 
 #### Edit (text only)
@@ -69,6 +70,7 @@ All limits validated server-side in the `sendMessage` Server Action and mirrored
 **Given** an authenticated user owns a text message that is NOT deleted AND `now() - created_at < interval '5 minutes'`
 **When** they invoke "Edit" from the message context menu
 **Then**:
+
 - The composer is pre-filled with the current `content` and the message bubble shows an "Editing…" indicator with a small countdown showing remaining edit time
 - Server Action `editMessage({ messageId, newContent })`:
   - Validates ownership AND `type = 'text'` AND `deleted_at IS NULL` AND `created_at >= now() - interval '5 minutes'`
@@ -83,6 +85,7 @@ All limits validated server-side in the `sendMessage` Server Action and mirrored
 **When** they invoke "Delete"
 **Then** a confirmation dialog appears: "Delete this message? It will disappear for both of you."
 **And** on confirm: Server Action `deleteMessage({ messageId })`:
+
 - Validates ownership and `deleted_at IS NULL`
 - Sets `deleted_at = now()`, clears `content` (set to empty string), keeps `type` and `parent_id`
 - For image / voice: deletes the file from Storage (`chat-media/{chatId}/{messageId}.{ext}`)
@@ -142,6 +145,7 @@ See [02 — Database Schema & RLS](./02-database.md) for the complete `messages`
 **Given** an authenticated user in a chat
 **When** they submit the message form
 **Then** a Server Action `sendMessage` executes:
+
 1. Validates input via Zod v4
 2. Verifies the user is a match participant (RLS)
 3. INSERTs into `messages`
@@ -175,19 +179,19 @@ The `messages.status` enum has three values with strict transition rules:
 sent ──(recipient online OR push delivered)──> delivered ──(recipient views)──> read
 ```
 
-| Status | When written | By |
-|---|---|---|
-| `sent` | INSERT default. The sender's optimistic UI also displays this. | Server Action `sendMessage` |
+| Status      | When written                                                                                                                                                                                                                                                        | By                                                                                                                                                                      |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sent`      | INSERT default. The sender's optimistic UI also displays this.                                                                                                                                                                                                      | Server Action `sendMessage`                                                                                                                                             |
 | `delivered` | Set when **either** (a) recipient is currently online in the chat channel (Presence shows them present in `chat:${chatId}`) and the Realtime INSERT event was acknowledged on their tab, OR (b) Web Push was successfully delivered (no 404/410 from push service). | Server Action `markDelivered` (called from client on Realtime INSERT receipt) and Inngest function `notification-dispatch` after successful `web-push.sendNotification` |
-| `read` | Set when the message becomes visible in the recipient's viewport. | Server Action `markAsRead({ messageIds })`, also writes `read_at = now()` |
+| `read`      | Set when the message becomes visible in the recipient's viewport.                                                                                                                                                                                                   | Server Action `markAsRead({ messageIds })`, also writes `read_at = now()`                                                                                               |
 
 ### UI rendering
 
-| Status | Sender sees | Recipient sees |
-|---|---|---|
-| `sent` | Single grey check ✓ | (their own UI: nothing) |
-| `delivered` | Double grey check ✓✓ | n/a |
-| `read` | Double accent-color check ✓✓ (orange) | n/a |
+| Status      | Sender sees                           | Recipient sees          |
+| ----------- | ------------------------------------- | ----------------------- |
+| `sent`      | Single grey check ✓                   | (their own UI: nothing) |
+| `delivered` | Double grey check ✓✓                  | n/a                     |
+| `read`      | Double accent-color check ✓✓ (orange) | n/a                     |
 
 ### Scenario: User opens a chat
 
@@ -232,6 +236,7 @@ sent ──(recipient online OR push delivered)──> delivered ──(recipien
 **Given** a user opens `chats/[chatId]`
 **When** the client initializes
 **Then** it subscribes to `chat:${chatId}` channel:
+
 ```typescript
 const channel = supabase.channel(`chat:${chatId}`, {
   config: {
@@ -241,14 +246,18 @@ const channel = supabase.channel(`chat:${chatId}`, {
 })
 
 // Postgres Changes for new messages
-channel.on('postgres_changes', {
-  event: 'INSERT',
-  schema: 'public',
-  table: 'messages',
-  filter: `chat_id=eq.${chatId}`,
-}, (payload) => {
-  queryClient.setQueryData(['messages', chatId], (old) => [...old, payload.new])
-})
+channel.on(
+  'postgres_changes',
+  {
+    event: 'INSERT',
+    schema: 'public',
+    table: 'messages',
+    filter: `chat_id=eq.${chatId}`,
+  },
+  (payload) => {
+    queryClient.setQueryData(['messages', chatId], (old) => [...old, payload.new])
+  },
+)
 
 // Broadcast for typing indicators
 channel.on('broadcast', { event: 'typing' }, ({ payload }) => {
@@ -309,14 +318,14 @@ channel.subscribe(async (status) => {
 
 ### Quote Actions by Context
 
-| Context | Available Actions |
-|---|---|
-| Own text message | "Copy", "Quote", "Edit", "Delete" |
-| Own image message | "Quote", "Delete" |
-| Own voice message | "Quote", "Delete" |
-| Other user's text message | "Copy", "Quote" |
-| Other user's image message | "Quote" |
-| Other user's voice message | "Quote" |
+| Context                    | Available Actions                 |
+| -------------------------- | --------------------------------- |
+| Own text message           | "Copy", "Quote", "Edit", "Delete" |
+| Own image message          | "Quote", "Delete"                 |
+| Own voice message          | "Quote", "Delete"                 |
+| Other user's text message  | "Copy", "Quote"                   |
+| Other user's image message | "Quote"                           |
+| Other user's voice message | "Quote"                           |
 
 > **Decision:** Reports on individual chat messages are NOT supported. Harassment in chat is handled via [User Block](./03-profiles-feed.md#requirement-block-list) which deletes the chat and the match. The user can additionally file a `profile` report (see [08 — Moderation](./08-moderation.md)).
 
@@ -329,12 +338,13 @@ channel.subscribe(async (status) => {
 **Given** a user in a chat
 **When** they trigger chat deletion
 **Then** Inngest workflow `chat.delete` executes:
+
 1. SELECT messages WHERE type IN ('image', 'voice') AND chat_id = $id
 2. DELETE files from Supabase Storage
 3. DELETE messages (cascade)
 4. DELETE chat
-**And** Broadcast notifies both participants
-**And** idempotency: `chat-delete:${chatId}`
+   **And** Broadcast notifies both participants
+   **And** idempotency: `chat-delete:${chatId}`
 
 ---
 
@@ -345,6 +355,7 @@ channel.subscribe(async (status) => {
 A single dispatch point. No business service sends notifications directly.
 
 Sources → Inngest:
+
 - Server Actions → Inngest events
 - Postgres triggers → Database Webhooks → Inngest
 
@@ -370,11 +381,11 @@ Sources → Inngest:
 
 ### Delivery Channels
 
-| Channel | Condition |
-|---|---|
-| In-App (Supabase Realtime Broadcast on `user:${userId}`) | User is online (Presence) |
-| Web Push (`web-push` + VAPID) | User is offline, has push subscription |
-| Email (Resend) | By notification type and user preferences |
+| Channel                                                  | Condition                                 |
+| -------------------------------------------------------- | ----------------------------------------- |
+| In-App (Supabase Realtime Broadcast on `user:${userId}`) | User is online (Presence)                 |
+| Web Push (`web-push` + VAPID)                            | User is offline, has push subscription    |
+| Email (Resend)                                           | By notification type and user preferences |
 
 ### Scenario: User receives notification in-app
 
@@ -438,7 +449,7 @@ self.addEventListener('push', (event) => {
       data: { url: payload.url },
       tag: payload.tag,
       renotify: payload.renotify ?? false,
-    })
+    }),
   )
 })
 
@@ -450,7 +461,7 @@ self.addEventListener('notificationclick', (event) => {
       const existing = wins.find((w) => w.url.includes(url))
       if (existing) return existing.focus()
       return clients.openWindow(url)
-    })
+    }),
   )
 })
 ```
@@ -493,7 +504,7 @@ import webpush from 'web-push'
 webpush.setVapidDetails(
   process.env.VAPID_EMAIL!,
   process.env.VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
+  process.env.VAPID_PRIVATE_KEY!,
 )
 
 export async function sendPush(subscription: PushSubscriptionJSON, payload: object) {

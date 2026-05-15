@@ -29,7 +29,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const uuid = extractUuid(id)
   const supabase = await createServerSupabase()
   const { data: claimsData } = await supabase.auth.getClaims()
-  const viewerId = claimsData?.claims ? getUserId(claimsData.claims as Record<string, unknown>) : null
+  const viewerId = claimsData?.claims
+    ? getUserId(claimsData.claims as Record<string, unknown>)
+    : null
   if (!viewerId) return {}
 
   const profile = await getProfile(supabase, uuid, viewerId as string)
@@ -46,7 +48,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const lang = 'ru' // TODO: derive from profile.locale when multilingual support is enabled
 
   const title = buildProfileTitle(profile, lang)
-  const description = buildProfileMetaDescription(profile as unknown as Record<string, unknown>, lang)
+  const description = buildProfileMetaDescription(
+    profile as unknown as Record<string, unknown>,
+    lang,
+  )
 
   // OG image: public SEO endpoint so social crawlers can fetch it
   const firstPhoto = profile.photos[0]

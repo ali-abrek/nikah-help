@@ -32,6 +32,7 @@ Replace the current bare-text "Удалить анкету" button with two full
 Both buttons have `mx-5 w-[calc(100%-40px)]` and `h-12 rounded-xl` to match existing layout.
 
 **Delete `/profile/edit` route and `ProfileEditForm`:**
+
 - Remove `app/(app)/profile/edit/page.tsx`
 - Remove `features/profile/components/ProfileEditForm.tsx`
 
@@ -40,17 +41,21 @@ Both buttons have `mx-5 w-[calc(100%-40px)]` and `h-12 rounded-xl` to match exis
 ## 3. Onboarding Pre-fill for Edit Mode
 
 **Files:**
+
 - `app/(app)/onboarding/page.tsx`
 - `features/profile/components/onboarding-wizard.tsx`
 - `features/profile/components/onboarding-step3.tsx`
 
 ### Onboarding page
+
 Fetch full profile (name, birth_date, gender, country, city, nationality, height, weight, marital_status, children_count, about_self, income_level, housing, willing_to_relocate, polygyny_attitude, hijab_attitude) + photos ordered by position. Map to `OnboardingStep1Data` and `OnboardingStep2MaleData | OnboardingStep2FemaleData` shapes. Pass as props to `OnboardingWizard`.
 
 `allow_geolocation` is not stored as a boolean column — default to `true` when pre-filling.
 
 ### Wizard changes
+
 New optional props:
+
 ```ts
 initialStep1Data?: Partial<OnboardingStep1Data>
 initialStep2Data?: Partial<OnboardingStep2MaleData | OnboardingStep2FemaleData>
@@ -63,17 +68,20 @@ isEditMode?: boolean
 - On step 4 complete: in edit mode redirect to `/profile`, in new-user mode redirect to `/feed`.
 
 ### Step 3 pre-fill
+
 Add `initialPhotos` prop. On mount, populate slots from `initialPhotos`:
+
 ```ts
 type PhotoSlot = {
   position: number
-  preview: string | null     // object URL for newly uploaded
+  preview: string | null // object URL for newly uploaded
   photoId: string | null
   path: string | null
   uploading: boolean
-  isExisting: boolean        // true → render with <Photo> component, not <img>
+  isExisting: boolean // true → render with <Photo> component, not <img>
 }
 ```
+
 For existing photos: `preview=null`, `isExisting=true`, render `<Photo photoId={...} variant="cover" />` instead of `<img src={preview}>`.
 
 ---
@@ -83,6 +91,7 @@ For existing photos: `preview=null`, `isExisting=true`, render `<Photo photoId={
 ### Step 3 (`onboarding-step3.tsx`)
 
 Replace `handleRemove` with an async version:
+
 1. If slot has no `photoId` (edge case): just clear state.
 2. Show inline confirmation modal (new `showDelConfirm` state + `deleteTarget` position).
 3. On confirm: call `deletePhotoAction(photoId)` — already exported from `features/profile/actions`.
@@ -91,6 +100,7 @@ Replace `handleRemove` with an async version:
 ### OwnProfile photo grid (`OwnProfile.tsx`)
 
 Add to each photo thumbnail in the 3-column grid:
+
 - A `×` button overlay (absolute, top-right), same styling as step 3's remove button.
 - Clicking opens the deletion confirmation modal (reuse existing `showDel` modal pattern, or add a second `showPhotoDelModal` state with the target photoId).
 - On confirm: `deletePhotoAction(photoId)` → `router.refresh()` to reload photos from server.
@@ -114,12 +124,12 @@ The first photo (avatar) can also be deleted — the `deletePhoto` server helper
 
 Pattern: `<Link href="/settings"><IconBtn icon="gear" ariaLabel={t('settings')} /></Link>` (from `FeedHeader`).
 
-| File | Change |
-|------|--------|
-| `features/chat/components/ChatList.tsx` | Add `actions` prop to `BigHeader` with the gear link |
-| `features/likes/components/LikesTabs.tsx` | Add `actions` prop to `BigHeader` with the gear link |
+| File                                                     | Change                                                                          |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `features/chat/components/ChatList.tsx`                  | Add `actions` prop to `BigHeader` with the gear link                            |
+| `features/likes/components/LikesTabs.tsx`                | Add `actions` prop to `BigHeader` with the gear link                            |
 | `features/notifications/components/NotificationList.tsx` | Add gear link to the custom sticky header, to the left of the "mark all" button |
-| `features/feed/components/FiltersScreen.tsx` | Add `trailing` prop to `Header` with the gear icon link |
+| `features/feed/components/FiltersScreen.tsx`             | Add `trailing` prop to `Header` with the gear icon link                         |
 
 ---
 
@@ -131,12 +141,15 @@ Pattern: `<Link href="/settings"><IconBtn icon="gear" ariaLabel={t('settings')} 
 - `Header`: change title `<div>` to `<h1>`, add `uppercase` to className. Already left-aligned by default (only `centerTitle` prop centers it).
 
 **`features/profile/components/OwnProfile.tsx`:**
+
 - Custom sticky header h1: remove `text-center`, add `uppercase`.
 
 **`features/notifications/components/NotificationList.tsx`:**
+
 - Already `uppercase` + `<h1>` — no change.
 
 **`features/feed/components/FiltersScreen.tsx`:**
+
 - Remove `centerTitle` prop from `Header` call (title becomes left-aligned).
 
 ---
@@ -144,6 +157,7 @@ Pattern: `<Link href="/settings"><IconBtn icon="gear" ariaLabel={t('settings')} 
 ## 8. Persistent Filter Preferences
 
 ### Migration
+
 ```sql
 ALTER TABLE profiles ADD COLUMN filter_preferences jsonb DEFAULT NULL;
 ```
@@ -151,6 +165,7 @@ ALTER TABLE profiles ADD COLUMN filter_preferences jsonb DEFAULT NULL;
 Run `pnpm db:typegen` after applying.
 
 ### Stored shape (`FilterPreferences` type in `features/feed/schemas.ts`)
+
 ```ts
 export interface FilterPreferences {
   locMode?: 'place' | 'radius'
@@ -169,15 +184,19 @@ export interface FilterPreferences {
 ```
 
 ### Server action (new, in `features/feed/actions.ts`)
+
 ```ts
 export async function saveFilterPreferencesAction(prefs: FilterPreferences | null)
 ```
+
 Updates `profiles.filter_preferences` for the authenticated user.
 
 ### Page (`app/(app)/feed/filters/page.tsx`)
+
 Fetch `filter_preferences` column alongside `gender`. Pass as `initialFilters` to `FiltersScreen`.
 
 ### `FiltersScreen` changes
+
 - Accept `initialFilters?: FilterPreferences` prop.
 - Initialize all state from `initialFilters` (falling back to defaults).
 - `apply()`: call `saveFilterPreferencesAction(currentPrefs)`, then push URL params.
@@ -186,14 +205,17 @@ Fetch `filter_preferences` column alongside `gender`. Pass as `initialFilters` t
 ---
 
 ## Files to Delete
+
 - `app/(app)/profile/edit/page.tsx`
 - `features/profile/components/ProfileEditForm.tsx`
 
 ## Files to Create
+
 - `features/feed/actions.ts` (new — `saveFilterPreferencesAction`)
 - `supabase/migrations/<timestamp>_add_filter_preferences.sql`
 
 ## Files to Modify
+
 - `app/settings/page.tsx`
 - `app/(app)/onboarding/page.tsx`
 - `app/(app)/feed/filters/page.tsx`
