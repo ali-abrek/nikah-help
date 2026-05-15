@@ -71,6 +71,23 @@ export interface FeedFilterValues {
 export const DEFAULT_FILTERS_MALE: FeedFiltersMale = {}
 export const DEFAULT_FILTERS_FEMALE: FeedFiltersFemale = {}
 
+// ── Persisted filter preferences (stored as JSONB on profiles) ──────
+
+export interface FilterPreferences {
+  locMode?: 'place' | 'radius'
+  country?: string
+  city?: string
+  radiusKm?: number
+  ageMin?: number
+  ageMax?: number
+  marital?: string | null
+  children?: 'any' | 'none' | 'has'
+  polygamy?: 'any' | 'mono' | 'open'
+  hijab?: string | null
+  income?: string | null
+  housing?: string | null
+}
+
 // ── Feed profile result type ────────────────────────────────────────
 
 export interface FeedProfile {
