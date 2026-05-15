@@ -54,6 +54,16 @@ export function SettingsScreen({
     <div className="flex h-full flex-col">
       <Header title={t('set_title')} leading="back" onLeading={() => router.back()} />
       <div className="scroll-area flex-1 overflow-auto px-5 pb-10">
+        {isAuthed && (
+          <SettingsGroup>
+            <SettingsRow
+              icon="user"
+              label={t('profile')}
+              onClick={() => router.push('/profile')}
+              last
+            />
+          </SettingsGroup>
+        )}
         <SettingsGroup>
           <SettingsRow
             icon="globe"
