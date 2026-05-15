@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/icon'
 import { Photo as PhotoStream } from '@/features/photos/components/Photo'
 import { useLang } from '@/lib/i18n/use-lang'
 import { localizePlace } from '@/lib/i18n/dictionary'
+import { generateSeoSlug } from '@/lib/seo'
 import type { FeedProfile } from '../schemas'
 
 function calcAge(birthDate: string | null | undefined): number | null {
@@ -36,7 +37,7 @@ export function FeedCard({ profile, trailing }: FeedCardProps) {
 
   return (
     <Link
-      href={`/profile/${profile.id}`}
+      href={`/profile/${profile.id}-${generateSeoSlug(profile)}`}
       className="block overflow-hidden rounded-[18px] border border-[var(--divider)] bg-[var(--surface)] shadow-[0_1px_2px_rgba(15,26,31,0.04),0_4px_12px_rgba(15,26,31,0.04)]"
     >
       <div className="relative aspect-[4/5]">

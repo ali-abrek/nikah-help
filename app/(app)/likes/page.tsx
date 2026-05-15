@@ -5,8 +5,9 @@ import { getLikedProfiles } from '@/features/likes/server/get-liked'
 import { getMatches } from '@/features/likes/server/get-matches'
 import { LikesTabs } from '@/features/likes/components/LikesTabs'
 import { getUserId } from '@/lib/auth/claims'
+import { buildGenericTitle } from '@/lib/seo'
 
-export const metadata = { title: 'Симпатии — Nikah Help' }
+export const metadata = { title: buildGenericTitle('Симпатии', 'ru') }
 
 export default async function LikesPage() {
   const supabase = await createServerSupabase()

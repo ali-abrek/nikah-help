@@ -21,7 +21,9 @@ export interface ProfileDetailData {
   hijab_attitude: string | null
   about_self: string | null
   ai_bio: string | null
+  meta_description: string | null
   is_published: boolean | null
+  deletion_status: string | null
   last_seen_at: string | null
   photos: ProfilePhotoData[]
   viewer_has_liked: boolean
@@ -48,7 +50,7 @@ export async function getProfile(
       id, name, gender, birth_date, country, city, nationality,
       height, weight, marital_status, children_count, education,
       income_level, housing, willing_to_relocate, polygyny_attitude,
-      hijab_attitude, about_self, ai_bio, is_published, last_seen_at
+      hijab_attitude, about_self, ai_bio, meta_description, is_published, deletion_status, last_seen_at
     `,
     )
     .eq('id', profileId)

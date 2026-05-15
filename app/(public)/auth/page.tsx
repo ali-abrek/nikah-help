@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { AuthScreen } from '@/features/auth/components/auth-screen'
+import { buildGenericTitle } from '@/lib/seo'
 
 const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
   auth_callback_failed:
@@ -9,7 +10,7 @@ const CALLBACK_ERROR_MESSAGES: Record<string, string> = {
 }
 
 export const metadata = {
-  title: 'Вход — Nikah Help',
+  title: buildGenericTitle('Вход', 'ru'),
 }
 
 export default async function AuthPage({

@@ -82,11 +82,25 @@ export async function generateBio(
           content: `Создай биографию для пользователя на основе следующих данных:\n\n${JSON.stringify(bioInput, null, 2)}`,
         },
       ],
-      max_tokens: 300,
+      max_tokens: 500,
       temperature: 0.7,
+      response_format: { type: 'json_object' },
     })
 
-    const bio = completion.choices[0]?.message?.content?.trim()
+    const raw = completion.choices[0]?.message?.content?.trim()
+
+    if (!raw) throw new Error('Failed to generate bio')
+
+    let parsed: { bio?: string; meta_description?: string }
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      // Fallback: old-format plain text response
+      parsed = { bio: raw }
+    }
+
+    const bio = parsed.bio?.trim()
+    const metaDescription = parsed.meta_description?.trim()
 
     if (!bio) throw new Error('Failed to generate bio')
 
@@ -94,6 +108,7 @@ export async function generateBio(
       .from('profiles')
       .update({
         ai_bio: bio,
+        meta_description: metaDescription ?? null,
         ai_bio_status: 'ready',
         ai_bio_input_hash: newHash,
       })

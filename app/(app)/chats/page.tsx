@@ -3,8 +3,9 @@ import { getChats } from '@/features/chat/server/get-chats'
 import { ChatList } from '@/features/chat/components/ChatList'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getUserId } from '@/lib/auth/claims'
+import { buildGenericTitle } from '@/lib/seo'
 
-export const metadata = { title: 'Чаты — Nikah Help' }
+export const metadata = { title: buildGenericTitle('Чаты', 'ru') }
 
 export default async function ChatsPage() {
   const supabase = await createServerSupabase()

@@ -16,9 +16,7 @@ type PhotoSlot = {
   isExisting: boolean
 }
 
-function createSlots(
-  initial: { id: string; position: number }[],
-): PhotoSlot[] {
+function createSlots(initial: { id: string; position: number }[]): PhotoSlot[] {
   const slots: PhotoSlot[] = Array.from({ length: MAX_PHOTOS }, (_, i) => ({
     position: i + 1,
     preview: null,

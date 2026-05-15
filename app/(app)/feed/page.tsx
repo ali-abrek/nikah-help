@@ -5,8 +5,9 @@ import { queryFeed } from '@/features/feed/server/query-feed'
 import { FeedClient } from '@/features/feed/components/FeedClient'
 import { FeedHeader } from '@/features/feed/components/FeedHeader'
 import { EmptyState } from '@/components/ui/empty-state'
+import { buildGenericTitle } from '@/lib/seo'
 
-export const metadata = { title: 'Лента — Nikah Help' }
+export const metadata = { title: buildGenericTitle('Лента', 'ru') }
 
 export default async function FeedPage() {
   const supabase = await createServerSupabase()

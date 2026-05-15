@@ -6,6 +6,7 @@ export interface MatchProfile {
   gender: string | null
   age: number | null
   city: string | null
+  country: string | null
   photo_url: string | null
   match_id: string
   matched_at: string | null
@@ -28,7 +29,7 @@ export async function getMatches(userId: string): Promise<MatchProfile[]> {
     .from('profiles')
     .select(
       `
-      id, name, gender, birth_date, city,
+      id, name, gender, birth_date, city, country,
       photos ( variants )
     `,
     )
@@ -53,6 +54,7 @@ export async function getMatches(userId: string): Promise<MatchProfile[]> {
       gender: profile.gender as string | null,
       age: birthDate ? calcAgeFromDate(birthDate) : null,
       city: profile.city as string | null,
+      country: profile.country as string | null,
       photo_url: photoUrl,
       match_id: m.id,
       matched_at: m.created_at,

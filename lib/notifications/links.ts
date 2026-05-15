@@ -6,7 +6,7 @@ export function resolveLink(
 ): string | undefined {
   switch (type) {
     case 'like_received':
-      return context.actorId ? `/profiles/${context.actorId}` : undefined
+      return context.actorId ? `/profile/${context.actorId}` : undefined
 
     case 'match_created':
       return context.matchId ? `/matches/${context.matchId}` : undefined

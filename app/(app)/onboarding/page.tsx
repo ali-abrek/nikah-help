@@ -59,15 +59,14 @@ export default async function OnboardingPage() {
 
   const step2Base = isEditMode
     ? {
-        marital_status: (profile.marital_status as OnboardingStep2MaleData['marital_status']) ?? undefined,
+        marital_status:
+          (profile.marital_status as OnboardingStep2MaleData['marital_status']) ?? undefined,
         children_count: profile.children_count ?? undefined,
         about_self: profile.about_self ?? undefined,
       }
     : undefined
 
-  const initialStep2Data:
-    | Partial<OnboardingStep2MaleData | OnboardingStep2FemaleData>
-    | undefined =
+  const initialStep2Data: Partial<OnboardingStep2MaleData | OnboardingStep2FemaleData> | undefined =
     isEditMode && step2Base
       ? profile.gender === 'female'
         ? {

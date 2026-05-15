@@ -45,7 +45,7 @@ describe('Template completeness', () => {
 describe('Link resolution', () => {
   it('returns profile link for like_received', () => {
     const link = resolveLink('like_received', { recipientId: 'u1', actorId: 'a1' })
-    expect(link).toBe('/profiles/a1')
+    expect(link).toBe('/profile/a1')
   })
 
   it('returns undefined when actorId missing for like_received', () => {
@@ -151,7 +151,7 @@ describe('Notification factory', () => {
     expect(payload.payload.type).toBe('like_received')
     expect(payload.payload.actor_id).toBe(validUuid)
     expect(payload.payload.actor_name).toBe('Alice')
-    expect(payload.payload.link).toBe(`/profiles/${validUuid}`)
+    expect(payload.payload.link).toBe(`/profile/${validUuid}`)
     expect(payload.payload.timestamp).toBeDefined()
     expect(new Date(payload.payload.timestamp).getTime()).not.toBeNaN()
   })

@@ -3,8 +3,9 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { getNotifications } from '@/features/notifications/server/get-notifications'
 import { NotificationList } from '@/features/notifications/components/NotificationList'
 import { getUserId } from '@/lib/auth/claims'
+import { buildGenericTitle } from '@/lib/seo'
 
-export const metadata = { title: 'Уведомления — Nikah Help' }
+export const metadata = { title: buildGenericTitle('Уведомления', 'ru') }
 
 export default async function NotificationsPage() {
   const supabase = await createServerSupabase()

@@ -212,11 +212,7 @@ export function OwnProfile({ profile }: OwnProfileProps) {
                     : ''
                 }`}
               >
-                <button
-                  type="button"
-                  onClick={() => setPhotoIdx(i)}
-                  className="absolute inset-0"
-                >
+                <button type="button" onClick={() => setPhotoIdx(i)} className="absolute inset-0">
                   <PhotoStream
                     photoId={p.id}
                     variant="cover"

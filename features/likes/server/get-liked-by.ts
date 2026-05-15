@@ -6,6 +6,7 @@ export interface LikeProfile {
   gender: string | null
   age: number | null
   city: string | null
+  country: string | null
   photo_url: string | null
   liked_at: string
 }
@@ -20,7 +21,7 @@ export async function getLikedByProfiles(userId: string): Promise<LikeProfile[]>
       from_user_id,
       created_at,
       profiles:from_user_id (
-        id, name, gender, birth_date, city,
+        id, name, gender, birth_date, city, country,
         photos ( variants )
       )
     `,
@@ -44,6 +45,7 @@ export async function getLikedByProfiles(userId: string): Promise<LikeProfile[]>
       gender: profile.gender as string | null,
       age: birthDate ? calcAgeFromDate(birthDate) : null,
       city: profile.city as string | null,
+      country: profile.country as string | null,
       photo_url: photoUrl,
       liked_at: row.created_at as string,
     }

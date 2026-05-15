@@ -11,7 +11,7 @@ export async function getLikedProfiles(userId: string): Promise<LikeProfile[]> {
       to_user_id,
       created_at,
       profiles:to_user_id (
-        id, name, gender, birth_date, city,
+        id, name, gender, birth_date, city, country,
         photos ( variants )
       )
     `,
@@ -35,6 +35,7 @@ export async function getLikedProfiles(userId: string): Promise<LikeProfile[]> {
       gender: profile.gender as string | null,
       age: birthDate ? calcAge(birthDate) : null,
       city: profile.city as string | null,
+      country: profile.country as string | null,
       photo_url: photoUrl,
       liked_at: row.created_at as string,
     }

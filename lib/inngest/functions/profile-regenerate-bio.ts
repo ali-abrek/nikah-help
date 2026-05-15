@@ -17,12 +17,22 @@ async function loadProfile(userId: string) {
   return data
 }
 
-async function persistAiBio(userId: string, bio: string, inputHash: string) {
+async function persistAiBio(
+  userId: string,
+  bio: string,
+  metaDescription: string | null,
+  inputHash: string,
+) {
   const supabase = await createServerSupabase()
 
   const { error } = await supabase
     .from('profiles')
-    .update({ ai_bio: bio, ai_bio_status: 'ready', ai_bio_input_hash: inputHash })
+    .update({
+      ai_bio: bio,
+      meta_description: metaDescription,
+      ai_bio_status: 'ready',
+      ai_bio_input_hash: inputHash,
+    })
     .eq('id', userId)
 
   if (error) throw error
@@ -64,18 +74,33 @@ export const profileRegenerateBioFn = inngest.createFunction(
             content: `Создай биографию для пользователя на основе следующих данных:\n\n${JSON.stringify(profile, null, 2)}`,
           },
         ],
-        max_tokens: 300,
+        max_tokens: 500,
         temperature: 0.7,
+        response_format: { type: 'json_object' },
       }),
     )
 
-    const bio = completion.choices[0]?.message?.content?.trim()
+    const raw = completion.choices[0]?.message?.content?.trim()
+
+    if (!raw) {
+      throw new Error('OpenAI returned empty response')
+    }
+
+    let parsed: { bio?: string; meta_description?: string }
+    try {
+      parsed = JSON.parse(raw)
+    } catch {
+      parsed = { bio: raw }
+    }
+
+    const bio = parsed.bio?.trim()
+    const metaDescription = parsed.meta_description?.trim() ?? null
 
     if (!bio) {
       throw new Error('OpenAI returned empty bio')
     }
 
-    await step.run('persist', () => persistAiBio(userId, bio, inputHash))
+    await step.run('persist', () => persistAiBio(userId, bio, metaDescription, inputHash))
 
     return { success: true, userId }
   },

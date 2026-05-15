@@ -1,0 +1,894 @@
+# 02 — Database Schema & RLS
+
+## Purpose
+
+This file defines the complete PostgreSQL schema, Row Level Security policies, PostGIS spatial extension setup, migration workflow, and Supabase Branching strategy. Every table MUST have RLS enabled and appropriate policies.
+
+---
+
+## Requirement: Enum Types (single declaration block)
+
+All custom enum types are declared in one early migration so subsequent migrations can reference them without ordering surprises. This block is the canonical source — individual table sections below reference these names.
+
+```sql
+-- supabase/migrations/0001_enums.sql
+CREATE TYPE user_role            AS ENUM ('user', 'moderator', 'admin');
+CREATE TYPE gender_type          AS ENUM ('male', 'female');
+CREATE TYPE ai_bio_status        AS ENUM ('ready', 'regenerating', 'rate_limited', 'pending');
+CREATE TYPE photo_status         AS ENUM ('pending', 'uploaded', 'processing', 'processed');
+CREATE TYPE moderation_status    AS ENUM ('queued', 'approved', 'rejected', 'manual_review');
+CREATE TYPE message_type         AS ENUM ('text', 'image', 'voice');
+CREATE TYPE message_status       AS ENUM ('sent', 'delivered', 'read');
+CREATE TYPE notification_status  AS ENUM ('unread', 'read');
+CREATE TYPE report_type          AS ENUM ('profile', 'photo');
+CREATE TYPE report_status        AS ENUM ('new', 'in_progress', 'resolved');
+CREATE TYPE subscription_status  AS ENUM ('active', 'expired', 'cancelled', 'inactive');
+CREATE TYPE push_kind            AS ENUM ('web', 'apns', 'fcm');
+CREATE TYPE suspension_kind      AS ENUM ('warning', 'temp_ban', 'permanent_ban');
+```
+
+> **Decision:** Inline `CREATE TYPE` blocks shown next to specific tables below are illustrative and may be omitted from real migrations — the single block above is authoritative.
+
+---
+
+## Requirement: PostGIS Extension
+
+### Scenario: Spatial queries are enabled
+
+**Given** a fresh Supabase project
+**When** the first migration runs
+**Then** PostGIS MUST be enabled:
+
+```sql
+-- supabase/migrations/0001_enable_postgis.sql
+CREATE EXTENSION IF NOT EXISTS postgis;
+```
+
+---
+
+## Requirement: Core Tables
+
+### `profiles`
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id` | `uuid` | PK, FK → `auth.users.id` | Matches Supabase Auth user ID |
+| `email` | `text` | NOT NULL, UNIQUE | |
+| `role` | `user_role` | NOT NULL, DEFAULT 'user' | Enum: `user`, `moderator`, `admin` |
+| `name` | `text` | | Set during onboarding |
+| `gender` | `gender_type` | | Enum: `male`, `female` |
+| `birth_date` | `date` | CHECK (`birth_date <= current_date - interval '18 years'`) | Strict ≥18 enforcement at DB level |
+| `country` | `text` | | |
+| `city` | `text` | | |
+| `nationality` | `text` | | |
+| `height` | `integer` | | cm |
+| `weight` | `integer` | | kg |
+| `location` | `geography(point, 4326)` | | Requires PostGIS |
+| `marital_status` | `text` | | |
+| `children_count` | `integer` | DEFAULT 0 | |
+| `education` | `text` | | |
+| `income_level` | `text` | | Men only |
+| `housing` | `text` | | Men only |
+| `willing_to_relocate` | `boolean` | | Women only |
+| `polygyny_attitude` | `text` | | Women only |
+| `hijab_attitude` | `text` | | Women only |
+| `about_self` | `text` | | User's free-text words |
+| `ai_bio` | `text` | | AI-generated description |
+| `ai_bio_status` | `ai_bio_status` | DEFAULT 'ready' | Enum: `ready`, `regenerating`, `rate_limited`, `pending`. `pending` is set the moment a bio-relevant edit is committed and lasts until the Inngest worker picks the regeneration up; UI shows a "refreshing" badge for any non-`ready` value |
+| `ai_bio_input_hash` | `text` | | Hex SHA-256 of the bio-relevant subset (see [01 — Auth § Bio-relevant fields](./01-auth.md)) at the moment the current `ai_bio` was written. Compared against the post-edit hash to skip Inngest dispatch when no relevant field actually changed. Source of truth for the hash function: `lib/profile/bio-fields.ts` |
+| `is_published` | `boolean` | DEFAULT true | Profile visibility |
+| `private_mode` | `boolean` | DEFAULT false | Blur photos until match |
+| `onboarding_completed` | `boolean` | DEFAULT false | |
+| `locale` | `text` | DEFAULT 'ru' | User's language |
+| `theme_preference` | `text` | DEFAULT 'system' | `light`, `dark`, `system` |
+| `last_seen_at` | `timestamptz` | | Updated on presence.leave |
+| `deletion_status` | `text` | | `null`, `in_progress`, `deleted` |
+| `created_at` | `timestamptz` | DEFAULT now() | |
+| `updated_at` | `timestamptz` | DEFAULT now() | |
+
+```sql
+CREATE TYPE ai_bio_status AS ENUM ('ready', 'regenerating', 'rate_limited', 'pending');
+```
+
+Indexes:
+```sql
+CREATE INDEX idx_profiles_gender ON profiles(gender) WHERE is_published = true;
+CREATE INDEX idx_profiles_location ON profiles USING GIST (location);
+CREATE INDEX idx_profiles_role ON profiles(role);
+```
+
+### `photos`
+
+The `photos` table separates **upload lifecycle** (`status`) from **moderation result** (`moderation_status`). Variants generated by `sharp` are stored as `jsonb` paths so the table does not bloat with format columns.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id` | `uuid` | PK, DEFAULT `gen_random_uuid()` | |
+| `profile_id` | `uuid` | NOT NULL, FK → `profiles.id` ON DELETE CASCADE | |
+| `storage_path` | `text` | | Temporary path of the **original** during the upload→process window. Set to NULL after variants are generated and the original is deleted from Storage |
+| `position` | `smallint` | NOT NULL, CHECK (`position BETWEEN 1 AND 6`) | Display order. Position 1 = avatar |
+| `status` | `photo_status` | DEFAULT 'pending' | Lifecycle: `pending` → `uploaded` → `processing` → `processed` → (deleted on rejection) |
+| `moderation_status` | `moderation_status` | DEFAULT 'queued' | Result: `queued`, `approved`, `rejected`, `manual_review` |
+| `moderation_result` | `jsonb` | | Raw provider response (OpenAI Vision / Sightengine) |
+| `moderation_reason` | `text` | | Human-readable reason if rejected |
+| `variants` | `jsonb` | DEFAULT '{}' | Map: `{ avatar: { avif, webp }, cover: { avif, webp }, cover_blurred: { avif, webp }, full: { avif, webp }, full_blurred: { avif, webp } }` (Storage paths). The `_blurred` variants are pre-generated by the upload pipeline and served by `/api/photos/stream` when the viewer is not authorised to see the unblurred image |
+| `phash` | `text` | | Perceptual hash for dedup |
+| `created_at` | `timestamptz` | DEFAULT now() | |
+| `updated_at` | `timestamptz` | DEFAULT now() | |
+
+```sql
+CREATE TYPE photo_status        AS ENUM ('pending', 'uploaded', 'processing', 'processed');
+CREATE TYPE moderation_status   AS ENUM ('queued', 'approved', 'rejected', 'manual_review');
+```
+
+Indexes:
+```sql
+CREATE UNIQUE INDEX idx_photos_profile_position ON photos(profile_id, position);
+CREATE INDEX idx_photos_profile_visible
+  ON photos(profile_id, position)
+  WHERE moderation_status = 'approved';
+CREATE INDEX idx_photos_moderation_queue
+  ON photos(moderation_status, created_at)
+  WHERE moderation_status IN ('queued', 'manual_review');
+```
+
+Constraints:
+- Maximum 6 photos per profile — enforced via Server Action and a deferred trigger CHECK:
+  ```sql
+  CREATE OR REPLACE FUNCTION enforce_max_photos() RETURNS trigger AS $$
+  BEGIN
+    IF (SELECT count(*) FROM photos WHERE profile_id = NEW.profile_id) > 6 THEN
+      RAISE EXCEPTION 'Profile cannot have more than 6 photos';
+    END IF;
+    RETURN NEW;
+  END $$ LANGUAGE plpgsql;
+  CREATE CONSTRAINT TRIGGER trg_max_photos AFTER INSERT ON photos
+    DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION enforce_max_photos();
+  ```
+- Only photos with `moderation_status = 'approved'` are considered for `is_published` checks and feed visibility.
+
+### `likes`
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id` | `uuid` | PK |
+| `from_user_id` | `uuid` | NOT NULL, FK → `profiles.id` |
+| `to_user_id` | `uuid` | NOT NULL, FK → `profiles.id` |
+| `created_at` | `timestamptz` | DEFAULT now() |
+
+Indexes:
+```sql
+CREATE UNIQUE INDEX idx_likes_pair ON likes(from_user_id, to_user_id);
+CREATE INDEX idx_likes_to ON likes(to_user_id);
+```
+
+### `matches`
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id` | `uuid` | PK |
+| `user_a` | `uuid` | NOT NULL, FK → `profiles.id` |
+| `user_b` | `uuid` | NOT NULL, FK → `profiles.id` |
+| `created_at` | `timestamptz` | DEFAULT now() |
+
+Indexes:
+```sql
+CREATE UNIQUE INDEX idx_matches_pair ON matches(
+  LEAST(user_a, user_b), GREATEST(user_a, user_b)
+);
+```
+
+### `chats`
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id` | `uuid` | PK |
+| `match_id` | `uuid` | NOT NULL, FK → `matches.id`, UNIQUE |
+| `created_at` | `timestamptz` | DEFAULT now() |
+
+### `messages`
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id` | `uuid` | PK, DEFAULT `gen_random_uuid()` |
+| `chat_id` | `uuid` | NOT NULL, FK → `chats.id` |
+| `sender_id` | `uuid` | NOT NULL, FK → `profiles.id` |
+| `type` | `message_type` | NOT NULL | Enum: `text`, `image`, `voice` |
+| `content` | `text` | NOT NULL | Text body or Storage path. Empty string for tombstoned messages |
+| `parent_id` | `uuid` | FK → `messages.id` (quote reply) |
+| `status` | `message_status` | DEFAULT 'sent' | Enum: `sent`, `delivered`, `read` (transitions defined in [04 — Chat](./04-chat-realtime.md)) |
+| `created_at` | `timestamptz` | DEFAULT now() |
+| `read_at` | `timestamptz` | |
+| `edited_at` | `timestamptz` | Set on text-message edit. UI shows "edited" suffix when present |
+| `original_content` | `text` | First version snapshot for audit (set once on first edit) |
+| `deleted_at` | `timestamptz` | Tombstone marker — when set, `content = ''` and any media file in Storage is deleted |
+
+Indexes:
+```sql
+CREATE INDEX idx_messages_chat ON messages(chat_id, created_at DESC);
+CREATE INDEX idx_messages_sender ON messages(sender_id);
+```
+
+### `notifications`
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id` | `uuid` | PK |
+| `user_id` | `uuid` | NOT NULL, FK → `profiles.id` |
+| `type` | `text` | NOT NULL |
+| `status` | `notification_status` | DEFAULT 'unread' | Enum: `unread`, `read` |
+| `title_key` | `text` | NOT NULL | i18n key |
+| `body_key` | `text` | NOT NULL | i18n key |
+| `payload` | `jsonb` | DEFAULT '{}' |
+| `entity_id` | `uuid` | |
+| `created_at` | `timestamptz` | DEFAULT now() |
+| `read_at` | `timestamptz` | |
+
+Indexes:
+```sql
+CREATE INDEX idx_notifications_user ON notifications(user_id, created_at DESC);
+CREATE INDEX idx_notifications_unread ON notifications(user_id, status) WHERE status = 'unread';
+```
+
+### `reports`
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id` | `uuid` | PK |
+| `reporter_id` | `uuid` | NOT NULL, FK → `profiles.id` |
+| `reported_user_id` | `uuid` | NOT NULL, FK → `profiles.id` |
+| `type` | `report_type` | NOT NULL | Enum: `profile`, `photo` |
+| `entity_id` | `uuid` | NOT NULL | ID of reported photo (NULL for `profile` type — `reported_user_id` is the entity) |
+| `status` | `report_status` | DEFAULT 'new' | Enum: `new`, `in_progress`, `resolved` |
+| `comment` | `text` | |
+| `created_at` | `timestamptz` | DEFAULT now() |
+| `resolved_at` | `timestamptz` | |
+| `moderator_id` | `uuid` | FK → `profiles.id` |
+| `resolution` | `text` | |
+
+Indexes:
+```sql
+CREATE INDEX idx_reports_queue ON reports(type, status, created_at DESC);
+CREATE INDEX idx_reports_reported_user ON reports(reported_user_id);
+```
+
+### `subscriptions`
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id` | `uuid` | PK |
+| `user_id` | `uuid` | NOT NULL, FK → `profiles.id`, UNIQUE |
+| `tbank_payment_id` | `text` | T-Bank PaymentId |
+| `tbank_customer_key` | `text` | T-Bank CustomerKey for recurrent payments |
+| `status` | `subscription_status` | DEFAULT 'inactive' | Enum: `active`, `expired`, `cancelled`, `inactive` |
+| `current_period_start` | `timestamptz` | |
+| `current_period_end` | `timestamptz` | 30 days from start |
+| `cancel_at_period_end` | `boolean` | DEFAULT false |
+| `created_at` | `timestamptz` | DEFAULT now() |
+| `updated_at` | `timestamptz` | DEFAULT now() |
+
+### `push_subscriptions`
+
+Forward-compatible with future native iOS / Android clients. Today only the `web` kind is used; APNs (`apns`) and FCM (`fcm`) slots exist so a native client can register without a schema migration.
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id` | `uuid` | PK, DEFAULT `gen_random_uuid()` |
+| `user_id` | `uuid` | NOT NULL, FK → `profiles.id` ON DELETE CASCADE |
+| `kind` | `push_kind` | NOT NULL, DEFAULT `'web'` | Enum: `web`, `apns`, `fcm` |
+| `endpoint` | `text` | Web-only — push service URL. NULL for `apns` / `fcm` |
+| `auth` | `text` | Web-only — VAPID auth secret. NULL for `apns` / `fcm` |
+| `p256dh` | `text` | Web-only — VAPID public key. NULL for `apns` / `fcm` |
+| `device_token` | `text` | Native-only — APNs token (iOS) or FCM token (Android). NULL for `web` |
+| `device_id` | `text` | Optional — stable client-side device identifier for dedup |
+| `locale` | `text` | Snapshot of `profiles.locale` at registration time (used for push text without a profile read) |
+| `last_seen_at` | `timestamptz` | DEFAULT now() — refreshed on every successful send; lets us prune stale subs |
+| `created_at` | `timestamptz` | DEFAULT now() |
+
+```sql
+CREATE TYPE push_kind AS ENUM ('web', 'apns', 'fcm');
+
+-- Web subs: endpoint is the natural unique key
+CREATE UNIQUE INDEX idx_push_web_endpoint
+  ON push_subscriptions(endpoint)
+  WHERE kind = 'web' AND endpoint IS NOT NULL;
+
+-- Native subs: (user_id, device_token) is unique
+CREATE UNIQUE INDEX idx_push_native_token
+  ON push_subscriptions(user_id, device_token)
+  WHERE kind IN ('apns', 'fcm') AND device_token IS NOT NULL;
+
+CREATE INDEX idx_push_user ON push_subscriptions(user_id);
+
+-- Integrity: required fields per kind
+ALTER TABLE push_subscriptions ADD CONSTRAINT push_kind_fields_check CHECK (
+  (kind = 'web'  AND endpoint IS NOT NULL AND auth IS NOT NULL AND p256dh IS NOT NULL AND device_token IS NULL)
+  OR
+  (kind IN ('apns', 'fcm') AND device_token IS NOT NULL AND endpoint IS NULL AND auth IS NULL AND p256dh IS NULL)
+);
+```
+
+The dispatch flow (Inngest `notification-dispatch`) selects all rows for `user_id` and fans out per-kind:
+- `kind = 'web'` → `web-push` library (current MVP)
+- `kind = 'apns'` → APNs HTTP/2 (future)
+- `kind = 'fcm'` → FCM HTTP v1 (future)
+
+Until native clients exist, the dispatcher only iterates `web` rows; the additional code paths are not shipped.
+
+### `notification_preferences`
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id` | `uuid` | PK |
+| `user_id` | `uuid` | NOT NULL, FK → `profiles.id` |
+| `type` | `text` | NOT NULL |
+| `enabled` | `boolean` | DEFAULT true |
+
+```sql
+CREATE UNIQUE INDEX idx_notif_prefs_user_type ON notification_preferences(user_id, type);
+```
+
+### `geonames_countries` and `geonames_cities` (places dataset)
+
+> **Decision:** The canonical source for countries and cities is **[GeoNames](https://www.geonames.org/)** (CC BY 4.0). It covers all countries plus all populated places worldwide and includes localized names — required for CIS coverage at small-town granularity. We import the dataset into Postgres at deploy time so autocomplete is fast, offline-resilient, and sharable with PostGIS radius search.
+
+> **Decision:** We import the **`cities500`** dump (every populated place with ≥500 inhabitants, ~200k rows). For СНГ small towns this is sufficient. If demand grows, we can swap to `cities100` (no minimum) or `allCountries` without code changes.
+
+#### `geonames_countries`
+
+| Column | Type | Notes |
+|---|---|---|
+| `iso2` | `char(2)` | PK, e.g. `'RU'`, `'KZ'` |
+| `iso3` | `char(3)` | |
+| `name_en` | `text` | NOT NULL |
+| `name_ru` | `text` | Russian name (joined from `alternateNames`) |
+| `phone_prefix` | `text` | E.g. `'+7'` |
+| `is_cis` | `boolean` | Computed convenience column for CIS-prioritised UI |
+
+#### `geonames_cities`
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `integer` | PK (GeoNames id) |
+| `name` | `text` | NOT NULL, native form |
+| `ascii_name` | `text` | NOT NULL, ASCII-folded for fuzzy search |
+| `alt_names_ru` | `text` | Russian forms (subset of `alternateNames`) |
+| `country_code` | `char(2)` | NOT NULL, FK → `geonames_countries.iso2` |
+| `admin1_code` | `text` | Region/oblast code |
+| `admin1_name` | `text` | Region/oblast name (denormalized) |
+| `population` | `integer` | |
+| `location` | `geography(point, 4326)` | NOT NULL |
+| `feature_code` | `text` | E.g. `PPL`, `PPLA`, `PPLC` |
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
+CREATE INDEX idx_geonames_cities_country ON geonames_cities(country_code);
+CREATE INDEX idx_geonames_cities_name_trgm ON geonames_cities USING gin (name gin_trgm_ops);
+CREATE INDEX idx_geonames_cities_ascii_trgm ON geonames_cities USING gin (ascii_name gin_trgm_ops);
+CREATE INDEX idx_geonames_cities_alt_ru_trgm ON geonames_cities USING gin (alt_names_ru gin_trgm_ops);
+CREATE INDEX idx_geonames_cities_location ON geonames_cities USING gist (location);
+CREATE INDEX idx_geonames_cities_population ON geonames_cities(country_code, population DESC);
+```
+
+#### Autocomplete query
+
+```sql
+-- Used by /api/geo/cities?country=RU&q=каз
+SELECT id, name, admin1_name, country_code, ST_X(location::geometry) AS lon, ST_Y(location::geometry) AS lat
+FROM geonames_cities
+WHERE country_code = $1
+  AND (
+    name ILIKE $2 || '%'
+    OR ascii_name ILIKE $2 || '%'
+    OR alt_names_ru ILIKE $2 || '%'
+    OR similarity(name, $2) > 0.4
+    OR similarity(alt_names_ru, $2) > 0.4
+  )
+ORDER BY population DESC NULLS LAST
+LIMIT 20;
+```
+
+RLS:
+```sql
+ALTER TABLE geonames_countries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE geonames_cities ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "public_read_countries" ON geonames_countries FOR SELECT USING (true);
+CREATE POLICY "public_read_cities" ON geonames_cities FOR SELECT USING (true);
+```
+
+#### Import workflow
+
+The dataset is imported via a one-shot script `supabase/scripts/import-geonames.ts` and re-run yearly via a manual operator action:
+
+```bash
+# Pseudocode of import script
+1. Download https://download.geonames.org/export/dump/countryInfo.txt
+2. Download https://download.geonames.org/export/dump/cities500.zip
+3. Download https://download.geonames.org/export/dump/alternateNamesV2.zip (Russian alternates)
+4. COPY into staging tables, then UPSERT into geonames_countries / geonames_cities
+5. Mark CIS countries: UPDATE geonames_countries SET is_cis = (iso2 IN ('RU','BY','KZ','KG','TJ','UZ','TM','AM','AZ','MD','UA'))
+```
+
+A migration `0010_geonames_schema.sql` defines the tables/indexes; the data load is a separate operator step (not in migrations) because the dataset is ~50 MB and would balloon the Git repo. The script is idempotent.
+
+### `idempotency_keys`
+
+| Column | Type | Constraints |
+|---|---|---|
+| `key` | `text` | PK |
+| `response` | `jsonb` | |
+| `created_at` | `timestamptz` | DEFAULT now() |
+
+Cleanup via `pg_cron` (see `07-infrastructure.md` → Cron Tasks): delete rows older than 24h hourly.
+
+### `blocks`
+
+User-initiated blocks. Blocking is one-directional: A blocks B → B cannot see A in feed, cannot like A, cannot open chat with A. Existing chats with B are hidden for A and frozen for B (read-only with banner).
+
+> **Decision:** Blocks **persist past account deletion of the blocked user**. We capture a **hash** of the blocked user's email at the moment of blocking and keep it forever (until the blocker themselves removes the block or deletes their account). On a new registration, the system re-binds matching hashes to the new `auth.users.id`. This means: if user B is permanently banned, deletes the account, and registers again with the same email, A's block is automatically reapplied.
+
+> **Decision:** Email is NEVER stored in plaintext in this table. We store `sha256(BLOCKED_EMAIL_PEPPER || lower(email))` so a database leak does not expose a list of "users some person personally blocked". The pepper is a server-side secret (env var `BLOCKED_EMAIL_PEPPER`) and is required to compute or compare hashes — making rainbow-table attacks impractical.
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id` | `uuid` | PK, DEFAULT `gen_random_uuid()` |
+| `blocker_id` | `uuid` | NOT NULL, FK → `profiles.id` ON DELETE CASCADE |
+| `blocked_id` | `uuid` | FK → `profiles.id` ON DELETE SET NULL — nullable on purpose |
+| `blocked_email_hash` | `bytea` | NOT NULL — `sha256(pepper || lower(email))`, 32 bytes |
+| `reason` | `text` | Optional free-text |
+| `created_at` | `timestamptz` | DEFAULT now() |
+
+```sql
+CREATE UNIQUE INDEX idx_blocks_pair_active
+  ON blocks(blocker_id, blocked_id) WHERE blocked_id IS NOT NULL;
+CREATE UNIQUE INDEX idx_blocks_pair_hash
+  ON blocks(blocker_id, blocked_email_hash);
+CREATE INDEX idx_blocks_blocked ON blocks(blocked_id) WHERE blocked_id IS NOT NULL;
+CREATE INDEX idx_blocks_blocked_hash ON blocks(blocked_email_hash);
+
+ALTER TABLE blocks ADD CONSTRAINT no_self_block
+  CHECK (blocker_id <> blocked_id OR blocked_id IS NULL);
+```
+
+#### Hash helper
+
+The pepper is **never** read from the DB. It is read from env at process start and passed into every helper. We expose two SECURITY DEFINER functions that take the pepper as an argument so SQL doesn't leak the secret in `pg_stat_statements`:
+
+```sql
+-- Pepper is supplied per-call from app code; never persisted in DB.
+CREATE OR REPLACE FUNCTION public.email_hash(p_email text, p_pepper text)
+RETURNS bytea AS $$
+  SELECT digest(p_pepper || lower(p_email), 'sha256');
+$$ LANGUAGE sql IMMUTABLE;
+-- Requires pgcrypto extension:
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+```
+
+Application code in Node.js (preferred — keeps the pepper out of Postgres logs entirely):
+
+```typescript
+// lib/crypto/email-hash.ts
+import { createHash } from 'node:crypto'
+
+export function hashBlockedEmail(email: string): Buffer {
+  const pepper = process.env.BLOCKED_EMAIL_PEPPER
+  if (!pepper) throw new Error('BLOCKED_EMAIL_PEPPER missing')
+  return createHash('sha256').update(pepper + email.trim().toLowerCase()).digest()
+}
+```
+
+#### Re-bind on registration
+
+`handle_new_user()` cannot read env vars, so the re-bind happens in **application code** (the Auth callback Route Handler), not in the trigger:
+
+```typescript
+// app/api/auth/callback/route.ts (after exchangeCodeForSession succeeds)
+const emailHash = hashBlockedEmail(user.email!)
+await supabaseAdmin
+  .from('blocks')
+  .update({ blocked_id: user.id })
+  .is('blocked_id', null)
+  .eq('blocked_email_hash', emailHash)
+```
+
+This runs once per Magic Link sign-in. The `idempotency_keys` semantics ensure repeated callbacks don't double-process anything.
+
+#### Effect on `/settings/blocked` UI
+
+Since the plaintext email is no longer stored, the personal blocklist UI MUST adapt:
+
+- For **live** blocks (`blocked_id IS NOT NULL`): show name + avatar from `profiles`, as before.
+- For **ghost** blocks (`blocked_id IS NULL`): show only "Account deleted" with the `created_at` date and the optional `reason`. Do NOT show email or any derived hint.
+- The client-side search filter operates only on names of live blocks. Ghost blocks are always returned unfiltered.
+
+### `banned_emails`
+
+Moderator/admin-issued **registration ban**. When an account is permanently banned (or rejected at registration), the email is added here so it cannot register again. Admins can lift entries.
+
+> **Decision:** Unlike `blocks.blocked_email_hash`, `banned_emails.email` is stored in **plaintext** (lowercased). Rationale: this is an administrative table protected by RLS (`role IN ('moderator','admin')`); the moderator UI legitimately needs to display the banned email to make lift decisions, and admins may need to ban an email preemptively without an existing account. The two tables solve different problems: `blocks` is about a private user-to-user relationship that must not leak; `banned_emails` is an internal moderation operation list.
+
+| Column | Type | Constraints |
+|---|---|---|
+| `email` | `text` | PK (lowercased) |
+| `reason_code` | `text` | NOT NULL — same vocabulary as `user_suspensions.reason_code` |
+| `notes` | `text` | Internal notes |
+| `banned_by` | `uuid` | NOT NULL, FK → `profiles.id` (moderator/admin who issued the ban) |
+| `created_at` | `timestamptz` | DEFAULT now() |
+| `lifted_at` | `timestamptz` | Set when admin lifts the ban |
+| `lifted_by` | `uuid` | FK → `profiles.id` |
+
+```sql
+ALTER TABLE banned_emails ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "moderator_read_banned" ON banned_emails
+  FOR SELECT USING (has_role(auth.uid(), 'moderator'));
+CREATE POLICY "admin_manage_banned" ON banned_emails
+  FOR ALL USING (has_role(auth.uid(), 'admin'))
+  WITH CHECK (has_role(auth.uid(), 'admin'));
+
+CREATE OR REPLACE FUNCTION public.is_email_banned(p_email text) RETURNS boolean AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM banned_emails
+    WHERE email = lower(p_email) AND lifted_at IS NULL
+  );
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+```
+
+Registration block: `handle_new_user()` MUST refuse the insert when `is_email_banned(NEW.email)` returns true:
+
+```sql
+-- Inside handle_new_user(), at the top:
+IF public.is_email_banned(NEW.email) THEN
+  RAISE EXCEPTION 'banned_email' USING ERRCODE = 'P0001';
+END IF;
+```
+
+The auth callback Route Handler catches this exception and renders `/auth?error=banned_email` with a generic "This email cannot be used to register" message.
+
+### `pricing_plans`
+
+Single source of truth for tariff prices. The Init payment Server Action MUST resolve `amount_kopecks` from this table by `code`, never from a hardcoded constant or client input.
+
+| Column | Type | Constraints |
+|---|---|---|
+| `code` | `text` | PK, e.g. `subscription_monthly` |
+| `name_key` | `text` | NOT NULL, i18n key |
+| `description_key` | `text` | NOT NULL, i18n key |
+| `amount_kopecks` | `integer` | NOT NULL, CHECK (>0) |
+| `currency` | `text` | NOT NULL, DEFAULT 'RUB' |
+| `period_days` | `integer` | NOT NULL, CHECK (>0) |
+| `is_active` | `boolean` | NOT NULL, DEFAULT true |
+| `updated_at` | `timestamptz` | DEFAULT now() |
+
+Seed (`supabase/seed.sql`):
+```sql
+INSERT INTO pricing_plans (code, name_key, description_key, amount_kopecks, period_days)
+VALUES ('subscription_monthly', 'pricing.monthly.name', 'pricing.monthly.description', 100000, 30);
+```
+
+RLS:
+```sql
+ALTER TABLE pricing_plans ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "select_active_plans" ON pricing_plans
+  FOR SELECT USING (is_active = true);
+CREATE POLICY "admin_manage_plans" ON pricing_plans
+  FOR ALL USING (has_role(auth.uid(), 'admin'))
+  WITH CHECK (has_role(auth.uid(), 'admin'));
+```
+
+### `user_suspensions`
+
+Moderator-issued bans/warnings. A suspension is "active" while `expires_at IS NULL OR expires_at > now()` and `lifted_at IS NULL`. See `08-moderation.md` for the full flow.
+
+| Column | Type | Constraints |
+|---|---|---|
+| `id` | `uuid` | PK |
+| `user_id` | `uuid` | NOT NULL, FK → `profiles.id` ON DELETE CASCADE |
+| `kind` | `suspension_kind` | NOT NULL | Enum: `warning`, `temp_ban`, `permanent_ban` |
+| `reason_code` | `text` | NOT NULL | E.g. `inappropriate_photo`, `spam`, `harassment` |
+| `notes` | `text` | Internal notes |
+| `created_by` | `uuid` | NOT NULL, FK → `profiles.id` (moderator/admin) |
+| `created_at` | `timestamptz` | DEFAULT now() |
+| `expires_at` | `timestamptz` | NULL for warnings/permanent |
+| `lifted_at` | `timestamptz` | Set when admin lifts the ban early |
+| `lifted_by` | `uuid` | FK → `profiles.id` |
+
+```sql
+CREATE TYPE suspension_kind AS ENUM ('warning', 'temp_ban', 'permanent_ban');
+CREATE INDEX idx_suspensions_active ON user_suspensions(user_id)
+  WHERE lifted_at IS NULL AND (expires_at IS NULL OR expires_at > now());
+```
+
+`profiles` gets a generated/derived check via helper:
+```sql
+CREATE OR REPLACE FUNCTION public.is_user_suspended(p_user uuid) RETURNS boolean AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM user_suspensions
+    WHERE user_id = p_user
+      AND lifted_at IS NULL
+      AND kind <> 'warning'
+      AND (expires_at IS NULL OR expires_at > now())
+  );
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+```
+
+---
+
+## Requirement: Row Level Security (RLS)
+
+### Scenario: All tables have RLS enabled
+
+**Given** any table
+**When** it is created
+**Then** RLS MUST be enabled:
+
+```sql
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
+ALTER TABLE photos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE likes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE matches ENABLE ROW LEVEL SECURITY;
+ALTER TABLE chats ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reports ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE push_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_preferences ENABLE ROW LEVEL SECURITY;
+ALTER TABLE blocks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE user_suspensions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE pricing_plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE banned_emails ENABLE ROW LEVEL SECURITY;
+ALTER TABLE geonames_countries ENABLE ROW LEVEL SECURITY;
+ALTER TABLE geonames_cities ENABLE ROW LEVEL SECURITY;
+```
+
+### Realtime Publication
+
+Realtime Postgres Changes only fire for tables added to the `supabase_realtime` publication. Required tables MUST be added in a migration:
+
+```sql
+ALTER PUBLICATION supabase_realtime ADD TABLE
+  public.messages,
+  public.notifications,
+  public.profiles,
+  public.matches;
+```
+
+Tables NOT in the publication (e.g. `idempotency_keys`, `subscriptions`) cannot leak via Realtime.
+
+### Key RLS Policies
+
+> **Block-aware visibility:** every "select" policy on user-facing tables MUST exclude rows where the viewer is in a block relationship with the row owner. This is encapsulated in the helper `is_blocked_pair(a, b)`.
+
+```sql
+CREATE OR REPLACE FUNCTION public.is_blocked_pair(a uuid, b uuid) RETURNS boolean AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM blocks
+    WHERE (blocker_id = a AND blocked_id = b)
+       OR (blocker_id = b AND blocked_id = a)
+  );
+$$ LANGUAGE sql STABLE SECURITY DEFINER;
+```
+
+```sql
+-- profiles: visible if published, own, or mutual match — and not blocked
+CREATE POLICY "select_profile" ON profiles
+  FOR SELECT USING (
+    auth.uid() = id
+    OR (
+      NOT is_blocked_pair(auth.uid(), profiles.id)
+      AND NOT is_user_suspended(profiles.id)
+      AND (
+        is_published = true
+        OR EXISTS (
+          SELECT 1 FROM matches
+          WHERE (user_a = auth.uid() AND user_b = profiles.id)
+             OR (user_b = auth.uid() AND user_a = profiles.id)
+        )
+      )
+    )
+  );
+
+-- profiles: only owner can update own profile
+CREATE POLICY "update_own_profile" ON profiles
+  FOR UPDATE USING (auth.uid() = id)
+  WITH CHECK (auth.uid() = id);
+
+-- photos: owner sees all own photos in any state; others see only approved photos
+-- of visible profiles (and not blocked)
+CREATE POLICY "select_photos" ON photos
+  FOR SELECT USING (
+    photos.profile_id = auth.uid()
+    OR (
+      moderation_status = 'approved'
+      AND NOT is_blocked_pair(auth.uid(), photos.profile_id)
+      AND EXISTS (
+        SELECT 1 FROM profiles p
+        WHERE p.id = photos.profile_id
+          AND NOT is_user_suspended(p.id)
+          AND (
+            p.is_published = true
+            OR EXISTS (
+              SELECT 1 FROM matches
+              WHERE (user_a = auth.uid() AND user_b = photos.profile_id)
+                 OR (user_b = auth.uid() AND user_a = photos.profile_id)
+            )
+          )
+      )
+    )
+  );
+
+-- photos: only owner can insert/update/delete own photos
+CREATE POLICY "owner_manage_photos" ON photos
+  FOR ALL USING (profile_id = auth.uid())
+  WITH CHECK (profile_id = auth.uid());
+
+-- messages: only chat participants can read
+CREATE POLICY "select_messages" ON messages
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM chats
+      JOIN matches ON matches.id = chats.match_id
+      WHERE chats.id = messages.chat_id
+      AND (matches.user_a = auth.uid() OR matches.user_b = auth.uid())
+    )
+  );
+
+-- likes: users can see likes they sent or received
+CREATE POLICY "select_likes" ON likes
+  FOR SELECT USING (
+    from_user_id = auth.uid() OR to_user_id = auth.uid()
+  );
+
+-- likes: insert blocked if either party blocks the other or sender is suspended
+CREATE POLICY "insert_likes" ON likes
+  FOR INSERT WITH CHECK (
+    from_user_id = auth.uid()
+    AND NOT is_blocked_pair(from_user_id, to_user_id)
+    AND NOT is_user_suspended(from_user_id)
+  );
+
+-- blocks: only owner sees and manages own block list
+CREATE POLICY "manage_own_blocks" ON blocks
+  FOR ALL USING (blocker_id = auth.uid())
+  WITH CHECK (blocker_id = auth.uid());
+
+-- subscriptions: only owner
+CREATE POLICY "select_own_subscription" ON subscriptions
+  FOR SELECT USING (user_id = auth.uid());
+
+-- reports: reporter or moderator+ can view
+CREATE POLICY "select_reports" ON reports
+  FOR SELECT USING (
+    reporter_id = auth.uid()
+    OR EXISTS (
+      SELECT 1 FROM profiles
+      WHERE profiles.id = auth.uid()
+      AND profiles.role IN ('moderator', 'admin')
+    )
+  );
+```
+
+### `has_role` Function
+
+```sql
+CREATE OR REPLACE FUNCTION public.has_role(user_id uuid, required_role text)
+RETURNS boolean AS $$
+DECLARE
+  user_role text;
+BEGIN
+  SELECT role INTO user_role FROM profiles WHERE id = user_id;
+  RETURN CASE
+    WHEN required_role = 'user' THEN true
+    WHEN required_role = 'moderator' AND user_role IN ('moderator', 'admin') THEN true
+    WHEN required_role = 'admin' AND user_role = 'admin' THEN true
+    ELSE false
+  END;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;
+```
+
+---
+
+## Requirement: Match Creation Trigger
+
+### Scenario: Mutual like creates match and chat atomically
+
+**Given** User A likes User B
+**When** the INSERT into `likes` completes
+**Then** a Postgres trigger checks if a reciprocal like (B→A) exists
+**And** if yes, atomically creates a `matches` row and a `chats` row
+
+```sql
+CREATE OR REPLACE FUNCTION public.handle_match()
+RETURNS trigger AS $$
+DECLARE
+  v_match_id uuid;
+  v_chat_id  uuid;
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM likes
+    WHERE from_user_id = NEW.to_user_id AND to_user_id = NEW.from_user_id
+  ) THEN
+    INSERT INTO matches (user_a, user_b)
+    VALUES (LEAST(NEW.from_user_id, NEW.to_user_id), GREATEST(NEW.from_user_id, NEW.to_user_id))
+    RETURNING id INTO v_match_id;
+
+    INSERT INTO chats (match_id) VALUES (v_match_id) RETURNING id INTO v_chat_id;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_like_created
+  AFTER INSERT ON likes
+  FOR EACH ROW EXECUTE FUNCTION public.handle_match();
+```
+
+---
+
+## Requirement: `send_like` RPC
+
+### Scenario: Application sends a like via a single round-trip
+
+**Given** an authenticated user attempting to like another profile
+**When** the Server Action / Route Handler calls `supabase.rpc('send_like', { p_from, p_to })`
+**Then** the function performs **all** structural pre-conditions inside the database transaction:
+
+1. `p_from = p_to` → `LIKE_OWN_PROFILE`
+2. Target profile must exist → otherwise `NOT_FOUND`
+3. Target must be published → otherwise `LIKE_TARGET_UNPUBLISHED`
+4. Sender profile must exist → otherwise `AUTH_UNAUTHORIZED`
+5. Genders must differ → otherwise `LIKE_GENDER_MISMATCH`
+6. `is_blocked_pair(p_from, p_to)` must be false → otherwise `LIKE_BLOCKED`
+7. INSERT `likes (from_user_id, to_user_id)` ON CONFLICT DO NOTHING → if conflict: `LIKE_ALREADY_SENT`
+8. The INSERT fires `handle_match()`; the function then reads `matches` for the canonical pair and returns `(matched, match_id)`
+
+The function returns one row `(matched boolean, match_id uuid, error_code text)`. Errors are surfaced via `error_code` (no `RAISE EXCEPTION`) so callers can map them deterministically to the `AppError` registry without parsing Postgres error strings.
+
+> **Decision:** Premium / quota gating (`has_active_subscription`, `count_likes_used`) stays in application code because subscription state is cached outside Postgres and the gate must run before the database call.
+
+```sql
+CREATE OR REPLACE FUNCTION public.send_like(p_from uuid, p_to uuid)
+RETURNS TABLE (matched boolean, match_id uuid, error_code text)
+LANGUAGE plpgsql SECURITY DEFINER
+SET search_path = public
+AS $$ ... $$;
+
+REVOKE ALL ON FUNCTION public.send_like(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.send_like(uuid, uuid) TO authenticated, service_role;
+```
+
+> **Decision:** RPC, not raw INSERT. `sendLike` MUST go through `send_like(...)` — never `from('likes').insert(...)` followed by client-side post-conditions. This is the single source of truth for like creation.
+
+---
+
+## Requirement: Migrations
+
+### Scenario: Schema change is applied
+
+**Given** a schema change (new table, column, RLS policy)
+**When** the change is needed
+**Then** it MUST be written as a SQL migration in `supabase/migrations/`
+**And** named with sequential numbering: `NNNN_description.sql`
+**And** applied via `supabase db push` (local) or CI/CD (production)
+**And** manual changes via Supabase Studio in production are FORBIDDEN
+
+### Scenario: PR gets isolated database
+
+**Given** a pull request is opened
+**When** Vercel creates a Preview Deployment
+**Then** Supabase Branching MUST create an isolated test database
+**And** all migrations MUST be applied to it automatically
+
+---
+
+## Cross-References
+
+- [00 — Overview & Architecture Principles](./00-overview.md)
+- [01 — Authentication & Onboarding](./01-auth.md)
+- [03 — Profiles, Feed & Matching](./03-profiles-feed.md)
+- [04 — Chat, Realtime & Notifications](./04-chat-realtime.md)
+- [05 — Payments (T-Bank)](./05-payments.md)
+- [06 — Image Processing & Storage](./06-image-processing.md)
+- [08 — Reports, Moderation & Suspensions](./08-moderation.md)

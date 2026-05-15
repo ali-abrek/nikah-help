@@ -2,8 +2,9 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { getUserId } from '@/lib/auth/claims'
 import { SettingsScreen } from '@/features/settings/components/SettingsScreen'
 import { ScreenBody } from '@/components/layout/AppShell'
+import { buildGenericTitle } from '@/lib/seo'
 
-export const metadata = { title: 'Настройки — Nikah Help' }
+export const metadata = { title: buildGenericTitle('Настройки', 'ru') }
 
 export default async function SettingsPage() {
   const supabase = await createServerSupabase()
