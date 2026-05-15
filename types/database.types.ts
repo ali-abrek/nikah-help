@@ -584,6 +584,7 @@ export type Database = {
           locale: string | null
           location: unknown
           marital_status: string | null
+          meta_description: string | null
           name: string | null
           nationality: string | null
           onboarding_completed: boolean | null
@@ -621,6 +622,7 @@ export type Database = {
           locale?: string | null
           location?: unknown
           marital_status?: string | null
+          meta_description?: string | null
           name?: string | null
           nationality?: string | null
           onboarding_completed?: boolean | null
@@ -658,6 +660,7 @@ export type Database = {
           locale?: string | null
           location?: unknown
           marital_status?: string | null
+          meta_description?: string | null
           name?: string | null
           nationality?: string | null
           onboarding_completed?: boolean | null
