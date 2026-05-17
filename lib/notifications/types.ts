@@ -9,6 +9,7 @@ export type NotificationType =
   // Moderation
   | 'photo_approved'
   | 'photo_rejected'
+  | 'photo_auto_rejected'
   | 'photo_removed_by_moderator'
   | 'account_blocked'
   | 'account_reinstated'

@@ -151,9 +151,9 @@ export function OnboardingWizard({
             type="button"
             onClick={() => setShowCancel(true)}
             aria-label={t('ob_cancel')}
-            className="grid h-7 w-7 place-items-center rounded-full bg-[var(--ink)] text-white"
+            className="grid h-7 w-7 place-items-center text-[var(--ink)]"
           >
-            <Icon name="close" size={14} />
+            <Icon name="close" size={18} />
           </button>
         </div>
         <div className="h-1 overflow-hidden rounded-full bg-[var(--divider)]">

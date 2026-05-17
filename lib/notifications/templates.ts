@@ -31,6 +31,10 @@ const TEMPLATE_MAP: Record<NotificationType, TemplateKeys> = {
     titleKey: 'notifications.photo_rejected.title',
     bodyKey: 'notifications.photo_rejected.body',
   },
+  photo_auto_rejected: {
+    titleKey: 'notifications.photo_auto_rejected.title',
+    bodyKey: 'notifications.photo_auto_rejected.body',
+  },
   photo_removed_by_moderator: {
     titleKey: 'notifications.photo_removed_by_moderator.title',
     bodyKey: 'notifications.photo_removed_by_moderator.body',

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { cn } from '@/lib/utils/cn'
 import { Icon, type IconName } from '@/components/ui/icon'
+import { useLang } from '@/lib/i18n/use-lang'
 import type { NotificationWithPayload } from '@/features/notifications/server/get-notifications'
 
 type Tone = 'info' | 'important' | 'warn' | 'error'
@@ -14,6 +15,7 @@ const TONES: Record<string, { icon: IconName; tone: Tone }> = {
   message_new: { icon: 'chat', tone: 'info' },
   photo_approved: { icon: 'check', tone: 'info' },
   photo_rejected: { icon: 'close', tone: 'error' },
+  photo_auto_rejected: { icon: 'close', tone: 'error' },
   photo_removed_by_moderator: { icon: 'shield', tone: 'warn' },
   account_blocked: { icon: 'shield', tone: 'error' },
   account_reinstated: { icon: 'check', tone: 'info' },
@@ -34,11 +36,24 @@ interface NotificationItemProps {
 }
 
 export function NotificationItem({ notification, onMarkAsRead }: NotificationItemProps) {
+  const { t } = useLang()
   const isUnread = notification.status === 'unread'
   const def = TONES[notification.type] ?? { icon: 'bell' as IconName, tone: 'info' as Tone }
   const palette = TONE_STYLES[def.tone]
   const payload = notification.payload as Record<string, unknown> | null
   const link = payload?.link as string | undefined
+  const photoId = payload?.photo_id as string | undefined
+
+  // Special-cased title for moderator-driven rejection — the back-end stores
+  // template keys, not the resolved string. Other types still render the raw
+  // key (placeholder behaviour shared with the rest of the app).
+  const title =
+    notification.type === 'photo_rejected' || notification.type === 'photo_auto_rejected'
+      ? t(notification.type === 'photo_rejected' ? 'notif_photo_rejected_title' : 'notif_photo_auto_rejected_title')
+      : notification.title_key
+
+  const showPhotoThumb =
+    (notification.type === 'photo_rejected' || notification.type === 'photo_auto_rejected') && !!photoId
 
   const inner = (
     <div
@@ -47,12 +62,23 @@ export function NotificationItem({ notification, onMarkAsRead }: NotificationIte
         isUnread && 'bg-[var(--primary-faint)]',
       )}
     >
-      <div
-        className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-[10px]"
-        style={{ background: palette.bg, color: palette.fg }}
-      >
-        <Icon name={def.icon} size={18} />
-      </div>
+      {showPhotoThumb ? (
+        <div className="relative aspect-[4/5] h-[48px] w-[38px] shrink-0 overflow-hidden rounded-[8px] bg-[var(--surface-2)]">
+          {/* eslint-disable-next-line @next/next/no-img-element -- owner-only stream, not optimisable */}
+          <img
+            src={`/api/photos/stream?photoId=${photoId}&variant=avatar&fmt=webp`}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        </div>
+      ) : (
+        <div
+          className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-[10px]"
+          style={{ background: palette.bg, color: palette.fg }}
+        >
+          <Icon name={def.icon} size={18} />
+        </div>
+      )}
       <div className="min-w-0 flex-1">
         <div
           className={cn(
@@ -60,9 +86,11 @@ export function NotificationItem({ notification, onMarkAsRead }: NotificationIte
             isUnread ? 'font-medium' : 'font-normal',
           )}
         >
-          {notification.title_key}
+          {title}
         </div>
-        {notification.body_key && (
+        {notification.body_key &&
+          notification.type !== 'photo_rejected' &&
+          notification.type !== 'photo_auto_rejected' && (
           <div className="mt-0.5 line-clamp-2 text-[13px] text-[var(--ink-2)]">
             {notification.body_key}
           </div>

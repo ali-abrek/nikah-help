@@ -95,10 +95,13 @@ export function OwnProfile({ profile }: OwnProfileProps) {
   }
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+    const selected = Array.from(e.target.files ?? [])
     if (fileInputRef.current) fileInputRef.current.value = ''
-    if (!file) return
+    if (selected.length === 0) return
 
+    const MAX_PHOTOS = 6
+    const MIN_SHORT_SIDE_PX = 1000
+    const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
     const validTypes = [
       'image/jpeg',
       'image/png',
@@ -107,63 +110,99 @@ export function OwnProfile({ profile }: OwnProfileProps) {
       'image/heic',
       'image/heif',
     ]
-    if (!validTypes.includes(file.type)) {
-      toast.show(t('own_photo_add_error'))
+
+    const remainingSlots = MAX_PHOTOS - photos.length
+    if (selected.length > remainingSlots) {
+      toast.show(t('ph_err_max_count', { n: MAX_PHOTOS }))
       return
     }
 
+    // Best-effort browser-side decode; HEIC on Chromium returns null and we
+    // fall through to server-side sharp validation.
+    const readShortSide = async (file: File): Promise<number | null> => {
+      if (typeof createImageBitmap === 'function') {
+        try {
+          const bitmap = await createImageBitmap(file)
+          const side = Math.min(bitmap.width, bitmap.height)
+          bitmap.close?.()
+          return side
+        } catch {
+          return null
+        }
+      }
+      return null
+    }
+
     setUploadingPhoto(true)
-    const previewUrl = URL.createObjectURL(file)
     try {
-      const position = photos.length + 1
-      const res = await fetch('/api/photos/upload-url', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mimeType: file.type, filename: file.name, position }),
-      })
-      if (!res.ok) {
-        toast.show(t('own_photo_add_error'))
-        URL.revokeObjectURL(previewUrl)
-        return
-      }
+      let basePosition = photos.length + 1
+      for (const file of selected) {
+        if (!validTypes.includes(file.type)) {
+          toast.show(t('ph_err_format'))
+          continue
+        }
+        if (file.size > MAX_FILE_SIZE_BYTES) {
+          toast.show(t('ph_err_too_large'))
+          continue
+        }
+        const shortSide = await readShortSide(file)
+        if (shortSide !== null && shortSide < MIN_SHORT_SIDE_PX) {
+          toast.show(t('ph_err_too_small'))
+          continue
+        }
 
-      const { photoId, signedUrl } = (await res.json()) as {
-        photoId: string
-        signedUrl: string
-      }
+        const position = basePosition++
+        const previewUrl = URL.createObjectURL(file)
 
-      const uploadRes = await fetch(signedUrl, {
-        method: 'PUT',
-        body: file,
-        headers: { 'Content-Type': file.type },
-      })
-      if (!uploadRes.ok) {
-        toast.show(t('own_photo_add_error'))
-        URL.revokeObjectURL(previewUrl)
-        return
-      }
+        const res = await fetch('/api/photos/upload-url', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mimeType: file.type, filename: file.name, position }),
+        })
+        if (!res.ok) {
+          toast.show(t('own_photo_add_error'))
+          URL.revokeObjectURL(previewUrl)
+          continue
+        }
 
-      const markResult = await markPhotoUploaded(photoId)
-      if (!markResult.success) {
-        toast.show(t('own_photo_add_error'))
-        URL.revokeObjectURL(previewUrl)
-        return
-      }
+        const { photoId, signedUrl } = (await res.json()) as {
+          photoId: string
+          signedUrl: string
+        }
 
-      await fetch('/api/photos/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ photoId }),
-      }).catch(() => {})
+        const uploadRes = await fetch(signedUrl, {
+          method: 'PUT',
+          body: file,
+          headers: { 'Content-Type': file.type },
+        })
+        if (!uploadRes.ok) {
+          toast.show(t('own_photo_add_error'))
+          URL.revokeObjectURL(previewUrl)
+          continue
+        }
 
-      const newPhoto: ProfilePhotoData = {
-        id: photoId,
-        position,
-        variants: null,
-        moderation_status: 'queued',
+        const markResult = await markPhotoUploaded(photoId)
+        if (!markResult.success) {
+          toast.show(t('own_photo_add_error'))
+          URL.revokeObjectURL(previewUrl)
+          continue
+        }
+
+        await fetch('/api/photos/process', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ photoId }),
+        }).catch(() => {})
+
+        const newPhoto: ProfilePhotoData = {
+          id: photoId,
+          position,
+          variants: null,
+          moderation_status: 'queued',
+        }
+        setLocalPreviews((prev) => ({ ...prev, [photoId]: previewUrl }))
+        setPhotos((prev) => [...prev, newPhoto])
       }
-      setLocalPreviews((prev) => ({ ...prev, [photoId]: previewUrl }))
-      setPhotos((prev) => [...prev, newPhoto])
     } finally {
       setUploadingPhoto(false)
     }
@@ -250,7 +289,9 @@ export function OwnProfile({ profile }: OwnProfileProps) {
               ))}
             </div>
           )}
-          {photo?.moderation_status === 'pending' && (
+          {(photo?.moderation_status === 'pending' ||
+            photo?.moderation_status === 'queued' ||
+            photo?.moderation_status === 'manual_review') && (
             <span className="absolute bottom-3 left-3 rounded-lg bg-black/60 px-2.5 py-1 text-[11px] text-white backdrop-blur-md">
               {t('mod_pending')}
             </span>
@@ -348,7 +389,9 @@ export function OwnProfile({ profile }: OwnProfileProps) {
                       {t('ob_avatar')}
                     </span>
                   )}
-                  {p.moderation_status === 'pending' && (
+                  {(p.moderation_status === 'pending' ||
+                    p.moderation_status === 'queued' ||
+                    p.moderation_status === 'manual_review') && (
                     <span className="absolute bottom-1 left-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-center text-[9.5px] text-white">
                       {t('mod_pending')}
                     </span>
@@ -384,6 +427,7 @@ export function OwnProfile({ profile }: OwnProfileProps) {
           <input
             ref={fileInputRef}
             type="file"
+            multiple
             accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif"
             onChange={handleFileSelected}
             className="hidden"

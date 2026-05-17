@@ -19,6 +19,7 @@ export function resolveLink(
 
     case 'photo_approved':
     case 'photo_rejected':
+    case 'photo_auto_rejected':
       return '/settings/photos'
 
     case 'photo_removed_by_moderator':

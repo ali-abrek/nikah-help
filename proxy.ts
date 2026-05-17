@@ -19,6 +19,7 @@ const PROTECTED_PATHS = [
   '/likes',
   '/notifications',
   '/settings',
+  '/moderation',
 ]
 
 export async function proxy(request: NextRequest) {

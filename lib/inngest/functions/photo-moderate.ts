@@ -4,6 +4,7 @@ import { getOpenAI } from '@/lib/openai/client'
 import { STORAGE } from '@/lib/image-processing/photo-variants'
 import { NonRetriableError } from 'inngest'
 import { captureSentryException } from '@/lib/sentry/capture'
+import { createNotification } from '@/lib/notifications/factory'
 
 interface ModerationScores {
   explicit_nudity_score: number
@@ -19,6 +20,7 @@ async function loadPhotoContext(photoId: string): Promise<{
   buffer: Buffer
   contentType: string
   profileGender: 'male' | 'female' | null
+  profileId: string
 }> {
   const supabase = createAdminClient()
 
@@ -59,7 +61,12 @@ async function loadPhotoContext(photoId: string): Promise<{
     | 'female'
     | undefined
 
-  return { buffer, contentType: 'image/webp', profileGender: profileGender ?? null }
+  return {
+    buffer,
+    contentType: 'image/webp',
+    profileGender: profileGender ?? null,
+    profileId: (photo as unknown as { profile_id: string }).profile_id,
+  }
 }
 
 interface ModerationDecision {
@@ -67,25 +74,45 @@ interface ModerationDecision {
   reason?: string
 }
 
+// Thresholds tuned for a Muslim matrimonial app: stricter than a general
+// social platform, with a manual-review band that traps borderline cases
+// (modest sportswear, traditional dress, medical contexts) instead of
+// auto-rejecting them.
+const REJECT = {
+  explicit_nudity: 65,
+  suggestive: 70,
+  violence: 75,
+  hate_symbols: 65,
+} as const
+
+const REVIEW = {
+  explicit_nudity: 45,
+  suggestive: 50,
+  violence: 55,
+  hate_symbols: 40,
+} as const
+
 function evaluateModeration(
   scores: ModerationScores,
   profileGender: 'male' | 'female' | null,
 ): ModerationDecision {
-  if (scores.explicit_nudity_score >= 90) {
+  // Hard rejects — high confidence of disallowed content.
+  if (scores.explicit_nudity_score >= REJECT.explicit_nudity) {
     return { status: 'rejected', reason: 'explicit_nudity' }
   }
-  if (scores.suggestive_score >= 85) {
+  if (scores.suggestive_score >= REJECT.suggestive) {
     return { status: 'rejected', reason: 'suggestive_content' }
   }
-  if (scores.violence_score >= 90) {
+  if (scores.violence_score >= REJECT.violence) {
     return { status: 'rejected', reason: 'violence' }
   }
-  if (scores.hate_symbols_score >= 95) {
+  if (scores.hate_symbols_score >= REJECT.hate_symbols) {
     return { status: 'rejected', reason: 'hate_symbols' }
   }
   if (scores.face_count !== 1) {
     return { status: 'rejected', reason: 'face_count_invalid' }
   }
+
   // Gender mismatch — the depicted person must match the profile's declared
   // gender. 'uncertain' falls through to manual_review rather than auto-reject.
   if (profileGender && scores.detected_gender === 'male' && profileGender !== 'male') {
@@ -93,6 +120,20 @@ function evaluateModeration(
   }
   if (profileGender && scores.detected_gender === 'female' && profileGender !== 'female') {
     return { status: 'rejected', reason: 'gender_mismatch' }
+  }
+
+  // Borderline band — send to human queue rather than risk a false positive.
+  if (
+    scores.explicit_nudity_score >= REVIEW.explicit_nudity ||
+    scores.suggestive_score >= REVIEW.suggestive
+  ) {
+    return { status: 'manual_review', reason: 'borderline_nudity' }
+  }
+  if (scores.violence_score >= REVIEW.violence) {
+    return { status: 'manual_review', reason: 'potential_violence' }
+  }
+  if (scores.hate_symbols_score >= REVIEW.hate_symbols) {
+    return { status: 'manual_review', reason: 'potential_hate_symbols' }
   }
   if (profileGender && scores.detected_gender === 'uncertain') {
     return { status: 'manual_review', reason: 'gender_uncertain' }
@@ -218,6 +259,37 @@ Be strict with nudity and suggestive content — the application requires modest
         throw err
       }
     })
+
+    if (decision.status === 'rejected') {
+      await step.run('notify-user', async () => {
+        const payload = createNotification('photo_auto_rejected', {
+          recipientId: ctx.profileId,
+          photoId,
+          reason: decision.reason ?? result.reason ?? 'auto_rejected',
+          entityId: photoId,
+          entityType: 'photo',
+        })
+
+        try {
+          await inngest.send({
+            name: 'notification/send',
+            data: {
+              type: 'photo_auto_rejected',
+              payload,
+              userId: ctx.profileId,
+              dedupeKey: `photo_auto_rejected:${photoId}`,
+            },
+          })
+        } catch (err) {
+          void captureSentryException(err, {
+            flow: 'moderation.vision',
+            severity: 'error',
+            tags: { step: 'notify_user' },
+            extra: { photoId, logContext: { profileId: ctx.profileId } },
+          })
+        }
+      })
+    }
 
     return { photoId, decision, scores: result }
   },

@@ -6,6 +6,16 @@ import { Photo as PhotoStream } from '@/features/photos/components/Photo'
 import { useLang } from '@/lib/i18n/use-lang'
 
 const MAX_PHOTOS = 6
+const MIN_SHORT_SIDE_PX = 1000
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
+const ACCEPTED_MIME = [
+  'image/jpeg',
+  'image/png',
+  'image/webp',
+  'image/avif',
+  'image/heic',
+  'image/heif',
+] as const
 
 export type WizardPhoto = {
   id: string
@@ -61,6 +71,35 @@ async function uploadFile(
   return { photoId, path }
 }
 
+// Best-effort client check: returns the short side in px, or null if the
+// browser cannot decode the file (HEIC/HEIF — Safari can sometimes, Chromium
+// cannot). When null, we defer to server-side sharp validation.
+async function readShortSide(file: File): Promise<number | null> {
+  if (typeof createImageBitmap === 'function') {
+    try {
+      const bitmap = await createImageBitmap(file)
+      const side = Math.min(bitmap.width, bitmap.height)
+      bitmap.close?.()
+      return side
+    } catch {
+      return null
+    }
+  }
+  return new Promise<number | null>((resolve) => {
+    const url = URL.createObjectURL(file)
+    const img = new Image()
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      resolve(Math.min(img.naturalWidth, img.naturalHeight))
+    }
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      resolve(null)
+    }
+    img.src = url
+  })
+}
+
 interface Props {
   photos: WizardPhoto[]
   setPhotos: React.Dispatch<React.SetStateAction<WizardPhoto[]>>
@@ -73,61 +112,88 @@ export function OnboardingStep3({ photos, setPhotos }: Props) {
   const [pendingDelPhotoId, setPendingDelPhotoId] = useState<string | null>(null)
   const [deletingPhoto, setDeletingPhoto] = useState(false)
 
-  const hasAddSlot = photos.length < MAX_PHOTOS
+  const remainingSlots = MAX_PHOTOS - photos.length
+  const hasAddSlot = remainingSlots > 0
   const nextPosition = photos.length + 1
 
   const handleAddClick = () => {
     fileInputRef.current?.click()
   }
 
-  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
+  const handleFilesSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(e.target.files ?? [])
     if (fileInputRef.current) fileInputRef.current.value = ''
-    if (!file) return
+    if (selected.length === 0) return
 
-    const validTypes = [
-      'image/jpeg',
-      'image/png',
-      'image/webp',
-      'image/avif',
-      'image/heic',
-      'image/heif',
-    ]
-    if (!validTypes.includes(file.type)) {
-      setError('Неподдерживаемый формат. Допустимы: JPEG, PNG, WebP, AVIF, HEIC')
+    // Cap at remaining slots so the user gets a clear error rather than
+    // silently truncating their selection.
+    if (selected.length > remainingSlots) {
+      setError(t('ph_err_max_count', { n: MAX_PHOTOS }))
       return
     }
 
     setError(null)
-    const position = nextPosition
-    const tempId = `__pending_${position}_${Date.now()}`
-    const preview = URL.createObjectURL(file)
 
-    setPhotos((prev) => [
-      ...prev,
-      {
-        id: tempId,
-        position,
-        localPreview: preview,
-        uploading: true,
-        isExisting: false,
-      },
-    ])
+    let basePosition = nextPosition
+    const errors: string[] = []
 
-    const result = await uploadFile(file, position)
+    for (const file of selected) {
+      if (!ACCEPTED_MIME.includes(file.type as (typeof ACCEPTED_MIME)[number])) {
+        errors.push(t('ph_err_format'))
+        continue
+      }
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        errors.push(t('ph_err_too_large'))
+        continue
+      }
 
-    if ('error' in result) {
-      setPhotos((prev) => prev.filter((p) => p.id !== tempId))
-      setError(result.error)
-      URL.revokeObjectURL(preview)
-      return
+      const shortSide = await readShortSide(file)
+      // shortSide === null means the browser couldn't decode (HEIC on Chrome).
+      // The server pipeline runs sharp.metadata() on every upload and rejects
+      // small images with VALIDATION_IMAGE_TOO_SMALL — so the client check is
+      // a fast-feedback layer, not the authoritative gate.
+      if (shortSide !== null && shortSide < MIN_SHORT_SIDE_PX) {
+        errors.push(t('ph_err_too_small'))
+        continue
+      }
+
+      const position = basePosition++
+      const tempId = `__pending_${position}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
+      const preview = URL.createObjectURL(file)
+
+      setPhotos((prev) => [
+        ...prev,
+        {
+          id: tempId,
+          position,
+          localPreview: preview,
+          uploading: true,
+          isExisting: false,
+        },
+      ])
+
+      // Fire-and-await per-file so positions stay sequential and the server's
+      // PHOTO_POSITION_TAKEN constraint can't race.
+      const result = await uploadFile(file, position)
+
+      if ('error' in result) {
+        setPhotos((prev) => prev.filter((p) => p.id !== tempId))
+        URL.revokeObjectURL(preview)
+        errors.push(result.error)
+        continue
+      }
+
+      setPhotos((prev) =>
+        prev.map((p) =>
+          p.id === tempId ? { ...p, id: result.photoId, uploading: false, isExisting: true } : p,
+        ),
+      )
     }
 
-    setPhotos((prev) =>
-      prev.map((p) =>
-        p.id === tempId ? { ...p, id: result.photoId, uploading: false, isExisting: true } : p,
-      ),
-    )
+    if (errors.length > 0) {
+      // Dedupe identical messages (e.g. multiple too-small files share one msg).
+      setError(Array.from(new Set(errors)).join(' • '))
+    }
   }
 
   const handleRemoveRequest = (photoId: string) => {
@@ -234,8 +300,9 @@ export function OnboardingStep3({ photos, setPhotos }: Props) {
       <input
         ref={fileInputRef}
         type="file"
+        multiple
         accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif"
-        onChange={handleFileSelected}
+        onChange={handleFilesSelected}
         className="hidden"
       />
 

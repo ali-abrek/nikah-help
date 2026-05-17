@@ -8,6 +8,7 @@ const REQUIRED_FIELDS: Record<NotificationType, (keyof NotificationContext)[]> =
   like_revoked: ['recipientId', 'actorId', 'entityId'],
   photo_approved: ['recipientId', 'photoId'],
   photo_rejected: ['recipientId', 'photoId', 'reason'],
+  photo_auto_rejected: ['recipientId', 'photoId', 'reason'],
   photo_removed_by_moderator: ['recipientId', 'photoId', 'reason'],
   account_blocked: ['recipientId', 'reason'],
   account_reinstated: ['recipientId'],
