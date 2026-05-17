@@ -1,16 +1,19 @@
 'use client'
 
+import { Photo as PhotoStream } from '@/features/photos/components/Photo'
 import type {
   OnboardingStep1Data,
   OnboardingStep2MaleData,
   OnboardingStep2FemaleData,
 } from '../schemas'
+import type { WizardPhoto } from './onboarding-step3'
 
 type Props = {
   isPending?: boolean
   step1Data: Partial<OnboardingStep1Data> | null
   step2Data: Partial<OnboardingStep2MaleData | OnboardingStep2FemaleData> | null
   gender: 'male' | 'female'
+  photos: WizardPhoto[]
 }
 
 // ── Label maps ─────────────────────────────────────────────────────
@@ -85,10 +88,11 @@ function ageFromBirthDate(birthDate: string): number | null {
   return age
 }
 
-export function OnboardingStep4({ isPending, step1Data, step2Data, gender }: Props) {
+export function OnboardingStep4({ isPending, step1Data, step2Data, gender, photos }: Props) {
   const s1 = step1Data
   const s2 = step2Data
   const age = s1?.birth_date ? ageFromBirthDate(s1.birth_date) : null
+  const sortedPhotos = [...photos].sort((a, b) => a.position - b.position)
 
   return (
     <div className="space-y-6">
@@ -169,6 +173,36 @@ export function OnboardingStep4({ isPending, step1Data, step2Data, gender }: Pro
           <div className="mt-3">
             <dt className="text-xs text-zinc-500">О себе</dt>
             <dd className="mt-0.5 text-sm text-foreground">{String(s2.about_self)}</dd>
+          </div>
+        )}
+
+        {sortedPhotos.length > 0 && (
+          <div className="mt-4">
+            <div className="mb-2 text-xs text-zinc-500">Фотографии</div>
+            <div className="grid grid-cols-3 gap-2">
+              {sortedPhotos.map((p) => (
+                <div
+                  key={p.id}
+                  className="relative aspect-[4/5] overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700"
+                >
+                  {p.localPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- object URL preview
+                    <img
+                      src={p.localPreview}
+                      alt={`Фото ${p.position}`}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <PhotoStream
+                      photoId={p.id}
+                      variant="cover"
+                      alt={`Фото ${p.position}`}
+                      className="h-full w-full object-cover"
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

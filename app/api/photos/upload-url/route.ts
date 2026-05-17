@@ -6,7 +6,15 @@ import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
 import { PHOTO_UPLOAD } from '@/lib/ratelimit/presets'
 import { handleRouteError } from '@/lib/errors/handler'
 import { AppError } from '@/lib/errors/app-error'
-import { STORAGE, UPLOAD } from '@/lib/image-processing/photo-variants'
+import {
+  STORAGE,
+  UPLOAD,
+  PHOTO_VARIANTS,
+  FORMATS,
+  buildStoragePath,
+} from '@/lib/image-processing/photo-variants'
+import { callReorderProfilePhotos } from '@/lib/supabase/rpc'
+import { captureSentryException } from '@/lib/sentry/capture'
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
@@ -58,6 +66,72 @@ export const POST = withAuth(
       }
 
       const supabase = await createServerSupabase()
+
+      // Free up slots held by rejected photos: they're hidden from the user but
+      // still occupy positions in the DB, which causes PHOTO_POSITION_TAKEN
+      // when the wizard counts visible photos and requests the next position.
+      const { data: rejected } = await supabase
+        .from('photos')
+        .select('id, storage_path')
+        .eq('profile_id', userId)
+        .eq('moderation_status', 'rejected')
+
+      if (rejected && rejected.length > 0) {
+        const rejectedIds = rejected.map((r) => r.id)
+        const { error: delErr } = await supabase.from('photos').delete().in('id', rejectedIds)
+        if (delErr) {
+          void captureSentryException(delErr, {
+            flow: 'image.upload',
+            severity: 'warning',
+            tags: { step: 'rejected_cleanup_db' },
+            extra: { logContext: { userId, count: rejected.length } },
+          })
+        } else {
+          const paths: string[] = []
+          for (const r of rejected) {
+            if (r.storage_path) paths.push(r.storage_path)
+            for (const variant of Object.values(PHOTO_VARIANTS)) {
+              for (const format of FORMATS) {
+                paths.push(buildStoragePath(userId, r.id, variant, format))
+              }
+            }
+          }
+          if (paths.length > 0) {
+            const { error: removeErr } = await supabase.storage.from(STORAGE.bucket).remove(paths)
+            if (removeErr) {
+              void captureSentryException(removeErr, {
+                flow: 'image.upload',
+                severity: 'warning',
+                tags: { step: 'rejected_cleanup_storage' },
+                extra: { logContext: { userId, pathsCount: paths.length } },
+              })
+            }
+          }
+        }
+
+        // Compact positions to 1..N so the wizard's UI position matches DB.
+        const { data: remaining } = await supabase
+          .from('photos')
+          .select('id')
+          .eq('profile_id', userId)
+          .order('position', { ascending: true })
+
+        if (remaining && remaining.length > 0) {
+          const { error: reorderErr } = await callReorderProfilePhotos(supabase, {
+            p_profile_id: userId,
+            p_photo_ids: remaining.map((r) => r.id),
+            p_expected_signature: null,
+          })
+          if (reorderErr) {
+            void captureSentryException(new Error(reorderErr.message), {
+              flow: 'image.upload',
+              severity: 'warning',
+              tags: { step: 'rejected_cleanup_reorder' },
+              extra: { logContext: { userId } },
+            })
+          }
+        }
+      }
 
       // RLS scopes this lookup to the authenticated user — defence-in-depth on
       // top of the explicit `profile_id = userId` filter.

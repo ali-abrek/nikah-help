@@ -7,6 +7,8 @@ export interface ProfileDetailData {
   gender: 'male' | 'female' | null
   birth_date: string | null
   country: string | null
+  country_name_ru: string | null
+  country_name_en: string | null
   city: string | null
   nationality: string | null
   height: number | null
@@ -60,8 +62,18 @@ export async function getProfile(
 
   const isOwnProfile = viewerId === profileId
 
+  // Resolve the ISO2 country code to localized names so the UI can show
+  // "Россия" / "Russia" instead of the raw "RU" code.
+  const countryNamesPromise = profile.country
+    ? supabase
+        .from('geonames_countries')
+        .select('name_en, name_ru')
+        .eq('iso2', profile.country.toUpperCase())
+        .maybeSingle()
+    : Promise.resolve({ data: null })
+
   // Run photo, like, match, and block checks in parallel
-  const [photosRes, likeRes, matchRes, blockRes] = await Promise.all([
+  const [photosRes, likeRes, matchRes, blockRes, countryRes] = await Promise.all([
     isOwnProfile
       ? supabase
           .from('photos')
@@ -93,10 +105,16 @@ export async function getProfile(
       .eq('blocker_id', viewerId)
       .eq('blocked_id', profileId)
       .maybeSingle(),
+    countryNamesPromise,
   ])
+
+  const countryRow = (countryRes as { data: { name_en: string; name_ru: string | null } | null })
+    .data
 
   return {
     ...profile,
+    country_name_en: countryRow?.name_en ?? null,
+    country_name_ru: countryRow?.name_ru ?? countryRow?.name_en ?? null,
     photos: (photosRes.data ?? []) as ProfilePhotoData[],
     viewer_has_liked: !!likeRes.data,
     viewer_is_match: !!matchRes.data,

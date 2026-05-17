@@ -19,21 +19,18 @@ export function SubscriptionScreen({ gender }: SubscriptionScreenProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="sticky top-0 z-10 flex min-h-[56px] items-center gap-3 border-b border-[var(--divider)] bg-[var(--bg)] px-4 py-2">
-        <div className="grid h-[38px] w-[38px] shrink-0 place-items-center rounded-[10px] bg-[var(--accent)] text-lg font-bold text-white">
-          ₽
-        </div>
-        <h1 className="m-0 flex-1 text-[22px] font-bold tracking-[-0.4px] text-[var(--ink)]">
-          {t('sub_title')}
-        </h1>
+      <div className="sticky top-0 z-10 flex min-h-[56px] items-center gap-2 border-b border-[var(--divider)] bg-[var(--bg)] px-3 py-2">
         <button
           type="button"
           onClick={() => router.back()}
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--surface-2)] text-[var(--ink)]"
-          aria-label="Close"
+          aria-label="Back"
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[var(--ink)]"
         >
-          <Icon name="close" size={18} />
+          <Icon name="back" size={22} />
         </button>
+        <h1 className="m-0 flex-1 text-[22px] font-bold uppercase tracking-[0.5px] text-[var(--ink)]">
+          {t('sub_title')}
+        </h1>
       </div>
 
       <div className="scroll-area flex-1 overflow-auto px-6 pb-24 pt-5">

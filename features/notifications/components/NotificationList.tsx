@@ -24,28 +24,32 @@ export function NotificationList({ initialNotifications, userId }: NotificationL
 
   return (
     <div className="flex h-full flex-col">
-      <div className="sticky top-0 z-10 flex min-h-[56px] items-center justify-between gap-2 border-b border-[var(--divider)] bg-[var(--bg)] px-5 py-3">
-        <button
-          type="button"
-          onClick={() => router.back()}
-          aria-label="Back"
-          className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[var(--ink)]"
-        >
-          <Icon name="back" size={22} />
-        </button>
-        <h1 className="m-0 flex-1 text-[22px] font-bold uppercase tracking-[0.5px] text-[var(--ink)]">
-          {t('notif_title')}
-        </h1>
-        <Link href="/settings" aria-label={t('settings')}>
-          <IconBtn icon="gear" ariaLabel={t('settings')} />
-        </Link>
-        <button
-          type="button"
-          onClick={markAllAsRead}
-          className="bg-transparent text-[13px] font-medium text-[var(--primary)]"
-        >
-          {t('notif_mark_all')}
-        </button>
+      <div className="sticky top-0 z-10 border-b border-[var(--divider)] bg-[var(--bg)]">
+        <div className="flex min-h-[56px] items-center gap-2 px-5 py-3">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            aria-label="Back"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[var(--ink)]"
+          >
+            <Icon name="back" size={22} />
+          </button>
+          <h1 className="m-0 flex-1 text-[22px] font-bold uppercase tracking-[0.5px] text-[var(--ink)]">
+            {t('notif_title')}
+          </h1>
+          <Link href="/settings" aria-label={t('settings')}>
+            <IconBtn icon="gear" ariaLabel={t('settings')} />
+          </Link>
+        </div>
+        <div className="flex justify-end px-5 pb-2">
+          <button
+            type="button"
+            onClick={markAllAsRead}
+            className="bg-transparent text-[13px] font-medium text-[var(--primary)]"
+          >
+            {t('notif_mark_all')}
+          </button>
+        </div>
       </div>
 
       <div className="scroll-area flex-1 overflow-auto pb-24">

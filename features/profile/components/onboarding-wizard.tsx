@@ -172,6 +172,7 @@ export function OnboardingWizard({
             step1Data={step1Data}
             step2Data={step2Data}
             gender={gender}
+            photos={photos}
           />
         )}
 

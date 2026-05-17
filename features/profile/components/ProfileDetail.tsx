@@ -186,7 +186,11 @@ export function ProfileDetail({ profile, isOwnProfile }: ProfileDetailProps) {
                   <span>
                     {profile.city ? localizePlace(profile.city, lang) : ''}
                     {profile.city && profile.country ? ', ' : ''}
-                    {profile.country ? localizePlace(profile.country, lang) : ''}
+                    {profile.country
+                      ? lang === 'ru'
+                        ? (profile.country_name_ru ?? profile.country_name_en ?? profile.country)
+                        : (profile.country_name_en ?? profile.country)
+                      : ''}
                   </span>
                 </div>
               )}

@@ -461,6 +461,25 @@ Hex values in JSX/CSS are FORBIDDEN. Only CSS variables via classes.
 - Hierarchy: `text-headline-1`, `text-headline-2`, `text-body`, `text-caption`
 - All sizes multiples of 8px
 
+### Page H1 Standard (MANDATORY)
+
+Every page-level `<h1>` (the title shown in the sticky header) MUST:
+
+- Be rendered in **UPPERCASE** (use Tailwind `uppercase` — do not pre-uppercase strings in the dictionary).
+- Be **left-aligned** inside the header row (no `text-center`; use `flex-1` so the title fills the remaining space).
+- Use the canonical class string:
+
+  ```tsx
+  className="m-0 flex-1 text-[22px] font-bold uppercase tracking-[0.5px] text-[var(--ink)]"
+  ```
+
+Reference implementation: `features/notifications/components/NotificationList.tsx`.
+
+This applies to every screen with a sticky header (subscription, FAQ, agreements, guide,
+own profile, notifications, etc.). Secondary actions that previously sat next to the
+title (e.g. "Mark all as read") move to a second row below the header, still inside the
+same sticky container.
+
 ### Component Library (shadcn/ui + Radix UI)
 
 ```bash

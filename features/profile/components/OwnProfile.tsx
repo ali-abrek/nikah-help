@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
+import { Spinner } from '@/components/ui/spinner'
 import { Modal } from '@/components/ui/modal'
 import { Toggle } from '@/components/ui/toggle'
 import { SettingsRow } from '@/components/ui/settings-row'
@@ -11,8 +12,8 @@ import { Photo as PhotoStream } from '@/features/photos/components/Photo'
 import { useToast } from '@/components/ui/toast'
 import { useLang } from '@/lib/i18n/use-lang'
 import { localizePlace } from '@/lib/i18n/dictionary'
-import { deletePhotoAction } from '../actions'
-import type { ProfileDetailData } from '../server/get-profile'
+import { deletePhotoAction, markPhotoUploaded } from '../actions'
+import type { ProfileDetailData, ProfilePhotoData } from '../server/get-profile'
 
 interface OwnProfileProps {
   profile: ProfileDetailData
@@ -41,6 +42,8 @@ export function OwnProfile({ profile }: OwnProfileProps) {
   const [showDel, setShowDel] = useState(false)
   const [photoPendingDel, setPhotoPendingDel] = useState<string | null>(null)
   const [deletingPhoto, setDeletingPhoto] = useState(false)
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [pending, startTransition] = useTransition()
   const age = calcAge(profile.birth_date)
   const photo = photos[photoIdx]
@@ -73,6 +76,81 @@ export function OwnProfile({ profile }: OwnProfileProps) {
     })
   }
 
+  const handleAddPhotoClick = () => {
+    if (uploadingPhoto) return
+    fileInputRef.current?.click()
+  }
+
+  const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (!file) return
+
+    const validTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/webp',
+      'image/avif',
+      'image/heic',
+      'image/heif',
+    ]
+    if (!validTypes.includes(file.type)) {
+      toast.show(t('own_photo_add_error'))
+      return
+    }
+
+    setUploadingPhoto(true)
+    try {
+      const position = photos.length + 1
+      const res = await fetch('/api/photos/upload-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mimeType: file.type, filename: file.name, position }),
+      })
+      if (!res.ok) {
+        toast.show(t('own_photo_add_error'))
+        return
+      }
+
+      const { photoId, signedUrl } = (await res.json()) as {
+        photoId: string
+        signedUrl: string
+      }
+
+      const uploadRes = await fetch(signedUrl, {
+        method: 'PUT',
+        body: file,
+        headers: { 'Content-Type': file.type },
+      })
+      if (!uploadRes.ok) {
+        toast.show(t('own_photo_add_error'))
+        return
+      }
+
+      const markResult = await markPhotoUploaded(photoId)
+      if (!markResult.success) {
+        toast.show(t('own_photo_add_error'))
+        return
+      }
+
+      await fetch('/api/photos/process', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ photoId }),
+      }).catch(() => {})
+
+      const newPhoto: ProfilePhotoData = {
+        id: photoId,
+        position,
+        variants: null,
+        moderation_status: 'queued',
+      }
+      setPhotos((prev) => [...prev, newPhoto])
+    } finally {
+      setUploadingPhoto(false)
+    }
+  }
+
   const confirmDeletePhoto = async () => {
     if (!photoPendingDel) return
     setDeletingPhoto(true)
@@ -101,7 +179,7 @@ export function OwnProfile({ profile }: OwnProfileProps) {
         >
           <Icon name="back" size={22} />
         </button>
-        <h1 className="m-0 flex-1 text-[18px] font-semibold uppercase text-[var(--ink)]">
+        <h1 className="m-0 flex-1 text-[22px] font-bold uppercase tracking-[0.5px] text-[var(--ink)]">
           {t('own_title')}
         </h1>
         <Link
@@ -160,7 +238,11 @@ export function OwnProfile({ profile }: OwnProfileProps) {
             <div className="mt-1 text-[13px] text-[var(--ink-3)]">
               {profile.city ? localizePlace(profile.city, lang) : ''}
               {profile.city && profile.country ? ', ' : ''}
-              {profile.country ? localizePlace(profile.country, lang) : ''}
+              {profile.country
+                ? lang === 'ru'
+                  ? (profile.country_name_ru ?? profile.country_name_en ?? profile.country)
+                  : (profile.country_name_en ?? profile.country)
+                : ''}
             </div>
           )}
           <span
@@ -248,12 +330,22 @@ export function OwnProfile({ profile }: OwnProfileProps) {
             {photos.length < 6 && (
               <button
                 type="button"
-                className="grid aspect-[4/5] place-items-center rounded-xl border-[1.5px] border-dashed border-[var(--divider-strong)] bg-[var(--surface-2)] text-[var(--ink-3)]"
+                onClick={handleAddPhotoClick}
+                disabled={uploadingPhoto}
+                aria-label={t('own_photo_add')}
+                className="grid aspect-[4/5] place-items-center rounded-xl border-[1.5px] border-dashed border-[var(--divider-strong)] bg-[var(--surface-2)] text-[var(--ink-3)] disabled:opacity-60"
               >
-                <Icon name="plus" size={22} />
+                {uploadingPhoto ? <Spinner size={22} /> : <Icon name="plus" size={22} />}
               </button>
             )}
           </div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif"
+            onChange={handleFileSelected}
+            className="hidden"
+          />
         </div>
 
         {profile.ai_bio && (
