@@ -90,35 +90,32 @@ export async function getProfile(
         .order('position', { ascending: true })
 
   // Interaction state: only for authenticated viewers
-  const likePromise =
-    viewerId
-      ? supabase
-          .from('likes')
-          .select('id')
-          .eq('from_user_id', viewerId)
-          .eq('to_user_id', profileId)
-          .maybeSingle()
-      : Promise.resolve({ data: null })
+  const likePromise = viewerId
+    ? supabase
+        .from('likes')
+        .select('id')
+        .eq('from_user_id', viewerId)
+        .eq('to_user_id', profileId)
+        .maybeSingle()
+    : Promise.resolve({ data: null })
 
-  const matchPromise =
-    viewerId
-      ? supabase
-          .from('matches')
-          .select('id')
-          .or(`user_a.eq.${viewerId},user_b.eq.${viewerId}`)
-          .or(`user_a.eq.${profileId},user_b.eq.${profileId}`)
-          .maybeSingle()
-      : Promise.resolve({ data: null })
+  const matchPromise = viewerId
+    ? supabase
+        .from('matches')
+        .select('id')
+        .or(`user_a.eq.${viewerId},user_b.eq.${viewerId}`)
+        .or(`user_a.eq.${profileId},user_b.eq.${profileId}`)
+        .maybeSingle()
+    : Promise.resolve({ data: null })
 
-  const blockPromise =
-    viewerId
-      ? supabase
-          .from('blocks')
-          .select('id')
-          .eq('blocker_id', viewerId)
-          .eq('blocked_id', profileId)
-          .maybeSingle()
-      : Promise.resolve({ data: null })
+  const blockPromise = viewerId
+    ? supabase
+        .from('blocks')
+        .select('id')
+        .eq('blocker_id', viewerId)
+        .eq('blocked_id', profileId)
+        .maybeSingle()
+    : Promise.resolve({ data: null })
 
   const [photosRes, likeRes, matchRes, blockRes, countryRes] = await Promise.all([
     photosPromise,

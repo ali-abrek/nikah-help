@@ -330,8 +330,8 @@ export function ProfileDetail({ profile, isOwnProfile, isGuest = false }: Profil
           }}
           onClick={() => setFullscreen(false)}
         >
-          {photo && (
-            isGuest ? (
+          {photo &&
+            (isGuest ? (
               <img
                 src={guestUrl(photo.id, showFull ? 'full' : 'cover')}
                 alt={profile.name ?? ''}
@@ -344,8 +344,7 @@ export function ProfileDetail({ profile, isOwnProfile, isGuest = false }: Profil
                 alt={profile.name ?? ''}
                 className="pointer-events-none max-h-full max-w-full object-contain"
               />
-            )
-          )}
+            ))}
           <button
             type="button"
             onClick={(e) => {
