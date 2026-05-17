@@ -39,6 +39,8 @@ export async function maybeRegenerateBio(
     .update({ ai_bio_input_hash: newHash, ai_bio_status: 'pending' })
     .eq('id', userId)
 
+  // The Inngest worker reserves the daily quota slot before calling OpenAI;
+  // this Server Action just queues the event.
   await inngest.send({
     name: 'profile/regenerate-bio',
     data: { userId },

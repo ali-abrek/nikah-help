@@ -41,15 +41,16 @@ export function NotificationList({ initialNotifications, userId }: NotificationL
             <IconBtn icon="gear" ariaLabel={t('settings')} />
           </Link>
         </div>
-        <div className="flex justify-end px-5 pb-2">
-          <button
-            type="button"
-            onClick={markAllAsRead}
-            className="bg-transparent text-[13px] font-medium text-[var(--primary)]"
-          >
-            {t('notif_mark_all')}
-          </button>
-        </div>
+      </div>
+
+      <div className="flex justify-end px-5 pt-2">
+        <button
+          type="button"
+          onClick={markAllAsRead}
+          className="bg-transparent text-[13px] font-medium text-[var(--primary)]"
+        >
+          {t('notif_mark_all')}
+        </button>
       </div>
 
       <div className="scroll-area flex-1 overflow-auto pb-24">

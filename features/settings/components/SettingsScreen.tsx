@@ -4,7 +4,6 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useTheme } from 'next-themes'
-import { Header } from '@/components/ui/header'
 import { Icon } from '@/components/ui/icon'
 import { Modal } from '@/components/ui/modal'
 import { SettingsRow, SettingsGroup } from '@/components/ui/settings-row'
@@ -52,7 +51,21 @@ export function SettingsScreen({
 
   return (
     <div className="flex h-full flex-col">
-      <Header title={t('set_title')} leading="back" onLeading={() => router.back()} />
+      <div className="sticky top-0 z-10 border-b border-[var(--divider)] bg-[var(--bg)]">
+        <div className="flex min-h-[56px] items-center gap-2 px-5 py-3">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            aria-label="Back"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-[var(--ink)]"
+          >
+            <Icon name="back" size={22} />
+          </button>
+          <h1 className="m-0 flex-1 text-[22px] font-bold uppercase tracking-[0.5px] text-[var(--ink)]">
+            {t('set_title')}
+          </h1>
+        </div>
+      </div>
       <div className="scroll-area flex-1 overflow-auto px-5 pb-10">
         {isAuthed && (
           <SettingsGroup>

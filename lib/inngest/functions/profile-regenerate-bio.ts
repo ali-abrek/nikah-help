@@ -3,6 +3,8 @@ import { createServerSupabase } from '@/lib/supabase/server'
 import { getOpenAI, AI_BIO_PROMPT } from '@/lib/openai/client'
 import { NonRetriableError } from 'inngest'
 import { BIO_FIELDS_SQL, hashBioFields } from '@/lib/profile/bio-fields'
+import { reserveBioRegenSlot } from '@/lib/profile/bio-rate-limit'
+import { AppError } from '@/lib/errors/app-error'
 
 async function loadProfile(userId: string) {
   const supabase = await createServerSupabase()
@@ -45,7 +47,7 @@ export const profileRegenerateBioFn = inngest.createFunction(
     // Only one regen at a time per user — concurrent requests for the same
     // user serialise so OpenAI sees one in-flight call instead of N.
     concurrency: { limit: 1, key: 'event.data.userId' },
-    rateLimit: { limit: 3, period: '24h', key: 'event.data.userId' },
+    rateLimit: { limit: 2, period: '24h', key: 'event.data.userId' },
     triggers: { event: 'profile/regenerate-bio' },
   },
   async ({ event, step }) => {
@@ -62,6 +64,28 @@ export const profileRegenerateBioFn = inngest.createFunction(
         await supabase.from('profiles').update({ ai_bio_status: 'ready' }).eq('id', userId)
       })
       return { success: true, userId, skipped: true }
+    }
+
+    // Daily quota: 2 OpenAI calls per user per 24h. Quota slot is reserved
+    // here (not in the Server Action) so multi-step edits don't burn the
+    // budget before reaching the actual generation.
+    try {
+      await step.run('reserve-quota', async () => {
+        const supabase = await createServerSupabase()
+        await reserveBioRegenSlot(supabase, userId)
+      })
+    } catch (e) {
+      if (e instanceof AppError && e.code === 'BIO_RATE_LIMITED') {
+        await step.run('mark-rate-limited', async () => {
+          const supabase = await createServerSupabase()
+          await supabase
+            .from('profiles')
+            .update({ ai_bio_status: 'rate_limited' })
+            .eq('id', userId)
+        })
+        return { success: false, userId, rateLimited: true }
+      }
+      throw e
     }
 
     const completion = await step.run('openai-generate', () =>

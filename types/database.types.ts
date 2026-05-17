@@ -562,6 +562,8 @@ export type Database = {
           about_self: string | null
           ai_bio: string | null
           ai_bio_input_hash: string | null
+          ai_bio_regen_count: number
+          ai_bio_regen_window_start: string | null
           ai_bio_status: Database["public"]["Enums"]["ai_bio_status"] | null
           birth_date: string | null
           children_count: number | null
@@ -600,6 +602,8 @@ export type Database = {
           about_self?: string | null
           ai_bio?: string | null
           ai_bio_input_hash?: string | null
+          ai_bio_regen_count?: number
+          ai_bio_regen_window_start?: string | null
           ai_bio_status?: Database["public"]["Enums"]["ai_bio_status"] | null
           birth_date?: string | null
           children_count?: number | null
@@ -638,6 +642,8 @@ export type Database = {
           about_self?: string | null
           ai_bio?: string | null
           ai_bio_input_hash?: string | null
+          ai_bio_regen_count?: number
+          ai_bio_regen_window_start?: string | null
           ai_bio_status?: Database["public"]["Enums"]["ai_bio_status"] | null
           birth_date?: string | null
           children_count?: number | null

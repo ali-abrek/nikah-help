@@ -72,6 +72,11 @@ const RU = {
   ob_back: 'Назад',
   ob_next: 'Далее',
   ob_save: 'Сохранить',
+  ob_cancel: 'Закрыть',
+  ob_cancel_title: 'Отменить изменения?',
+  ob_cancel_sub: 'Внесённые правки не будут сохранены.',
+  ob_cancel_confirm: 'Отменить',
+  ob_bio_rate_limited: 'Вы не можете изменять анкету чаще двух раз в сутки',
   ob_1_title: 'Расскажите о себе',
   ob_1_sub: 'Эти данные видны другим в вашей анкете.',
   ob_first_name: 'Имя',
@@ -221,7 +226,7 @@ const RU = {
   likes_empty: 'Симпатий пока нет',
 
   notif_title: 'Уведомления',
-  notif_mark_all: 'Отметить прочитанным',
+  notif_mark_all: 'Пометить прочитанными',
   notif_empty: 'Здесь пока тихо',
 
   match_sub: 'Чат уже открыт. Пожалуйста, будьте корректны, тактичны и уважительны при общении!',
@@ -303,7 +308,7 @@ const RU = {
   n_mod_no: 'Фото отклонено модерацией',
   n_warn: 'Получена жалоба на ваш профиль',
 
-  guide_title: 'Инструкция по использованию',
+  guide_title: 'Инструкции',
   guide_1_t: '1. Создание анкеты',
   guide_1_b:
     'Заполните все шаги регистрации: укажите имя, дату рождения, страну проживания, пол и национальность. На втором шаге выберите семейное положение и другие параметры. Загрузите хотя бы одно фото — оно будет отправлено на модерацию.',
@@ -408,6 +413,11 @@ const EN: Record<keyof typeof RU, string> = {
   ob_back: 'Back',
   ob_next: 'Next',
   ob_save: 'Save',
+  ob_cancel: 'Close',
+  ob_cancel_title: 'Discard changes?',
+  ob_cancel_sub: 'Your edits will not be saved.',
+  ob_cancel_confirm: 'Discard',
+  ob_bio_rate_limited: 'You can update your profile no more than twice per day',
   ob_1_title: 'About you',
   ob_1_sub: 'This information will appear on your profile.',
   ob_first_name: 'First name',
@@ -639,7 +649,7 @@ const EN: Record<keyof typeof RU, string> = {
   n_mod_no: 'Photo was rejected by moderation',
   n_warn: 'A complaint was filed about your profile',
 
-  guide_title: 'How to use',
+  guide_title: 'Instructions',
   guide_1_t: '1. Creating a Profile',
   guide_1_b:
     'Complete all registration steps: enter your name, date of birth, country, gender, and nationality. On the second step, select your marital status and other details. Upload at least one photo — it will be sent for moderation.',

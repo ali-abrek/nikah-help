@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { saveOnboardingStep1, saveOnboardingStep2, completeOnboardingAction } from '../actions'
 import { OnboardingStep1 } from './onboarding-step1'
 import { OnboardingStep2 } from './onboarding-step2'
@@ -8,7 +9,9 @@ import { OnboardingStep3, type WizardPhoto } from './onboarding-step3'
 import { OnboardingStep4 } from './onboarding-step4'
 import { Button } from '@/components/ui/button'
 import { StickyActions } from '@/components/ui/header'
-import { Logo } from '@/components/ui/logo'
+import { Icon } from '@/components/ui/icon'
+import { Modal } from '@/components/ui/modal'
+import { useToast } from '@/components/ui/toast'
 import { useLang } from '@/lib/i18n/use-lang'
 import type {
   OnboardingStep1Data,
@@ -34,7 +37,10 @@ export function OnboardingWizard({
   initialPhotos = [],
 }: OnboardingWizardProps) {
   const { t } = useLang()
+  const router = useRouter()
+  const toast = useToast()
   const [step, setStep] = useState(1)
+  const [showCancel, setShowCancel] = useState(false)
   const [gender, setGender] = useState<'male' | 'female' | null>(
     (initialStep1Data?.gender as 'male' | 'female' | null) ?? null,
   )
@@ -114,9 +120,16 @@ export function OnboardingWizard({
         setSubmittingStep(null)
         if (res.success) {
           window.location.href = isEditMode ? '/profile' : '/feed'
+        } else if ('error' in res && res.error.code === 'BIO_RATE_LIMITED') {
+          toast.show(t('ob_bio_rate_limited'))
         }
       })
     }
+  }
+
+  const handleCancel = () => {
+    setShowCancel(false)
+    router.push('/feed')
   }
 
   const handleBack = () => {
@@ -134,7 +147,14 @@ export function OnboardingWizard({
           <span className="text-[12.5px] font-medium uppercase tracking-[0.4px] text-[var(--ink-3)]">
             {t('ob_step', { n: step })}
           </span>
-          <Logo size={20} />
+          <button
+            type="button"
+            onClick={() => setShowCancel(true)}
+            aria-label={t('ob_cancel')}
+            className="grid h-7 w-7 place-items-center rounded-full bg-[var(--ink)] text-white"
+          >
+            <Icon name="close" size={14} />
+          </button>
         </div>
         <div className="h-1 overflow-hidden rounded-full bg-[var(--divider)]">
           <div
@@ -195,6 +215,17 @@ export function OnboardingWizard({
           {step === 4 ? t('ob_save') : t('ob_next')}
         </Button>
       </StickyActions>
+
+      <Modal
+        open={showCancel}
+        onClose={() => setShowCancel(false)}
+        title={t('ob_cancel_title')}
+        primary={{ label: t('ob_cancel_confirm'), onClick: handleCancel }}
+        secondary={{ label: t('ob_back'), onClick: () => setShowCancel(false) }}
+        danger
+      >
+        {t('ob_cancel_sub')}
+      </Modal>
     </div>
   )
 }

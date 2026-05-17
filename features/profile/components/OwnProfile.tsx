@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
@@ -43,7 +43,20 @@ export function OwnProfile({ profile }: OwnProfileProps) {
   const [photoPendingDel, setPhotoPendingDel] = useState<string | null>(null)
   const [deletingPhoto, setDeletingPhoto] = useState(false)
   const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  // Local blob previews keyed by photoId — used while the server is still
+  // processing variants. Without this, PhotoStream 404s for queued photos.
+  const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    return () => {
+      Object.values(localPreviews).forEach((url) => URL.revokeObjectURL(url))
+    }
+    // Intentionally empty deps: cleanup runs once on unmount with the latest
+    // ref via closure-captured object. Per-key cleanup happens inside the
+    // delete handler.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const [pending, startTransition] = useTransition()
   const age = calcAge(profile.birth_date)
   const photo = photos[photoIdx]
@@ -100,6 +113,7 @@ export function OwnProfile({ profile }: OwnProfileProps) {
     }
 
     setUploadingPhoto(true)
+    const previewUrl = URL.createObjectURL(file)
     try {
       const position = photos.length + 1
       const res = await fetch('/api/photos/upload-url', {
@@ -109,6 +123,7 @@ export function OwnProfile({ profile }: OwnProfileProps) {
       })
       if (!res.ok) {
         toast.show(t('own_photo_add_error'))
+        URL.revokeObjectURL(previewUrl)
         return
       }
 
@@ -124,12 +139,14 @@ export function OwnProfile({ profile }: OwnProfileProps) {
       })
       if (!uploadRes.ok) {
         toast.show(t('own_photo_add_error'))
+        URL.revokeObjectURL(previewUrl)
         return
       }
 
       const markResult = await markPhotoUploaded(photoId)
       if (!markResult.success) {
         toast.show(t('own_photo_add_error'))
+        URL.revokeObjectURL(previewUrl)
         return
       }
 
@@ -145,6 +162,7 @@ export function OwnProfile({ profile }: OwnProfileProps) {
         variants: null,
         moderation_status: 'queued',
       }
+      setLocalPreviews((prev) => ({ ...prev, [photoId]: previewUrl }))
       setPhotos((prev) => [...prev, newPhoto])
     } finally {
       setUploadingPhoto(false)
@@ -163,6 +181,12 @@ export function OwnProfile({ profile }: OwnProfileProps) {
         const next = prev.filter((p) => p.id !== photoPendingDel)
         setPhotoIdx((idx) => Math.min(idx, Math.max(0, next.length - 1)))
         return next
+      })
+      setLocalPreviews((prev) => {
+        const url = prev[photoPendingDel]
+        if (url) URL.revokeObjectURL(url)
+        const { [photoPendingDel]: _, ...rest } = prev
+        return rest
       })
     }
     setPhotoPendingDel(null)
@@ -194,12 +218,21 @@ export function OwnProfile({ profile }: OwnProfileProps) {
       <div className="scroll-area flex-1 overflow-auto pb-10">
         <div className="relative aspect-[4/5] w-full overflow-hidden">
           {photo ? (
-            <PhotoStream
-              photoId={photo.id}
-              variant="full"
-              alt={profile.name ?? ''}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
+            localPreviews[photo.id] ? (
+              // eslint-disable-next-line @next/next/no-img-element -- object URL preview while variants are still processing
+              <img
+                src={localPreviews[photo.id]}
+                alt={profile.name ?? ''}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            ) : (
+              <PhotoStream
+                photoId={photo.id}
+                variant="full"
+                alt={profile.name ?? ''}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            )
           ) : (
             <div className="absolute inset-0 grid place-items-center bg-[var(--surface-2)] text-[var(--ink-3)]">
               <Icon name="user" size={48} />
@@ -295,12 +328,21 @@ export function OwnProfile({ profile }: OwnProfileProps) {
                 }`}
               >
                 <button type="button" onClick={() => setPhotoIdx(i)} className="absolute inset-0">
-                  <PhotoStream
-                    photoId={p.id}
-                    variant="cover"
-                    alt={`photo ${i}`}
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
+                  {localPreviews[p.id] ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- object URL preview while variants are still processing
+                    <img
+                      src={localPreviews[p.id]}
+                      alt={`photo ${i}`}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : (
+                    <PhotoStream
+                      photoId={p.id}
+                      variant="cover"
+                      alt={`photo ${i}`}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  )}
                   {i === 0 && (
                     <span className="absolute left-1.5 top-1.5 rounded-md bg-[var(--primary)] px-1.5 py-0.5 text-[10px] text-white">
                       {t('ob_avatar')}
@@ -333,7 +375,7 @@ export function OwnProfile({ profile }: OwnProfileProps) {
                 onClick={handleAddPhotoClick}
                 disabled={uploadingPhoto}
                 aria-label={t('own_photo_add')}
-                className="grid aspect-[4/5] place-items-center rounded-xl border-[1.5px] border-dashed border-[var(--divider-strong)] bg-[var(--surface-2)] text-[var(--ink-3)] disabled:opacity-60"
+                className="grid aspect-[4/5] place-items-center rounded-xl border-[1.5px] border-dashed border-[var(--divider-strong)] bg-[var(--surface-2)] text-[var(--ink-3)] transition-colors hover:border-[var(--primary)] hover:text-[var(--primary)] disabled:opacity-60 disabled:hover:border-[var(--divider-strong)] disabled:hover:text-[var(--ink-3)]"
               >
                 {uploadingPhoto ? <Spinner size={22} /> : <Icon name="plus" size={22} />}
               </button>

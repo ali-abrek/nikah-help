@@ -2,6 +2,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
 import { getOpenAI, AI_BIO_PROMPT } from '@/lib/openai/client'
 import { BIO_FIELDS_SQL, hashBioFields } from '@/lib/profile/bio-fields'
+import { reserveBioRegenSlot } from '@/lib/profile/bio-rate-limit'
 import { AppError } from '@/lib/errors/app-error'
 
 async function releaseLock(supabase: SupabaseClient<Database>, userId: string) {
@@ -60,6 +61,10 @@ export async function generateBio(
       await releaseLock(supabase, userId)
       return profile.ai_bio
     }
+
+    // Daily quota check — only runs when we actually need OpenAI, so
+    // photo-only edits and other no-op saves don't burn the quota.
+    await reserveBioRegenSlot(supabase, userId)
 
     const age = profile.birth_date
       ? Math.floor(
