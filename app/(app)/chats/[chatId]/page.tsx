@@ -12,7 +12,10 @@ export default async function ChatDetailPage({ params }: { params: Promise<{ cha
   const userId = getUserId((data?.claims ?? {}) as Record<string, unknown>)
   if (!userId) redirect('/auth')
 
-  const [chatInfo, messages] = await Promise.all([getChatInfo(chatId, userId), getMessages(chatId)])
+  const [chatInfo, messages] = await Promise.all([
+    getChatInfo(chatId, userId),
+    getMessages(chatId, userId),
+  ])
   if (!chatInfo) notFound()
 
   return <ChatDetail chatInfo={chatInfo} initialMessages={messages} userId={userId} />

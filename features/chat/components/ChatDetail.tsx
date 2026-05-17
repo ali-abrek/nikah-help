@@ -103,8 +103,8 @@ export function ChatDetail({ chatInfo, initialMessages, userId }: ChatDetailProp
           <Avatar
             size={36}
             src={
-              chatInfo.other_user.photo_url
-                ? `/api/photos/stream/${chatInfo.other_user.id}/${chatInfo.other_user.photo_url}`
+              chatInfo.other_user.photo_id
+                ? `/api/photos/stream?photoId=${chatInfo.other_user.photo_id}&variant=avatar&fmt=webp`
                 : null
             }
             alt={chatInfo.other_user.name ?? ''}

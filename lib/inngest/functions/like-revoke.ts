@@ -1,18 +1,24 @@
-import { inngest } from '@/lib/inngest/client'
+import { inngest, likeRevokeEvent } from '@/lib/inngest/client'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { captureSentryException } from '@/lib/sentry/capture'
 
 export const likeRevokeFn = inngest.createFunction(
   {
     id: 'like.revoke',
     retries: 3,
-    triggers: { event: 'like/revoke' },
+    triggers: [likeRevokeEvent],
+    onFailure: async ({ event, error }) => {
+      const { matchId } = event.data as { matchId?: string }
+      await captureSentryException(error, {
+        flow: 'action.like_revoke',
+        severity: 'error',
+        tags: { step: 'retry_exhausted' },
+        extra: { logContext: { matchId: matchId ?? 'unknown' } },
+      })
+    },
   },
   async ({ event, step }) => {
-    const { matchId, userId, otherUserId } = event.data as {
-      matchId: string
-      userId: string
-      otherUserId: string
-    }
+    const { matchId, userId, otherUserId } = event.data
 
     // 1. Find chat for this match
     const chatId = await step.run('find-chat', async () => {

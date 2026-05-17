@@ -8,6 +8,8 @@ import { READ_GENEROUS } from '@/lib/ratelimit/presets'
 import { queryFeed } from '@/features/feed/server/query-feed'
 import type { FeedFilterValues } from '@/features/feed/schemas'
 
+export const runtime = 'nodejs'
+
 export const GET = withAuth(
   withRateLimit(async (request: NextRequest) => {
     try {

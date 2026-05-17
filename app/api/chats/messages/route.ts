@@ -9,6 +9,8 @@ import { MESSAGE_SEND as MESSAGE_SEND_IDEM } from '@/lib/idempotency/presets'
 import { AppError } from '@/lib/errors/app-error'
 import { handleRouteError } from '@/lib/errors/handler'
 
+export const runtime = 'nodejs'
+
 const handler = async (request: NextRequest): Promise<NextResponse> => {
   try {
     const userId = request.headers.get('x-user-id')!

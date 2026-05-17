@@ -76,6 +76,20 @@ export interface IsUserSuspendedArgs {
 }
 export const callIsUserSuspended = rpc<IsUserSuspendedArgs, boolean>('is_user_suspended')
 
+// ── chat_previews(p_viewer_id) → chat_id, last_message_*, unread_count ──
+export interface ChatPreviewsArgs {
+  p_viewer_id: string
+}
+export interface ChatPreviewsRow {
+  chat_id: string
+  last_message_type: string | null
+  last_message_content: string | null
+  last_message_sender_id: string | null
+  last_message_created_at: string | null
+  unread_count: number
+}
+export const callChatPreviews = rpc<ChatPreviewsArgs, ChatPreviewsRow[]>('chat_previews')
+
 // ── get_nearby_profile_ids — see 0015_feed_radius_search.sql ───────────
 export interface NearbyProfilesArgs {
   p_longitude: number

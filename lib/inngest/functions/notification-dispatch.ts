@@ -1,4 +1,4 @@
-import { inngest } from '@/lib/inngest/client'
+import { inngest, notificationSendEvent } from '@/lib/inngest/client'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPresence } from '@/lib/realtime/presence'
 import { requireEnv } from '@/lib/env'
@@ -20,9 +20,9 @@ export const notificationDispatchFn = inngest.createFunction(
   {
     id: 'notification.dispatch',
     retries: 3,
-    triggers: { event: 'notification/send' },
+    triggers: [notificationSendEvent],
     onFailure: async ({ event, error }) => {
-      const { userId } = (event.data as { data?: { userId?: string } }).data ?? {}
+      const { userId } = event.data as { userId?: string }
       await captureSentryException(error, {
         flow: 'notif.send',
         severity: 'error',
@@ -89,18 +89,17 @@ export const notificationDispatchFn = inngest.createFunction(
       return getPresence(userId)
     })
 
-    // Step 4: Send Web Push if user is offline
+    // Step 4: Send Web Push if user is offline.
+    // Each subscription is wrapped in its own step.run keyed by subscriptionId
+    // so a retry doesn't re-push to subscriptions that already succeeded.
     if (!isOnline) {
-      await step.run('send-web-push', async () => {
-        const supabase = createAdminClient()
-        const { data: subs } = await supabase
-          .from('push_subscriptions')
-          .select('id, kind, endpoint, auth, p256dh, device_token, locale')
-          .eq('user_id', userId)
+      const supabase = createAdminClient()
+      const { data: subs } = await supabase
+        .from('push_subscriptions')
+        .select('id, kind, endpoint, auth, p256dh, device_token, locale')
+        .eq('user_id', userId)
 
-        if (!subs?.length) return { pushed: 0 }
-
-        // Dynamic import web-push only when needed (it's a server-only dependency)
+      if (subs?.length) {
         const webpush = await import('web-push')
 
         webpush.default.setVapidDetails(
@@ -109,41 +108,40 @@ export const notificationDispatchFn = inngest.createFunction(
           requireEnv('VAPID_PRIVATE_KEY'),
         )
 
-        let pushed = 0
-        for (const sub of subs) {
-          if (sub.kind !== 'web' || !sub.endpoint || !sub.auth || !sub.p256dh) continue
+        const validSubs = subs.filter(
+          (sub) => sub.kind === 'web' && sub.endpoint && sub.auth && sub.p256dh,
+        )
 
-          try {
-            await webpush.default.sendNotification(
-              {
-                endpoint: sub.endpoint,
-                keys: {
-                  auth: sub.auth,
-                  p256dh: sub.p256dh,
-                },
-              },
-              JSON.stringify(payload),
-            )
-            pushed++
-          } catch (err) {
-            const e = err as { statusCode?: number; message?: string }
-            // If subscription is expired/invalid, remove it silently.
-            if (e.statusCode === 410 || e.statusCode === 404) {
-              await supabase.from('push_subscriptions').delete().eq('id', sub.id)
-              continue
-            }
-            // Non-expiry push failure — report to Sentry.
-            void captureSentryException(err, {
-              flow: 'notif.send',
-              severity: 'warning',
-              tags: { step: 'web_push' },
-              extra: { channel: 'push', subscriptionId: String(sub.id) },
-            })
-          }
-        }
-
-        return { pushed }
-      })
+        await Promise.all(
+          validSubs.map((sub) =>
+            step.run(`push-sub-${sub.id}`, async () => {
+              try {
+                await webpush.default.sendNotification(
+                  {
+                    endpoint: sub.endpoint!,
+                    keys: { auth: sub.auth!, p256dh: sub.p256dh! },
+                  },
+                  JSON.stringify(payload),
+                )
+                return { pushed: true, subId: sub.id }
+              } catch (err) {
+                const e = err as { statusCode?: number; message?: string }
+                if (e.statusCode === 410 || e.statusCode === 404) {
+                  await supabase.from('push_subscriptions').delete().eq('id', sub.id)
+                  return { pushed: false, subId: sub.id, expired: true }
+                }
+                void captureSentryException(err, {
+                  flow: 'notif.send',
+                  severity: 'warning',
+                  tags: { step: 'web_push' },
+                  extra: { channel: 'push', subscriptionId: String(sub.id) },
+                })
+                return { pushed: false, subId: sub.id }
+              }
+            }),
+          ),
+        )
+      }
     }
 
     // Step 5: Send Email if requested

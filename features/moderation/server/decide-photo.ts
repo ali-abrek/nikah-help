@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AppError } from '@/lib/errors/app-error'
-import { inngest } from '@/lib/inngest/client'
+import { inngest, notificationSendEvent } from '@/lib/inngest/client'
 import { createNotification } from '@/lib/notifications/factory'
 import { captureSentryException } from '@/lib/sentry/capture'
 import { cleanupManualRejectedVariants } from '@/lib/image-processing/moderate-photo'
@@ -67,15 +67,12 @@ export async function decidePhoto({
     })
 
     try {
-      await inngest.send({
-        name: 'notification/send',
-        data: {
-          type: 'photo_rejected',
-          payload,
-          userId: updated.profile_id,
-          dedupeKey: `photo_rejected:${updated.id}`,
-        },
-      })
+      await inngest.send(notificationSendEvent.create({
+        type: 'photo_rejected',
+        payload: payload as unknown,
+        userId: updated.profile_id,
+        dedupeKey: `photo_rejected:${updated.id}`,
+      }))
     } catch (err) {
       // The DB state is already authoritative — log and continue rather than
       // failing the moderator's action over a transient queue hiccup.

@@ -7,6 +7,8 @@ import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
 import { ACTION_MODERATE } from '@/lib/ratelimit/presets'
 import { togglePublish } from '@/features/profile/server/toggle-publish'
 
+export const runtime = 'nodejs'
+
 export const POST = withAuth(
   withRateLimit(async (request: NextRequest) => {
     try {

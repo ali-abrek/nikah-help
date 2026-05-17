@@ -6,7 +6,7 @@ import {
   FORMATS,
   buildStoragePath,
 } from '@/lib/image-processing/photo-variants'
-import { inngest } from '@/lib/inngest/client'
+import { inngest, notificationSendEvent } from '@/lib/inngest/client'
 import { createNotification } from '@/lib/notifications/factory'
 import { captureSentryException } from '@/lib/sentry/capture'
 
@@ -399,10 +399,12 @@ export async function moderatePhoto(photoId: string): Promise<ModerationDecision
     await insertNotificationDirect(payload, ctx.profileId, dedupeKey)
 
     try {
-      await inngest.send({
-        name: 'notification/send',
-        data: { type: 'photo_auto_rejected', payload, userId: ctx.profileId, dedupeKey },
-      })
+      await inngest.send(notificationSendEvent.create({
+        type: 'photo_auto_rejected',
+        payload: payload as unknown,
+        userId: ctx.profileId,
+        dedupeKey,
+      }))
     } catch (err) {
       void captureSentryException(err, {
         flow: 'moderation.vision',

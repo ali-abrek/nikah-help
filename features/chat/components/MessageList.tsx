@@ -5,6 +5,8 @@ import { useInView } from 'react-intersection-observer'
 import type { MessageRow } from '../server/get-messages'
 import { MessageBubble } from './MessageBubble'
 
+const READ_FLUSH_MS = 250
+
 interface MessageListProps {
   messages: MessageRow[]
   userId: string
@@ -24,9 +26,24 @@ export function MessageList({
 }: MessageListProps) {
   const bottomRef = useRef<HTMLDivElement>(null)
   const prevCountRef = useRef(messages.length)
+  const queueRef = useRef<Set<string>>(new Set())
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // Scroll to bottom on new messages. Refs are mutated only inside the
-  // effect — never during render — so the React Compiler stays happy.
+  const flush = useCallback(() => {
+    const ids = Array.from(queueRef.current)
+    queueRef.current.clear()
+    if (ids.length > 0) onMarkAsRead(ids)
+  }, [onMarkAsRead])
+
+  // Flush on unmount so no IDs are lost.
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      flush()
+    }
+  }, [flush])
+
+  // Scroll to bottom on new messages.
   useEffect(() => {
     const hadGrowth = messages.length > prevCountRef.current
     if (hadGrowth) {
@@ -40,12 +57,14 @@ export function MessageList({
     bottomRef.current?.scrollIntoView({ behavior: 'auto' })
   }, [])
 
-  // Track visible messages for read receipts
+  // Queue message IDs and flush after a short debounce.
   const handleInView = useCallback(
     (messageId: string) => {
-      onMarkAsRead([messageId])
+      queueRef.current.add(messageId)
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(flush, READ_FLUSH_MS)
     },
-    [onMarkAsRead],
+    [flush],
   )
 
   if (messages.length === 0) {

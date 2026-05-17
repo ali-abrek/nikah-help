@@ -11,6 +11,8 @@ import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
 import { ACTION_MODERATE } from '@/lib/ratelimit/presets'
 import { USER_ACTION } from '@/lib/idempotency/presets'
 
+export const runtime = 'nodejs'
+
 const likeBodySchema = sendLikeSchema.extend({
   action: z.enum(['like', 'unlike']).optional(),
 })

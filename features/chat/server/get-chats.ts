@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/admin'
+import { callChatPreviews } from '@/lib/supabase/rpc'
 
 export interface ChatPreview {
   chat_id: string
@@ -6,7 +7,7 @@ export interface ChatPreview {
   other_user: {
     id: string
     name: string | null
-    photo_url: string | null
+    photo_id: string | null
   }
   last_message: {
     type: string
@@ -48,64 +49,51 @@ export async function getChats(userId: string): Promise<ChatPreview[]> {
 
   const chatIds = Array.from(chatMap.values())
 
-  // Fetch profiles, last messages, and unread counts in parallel
-  const [profilesResult, messagesResult, unreadResult] = await Promise.all([
-    supabase.from('profiles').select('id, name, photos ( variants )').in('id', otherUserIds),
+  const [profilesResult, previewsResult] = await Promise.all([
+    supabase.from('profiles').select('id, name, photos ( id )').in('id', otherUserIds),
     chatIds.length > 0
-      ? supabase
-          .from('messages')
-          .select('chat_id, type, content, sender_id, created_at')
-          .in('chat_id', chatIds)
-          .is('deleted_at', null)
-          .order('created_at', { ascending: false })
-      : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
-    chatIds.length > 0
-      ? supabase
-          .from('messages')
-          .select('chat_id')
-          .in('chat_id', chatIds)
-          .neq('sender_id', userId)
-          .is('read_at', null)
-          .is('deleted_at', null)
-      : Promise.resolve({ data: [] as Array<Record<string, unknown>> }),
+      ? callChatPreviews(supabase, { p_viewer_id: userId })
+      : Promise.resolve({ data: [] as Array<Record<string, unknown>>, error: null }),
   ])
 
-  // Build profile map
   const profileMap = new Map<
     string,
-    { id: string; name: string | null; photo_url: string | null }
+    { id: string; name: string | null; photo_id: string | null }
   >()
   for (const p of profilesResult.data ?? []) {
-    const photos = p.photos as Array<{ variants: Record<string, Record<string, string>> }> | null
+    const photos = p.photos as Array<{ id: string }> | null
     profileMap.set(p.id, {
       id: p.id,
       name: p.name as string | null,
-      photo_url: photos?.[0]?.variants?.thumbnail_sm?.webp ?? null,
+      photo_id: photos?.[0]?.id ?? null,
     })
   }
 
-  // Build last message map
-  const lastMsgMap = new Map<
-    string,
-    { type: string; content: string; sender_id: string; created_at: string }
-  >()
-  for (const msg of messagesResult.data ?? []) {
-    const chatId = msg.chat_id as string
-    if (!chatId || lastMsgMap.has(chatId)) continue
-    lastMsgMap.set(chatId, {
-      type: (msg.type as string) ?? 'text',
-      content: (msg.content as string) ?? '',
-      sender_id: (msg.sender_id as string) ?? '',
-      created_at: (msg.created_at as string) ?? new Date().toISOString(),
+  const previewMap = new Map<string, {
+    last_message: ChatPreview['last_message']
+    unread_count: number
+  }>()
+  for (const row of previewsResult.data ?? []) {
+    const r = row as {
+      chat_id: string
+      last_message_type: string | null
+      last_message_content: string | null
+      last_message_sender_id: string | null
+      last_message_created_at: string | null
+      unread_count: number
+    }
+    previewMap.set(r.chat_id, {
+      last_message:
+        r.last_message_type
+          ? {
+              type: r.last_message_type,
+              content: r.last_message_content ?? '',
+              sender_id: r.last_message_sender_id ?? '',
+              created_at: r.last_message_created_at ?? new Date().toISOString(),
+            }
+          : null,
+      unread_count: r.unread_count,
     })
-  }
-
-  // Build unread count map
-  const unreadMap = new Map<string, number>()
-  for (const r of unreadResult.data ?? []) {
-    const chatId = r.chat_id as string
-    if (!chatId) continue
-    unreadMap.set(chatId, (unreadMap.get(chatId) ?? 0) + 1)
   }
 
   return matches
@@ -113,13 +101,14 @@ export async function getChats(userId: string): Promise<ChatPreview[]> {
     .map((m) => {
       const chatId = chatMap.get(m.id)!
       const otherId = m.user_a === userId ? m.user_b : m.user_a
+      const preview = previewMap.get(chatId)
 
       return {
         chat_id: chatId,
         match_id: m.id,
-        other_user: profileMap.get(otherId) ?? { id: otherId, name: null, photo_url: null },
-        last_message: lastMsgMap.get(chatId) ?? null,
-        unread_count: unreadMap.get(chatId) ?? 0,
+        other_user: profileMap.get(otherId) ?? { id: otherId, name: null, photo_id: null },
+        last_message: preview?.last_message ?? null,
+        unread_count: preview?.unread_count ?? 0,
         updated_at: (m.created_at as string) ?? new Date().toISOString(),
       }
     })

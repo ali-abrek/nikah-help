@@ -1,4 +1,4 @@
-import { inngest } from '@/lib/inngest/client'
+import { inngest, photoModerateEvent, notificationSendEvent } from '@/lib/inngest/client'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getOpenAI } from '@/lib/openai/client'
 import { STORAGE } from '@/lib/image-processing/photo-variants'
@@ -91,9 +91,9 @@ export const photoModerateFn = inngest.createFunction(
   {
     id: 'photo.moderate',
     retries: 3,
-    triggers: { event: 'photo/moderate' },
+    triggers: [photoModerateEvent],
     onFailure: async ({ event, error }) => {
-      const { photoId } = (event.data as { data?: { photoId?: string } }).data ?? {}
+      const { photoId } = event.data as { photoId?: string }
       await captureSentryException(error, {
         flow: 'moderation.vision',
         severity: 'error',
@@ -103,7 +103,7 @@ export const photoModerateFn = inngest.createFunction(
     },
   },
   async ({ event, step }) => {
-    const { photoId } = event.data as { photoId: string }
+    const { photoId } = event.data
 
     const ctx = await step.run('load-photo-context', () => loadPhotoContext(photoId))
     const { buffer, profileGender } = ctx
@@ -200,10 +200,12 @@ Be strict with nudity and suggestive content — the application requires modest
         await insertNotificationDirect(payload, ctx.profileId, dedupeKey)
 
         try {
-          await inngest.send({
-            name: 'notification/send',
-            data: { type: 'photo_auto_rejected', payload, userId: ctx.profileId, dedupeKey },
-          })
+          await inngest.send(notificationSendEvent.create({
+            type: 'photo_auto_rejected',
+            payload: payload as unknown,
+            userId: ctx.profileId,
+            dedupeKey,
+          }))
         } catch (err) {
           void captureSentryException(err, {
             flow: 'moderation.vision',

@@ -1,10 +1,11 @@
-import { inngest } from '@/lib/inngest/client'
+import { inngest, profileRegenerateBioEvent } from '@/lib/inngest/client'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getOpenAI, AI_BIO_PROMPT } from '@/lib/openai/client'
 import { NonRetriableError } from 'inngest'
 import { BIO_FIELDS_SQL, hashBioFields } from '@/lib/profile/bio-fields'
 import { reserveBioRegenSlot } from '@/lib/profile/bio-rate-limit'
 import { AppError } from '@/lib/errors/app-error'
+import { captureSentryException } from '@/lib/sentry/capture'
 
 async function loadProfile(userId: string) {
   const supabase = await createServerSupabase()
@@ -44,14 +45,21 @@ export const profileRegenerateBioFn = inngest.createFunction(
   {
     id: 'profile.regenerate-bio',
     retries: 3,
-    // Only one regen at a time per user — concurrent requests for the same
-    // user serialise so OpenAI sees one in-flight call instead of N.
     concurrency: { limit: 1, key: 'event.data.userId' },
     rateLimit: { limit: 2, period: '24h', key: 'event.data.userId' },
-    triggers: { event: 'profile/regenerate-bio' },
+    triggers: [profileRegenerateBioEvent],
+    onFailure: async ({ event, error }) => {
+      const { userId } = event.data as { userId?: string }
+      await captureSentryException(error, {
+        flow: 'action.bio_regenerate',
+        severity: 'error',
+        tags: { step: 'retry_exhausted' },
+        extra: { logContext: { userId: userId ?? 'unknown' } },
+      })
+    },
   },
   async ({ event, step }) => {
-    const { userId } = event.data as { userId: string }
+    const { userId } = event.data
 
     const profile = await step.run('load-profile', () => loadProfile(userId))
     const inputHash = hashBioFields(profile)

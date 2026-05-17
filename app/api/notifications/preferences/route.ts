@@ -7,6 +7,8 @@ import { ACTION_MODERATE } from '@/lib/ratelimit/presets'
 import { AppError } from '@/lib/errors/app-error'
 import { handleRouteError } from '@/lib/errors/handler'
 
+export const runtime = 'nodejs'
+
 const prefSchema = z.object({
   type: z.string().min(1).max(64),
   enabled: z.boolean(),

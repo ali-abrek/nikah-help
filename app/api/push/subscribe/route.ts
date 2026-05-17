@@ -6,9 +6,14 @@ import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
 import { ACTION_MODERATE } from '@/lib/ratelimit/presets'
 import { AppError } from '@/lib/errors/app-error'
 import { handleRouteError } from '@/lib/errors/handler'
+import { validatePushEndpoint } from '@/lib/web-push/validate-endpoint'
+
+export const runtime = 'nodejs'
 
 const subscribeSchema = z.object({
-  endpoint: z.string().url().max(2048),
+  endpoint: z.string().url().max(2048).refine(validatePushEndpoint, {
+    error: 'INVALID_PUSH_ENDPOINT',
+  }),
   keys: z.object({
     auth: z.string().min(1).max(512),
     p256dh: z.string().min(1).max(512),

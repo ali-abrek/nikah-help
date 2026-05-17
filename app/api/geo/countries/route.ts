@@ -6,6 +6,8 @@ import { AppError } from '@/lib/errors/app-error'
 import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
 import { READ_GENEROUS } from '@/lib/ratelimit/presets'
 
+export const runtime = 'nodejs'
+
 const querySchema = z.object({
   locale: z.enum(['ru', 'en']).default('ru'),
 })

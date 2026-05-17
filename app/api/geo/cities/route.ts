@@ -6,6 +6,8 @@ import { handleRouteError } from '@/lib/errors/handler'
 import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
 import { READ_GENEROUS } from '@/lib/ratelimit/presets'
 
+export const runtime = 'nodejs'
+
 export const GET = withRateLimit(async (request: NextRequest) => {
   try {
     const { searchParams } = request.nextUrl
@@ -21,35 +23,47 @@ export const GET = withRateLimit(async (request: NextRequest) => {
 
     const supabase = await createServerSupabase()
 
-    // Search across both Latin (name) and Russian (alt_names_ru) columns
-    // because users may type city names in either script.
-    const pattern = `${parsed.data.q}%`
-    let query = supabase
-      .from('geonames_cities')
-      .select('id, name, alt_names_ru, admin1_name, country_code, population, location')
-      .or(`name.ilike.${pattern},alt_names_ru.ilike.${pattern}`)
-      .order('population', { ascending: false })
-      .limit(10)
+    const select =
+      'id, name, alt_names_ru, admin1_name, country_code, population, location'
 
-    if (parsed.data.country) {
-      query = query.eq('country_code', parsed.data.country.toUpperCase())
+    type CityRow = {
+      id: number
+      name: string
+      alt_names_ru: string | null
+      admin1_name: string | null
+      country_code: string
+      population: number | null
+      location: { coordinates: [number, number] } | null
     }
 
-    const { data, error } = await query.returns<
-      Array<{
-        id: number
-        name: string
-        alt_names_ru: string | null
-        admin1_name: string | null
-        country_code: string
-        population: number | null
-        location: { coordinates: [number, number] } | null
-      }>
-    >()
+    const pattern = `${parsed.data.q}%`
+    const countryCode = parsed.data.country?.toUpperCase()
 
-    if (error) throw error
+    const baseQuery = (column: string) => {
+      let q = supabase.from('geonames_cities').select(select).ilike(column, pattern)
+      if (countryCode) q = q.eq('country_code', countryCode)
+      return q.order('population', { ascending: false }).limit(10).returns<CityRow[]>()
+    }
 
-    const cities = (data ?? []).map((city) => ({
+    const [latinResult, ruResult] = await Promise.all([
+      baseQuery('name'),
+      baseQuery('alt_names_ru'),
+    ])
+
+    if (latinResult.error) throw latinResult.error
+    if (ruResult.error) throw ruResult.error
+
+    const seen = new Set<number>()
+    const merged: CityRow[] = []
+    for (const row of [...(latinResult.data ?? []), ...(ruResult.data ?? [])]) {
+      if (seen.has(row.id)) continue
+      seen.add(row.id)
+      merged.push(row)
+    }
+    merged.sort((a, b) => (b.population ?? 0) - (a.population ?? 0))
+    const top = merged.slice(0, 10)
+
+    const cities = top.map((city) => ({
       id: city.id,
       name: city.alt_names_ru ?? city.name,
       region: city.admin1_name,

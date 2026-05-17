@@ -3,6 +3,8 @@ import { revalidatePath } from 'next/cache'
 import { NextResponse } from 'next/server'
 import { getSiteUrl } from '@/lib/utils/site-url'
 
+export const runtime = 'nodejs'
+
 export async function POST() {
   const supabase = await createServerSupabase()
   await supabase.auth.signOut()

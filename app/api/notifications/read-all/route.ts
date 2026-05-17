@@ -6,6 +6,8 @@ import { ACTION_MODERATE } from '@/lib/ratelimit/presets'
 import { AppError } from '@/lib/errors/app-error'
 import { handleRouteError } from '@/lib/errors/handler'
 
+export const runtime = 'nodejs'
+
 export const POST = withAuth(
   withRateLimit(async (req: NextRequest) => {
     try {

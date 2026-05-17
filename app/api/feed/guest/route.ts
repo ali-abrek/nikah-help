@@ -5,6 +5,8 @@ import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
 import { READ_GENEROUS } from '@/lib/ratelimit/presets'
 import { queryGuestFeed } from '@/features/feed/server/query-feed'
 
+export const runtime = 'nodejs'
+
 export const GET = withRateLimit(async (request: NextRequest) => {
   try {
     const supabase = await createServerSupabase()

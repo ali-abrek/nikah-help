@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AppError } from '@/lib/errors/app-error'
-import { inngest } from '@/lib/inngest/client'
+import { inngest, likeRevokeEvent } from '@/lib/inngest/client'
 
 interface RevokeLikeParams {
   fromUserId: string
@@ -46,13 +46,10 @@ export async function revokeLike({ fromUserId, toUserId }: RevokeLikeParams): Pr
 
   // 4. If match existed, trigger Inngest for cascading cleanup
   if (match) {
-    await inngest.send({
-      name: 'like/revoke',
-      data: {
-        matchId: match.id,
-        userId: fromUserId,
-        otherUserId: toUserId,
-      },
-    })
+    await inngest.send(likeRevokeEvent.create({
+      matchId: match.id,
+      userId: fromUserId,
+      otherUserId: toUserId,
+    }))
   }
 }

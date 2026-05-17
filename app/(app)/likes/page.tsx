@@ -15,11 +15,17 @@ export default async function LikesPage() {
   const userId = getUserId((data?.claims ?? {}) as Record<string, unknown>)
   if (!userId) redirect('/auth')
 
-  const [incoming, outgoing, matches] = await Promise.all([
+  const [incomingRes, outgoingRes, matchesRes] = await Promise.all([
     getLikedByProfiles(userId),
     getLikedProfiles(userId),
     getMatches(userId),
   ])
 
-  return <LikesTabs incoming={incoming} outgoing={outgoing} matches={matches} />
+  return (
+    <LikesTabs
+      incoming={incomingRes.data}
+      outgoing={outgoingRes.data}
+      matches={matchesRes.data}
+    />
+  )
 }

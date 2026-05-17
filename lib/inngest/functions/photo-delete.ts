@@ -1,7 +1,8 @@
-import { inngest } from '@/lib/inngest/client'
+import { inngest, photoDeleteEvent } from '@/lib/inngest/client'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { PHOTO_VARIANTS, STORAGE, FORMATS } from '@/lib/image-processing/photo-variants'
 import { NonRetriableError } from 'inngest'
+import { captureSentryException } from '@/lib/sentry/capture'
 
 async function deleteVariantFiles(photoId: string, userId: string) {
   const supabase = createAdminClient()
@@ -25,10 +26,19 @@ export const photoDeleteFn = inngest.createFunction(
   {
     id: 'photo.delete',
     retries: 3,
-    triggers: { event: 'photo/delete' },
+    triggers: [photoDeleteEvent],
+    onFailure: async ({ event, error }) => {
+      const { photoId } = event.data as { photoId?: string }
+      await captureSentryException(error, {
+        flow: 'moderation.cleanup',
+        severity: 'error',
+        tags: { step: 'retry_exhausted' },
+        extra: { photoId: photoId ?? 'unknown' },
+      })
+    },
   },
   async ({ event, step }) => {
-    const { photoId, userId } = event.data as { photoId: string; userId: string }
+    const { photoId, userId } = event.data
 
     const storagePath = await step.run('check-photo', async () => {
       const supabase = createAdminClient()

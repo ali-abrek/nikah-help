@@ -7,11 +7,10 @@ import { withSentryMonitor } from '@/lib/sentry/monitor'
 export const runtime = 'nodejs'
 export const maxDuration = 60
 
-// Daily subscription expiry sweep.
-// T-Bank renewal itself happens through the payments webhook flow; this job
-// only marks lapsed subscriptions as expired so the rest of the app's
-// `has_active_subscription` checks return false promptly. The actual auto-
-// renewal API call is implemented when the payments module ships.
+// NOT YET IMPLEMENTED — payments module is not built (see docs/05-payments.md).
+// This handler only marks lapsed DB rows as expired. No T-Bank charging,
+// renewal, or webhook processing exists yet. Do not enable the Vercel cron
+// trigger until the module is complete.
 async function handler(request: NextRequest): Promise<NextResponse> {
   try {
     assertCronAuth(request)

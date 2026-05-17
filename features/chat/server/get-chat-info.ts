@@ -6,7 +6,7 @@ export interface ChatInfo {
   other_user: {
     id: string
     name: string | null
-    photo_url: string | null
+    photo_id: string | null
   }
 }
 
@@ -33,13 +33,13 @@ export async function getChatInfo(chatId: string, userId: string): Promise<ChatI
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, name, photos ( variants )')
+    .select('id, name, photos ( id )')
     .eq('id', otherId)
     .single()
 
   const photos =
-    (profile?.photos as Array<{ variants: Record<string, Record<string, string>> }>) ?? []
-  const photoUrl = photos[0]?.variants?.thumbnail_sm?.webp ?? null
+    (profile?.photos as Array<{ id: string }>) ?? []
+  const photoId = photos[0]?.id ?? null
 
   return {
     chat_id: chat.id,
@@ -47,7 +47,7 @@ export async function getChatInfo(chatId: string, userId: string): Promise<ChatI
     other_user: {
       id: otherId,
       name: profile?.name ?? null,
-      photo_url: photoUrl,
+      photo_id: photoId,
     },
   }
 }

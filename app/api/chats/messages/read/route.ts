@@ -7,6 +7,8 @@ import { ACTION_MODERATE } from '@/lib/ratelimit/presets'
 import { AppError } from '@/lib/errors/app-error'
 import { handleRouteError } from '@/lib/errors/handler'
 
+export const runtime = 'nodejs'
+
 const handler = async (request: NextRequest) => {
   try {
     const userId = request.headers.get('x-user-id')!

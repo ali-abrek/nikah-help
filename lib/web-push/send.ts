@@ -1,10 +1,15 @@
 import type { NotificationPayload } from '@/lib/notifications/types'
 import { requireEnv } from '@/lib/env'
+import { validatePushEndpoint } from '@/lib/web-push/validate-endpoint'
 
 export async function sendPushNotification(
   subscription: { endpoint: string; keys: { auth: string; p256dh: string } },
   payload: NotificationPayload,
 ): Promise<boolean> {
+  if (!validatePushEndpoint(subscription.endpoint)) {
+    return false
+  }
+
   try {
     const webpush = await import('web-push')
 

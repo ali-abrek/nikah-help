@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { processImage } from '@/lib/image-processing/pipeline'
-import { STORAGE } from '@/lib/image-processing/photo-variants'
-import { validateUpload } from '@/lib/image-processing/validate-upload'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { handleRouteError } from '@/lib/errors/handler'
 import { AppError } from '@/lib/errors/app-error'
 import { withAuth } from '@/lib/api/with-auth'
 import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
 import { PHOTO_UPLOAD } from '@/lib/ratelimit/presets'
-import { inngest } from '@/lib/inngest/client'
-import { moderatePhoto } from '@/lib/image-processing/moderate-photo'
-import { captureSentryException } from '@/lib/sentry/capture'
+import { inngest, photoProcessEvent } from '@/lib/inngest/client'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -23,7 +18,6 @@ const bodySchema = z.object({
 export const POST = withAuth(
   withRateLimit(async (request: NextRequest) => {
     try {
-      // Trusted: withAuth has verified the JWT and set this header.
       const userId = request.headers.get('x-user-id')
       if (!userId) throw new AppError('AUTH_UNAUTHORIZED')
 
@@ -54,9 +48,7 @@ export const POST = withAuth(
         throw new AppError('PHOTO_NOT_OWNER', { logContext: { photoId, userId } })
       }
 
-      // Idempotency: a successful prior run already populated variants and
-      // dropped the original. Replay the same response so callers (Inngest
-      // retries, network glitches, manual reposts) can't corrupt state.
+      // Idempotency: a successful prior run already populated variants.
       if (photo.status === 'processed') {
         return NextResponse.json({ success: true, photoId, alreadyProcessed: true })
       }
@@ -69,7 +61,6 @@ export const POST = withAuth(
       }
 
       // Atomic claim: only one runner may move {pending,uploaded} → processing.
-      // Concurrent runners see 0 affected rows and bail out without re-uploading.
       const { data: claimed, error: claimErr } = await supabase
         .from('photos')
         .update({ status: 'processing', updated_at: new Date().toISOString() })
@@ -85,94 +76,12 @@ export const POST = withAuth(
         })
       }
       if (!claimed) {
-        // Another runner already owns this photo. Treat as success-in-progress
-        // rather than failing the caller.
         return NextResponse.json({ success: true, photoId, inProgress: true })
       }
 
-      // Step: download original
-      const { data: file, error: downloadError } = await supabase.storage
-        .from(STORAGE.bucket)
-        .download(photo.storage_path)
+      await inngest.send(photoProcessEvent.create({ photoId }))
 
-      if (downloadError || !file) {
-        throw new AppError('PHOTO_DOWNLOAD_FAILED', {
-          cause: downloadError ?? undefined,
-          logContext: { photoId, userId, path: photo.storage_path },
-        })
-      }
-
-      const buffer = Buffer.from(await file.arrayBuffer())
-
-      // Step: validate
-      await validateUpload(buffer)
-
-      // Step: generate variants (pure, retryable)
-      const result = await processImage(buffer, userId, photoId)
-
-      // Step: upload variants — pass each variant's intended Cache-Control so
-      // any direct Storage delivery (signed URLs etc.) honours it. Stream
-      // handler still sets its own headers when proxying.
-      for (const f of result.files) {
-        const { error: uploadError } = await supabase.storage
-          .from(STORAGE.bucket)
-          .upload(f.path, f.buffer, {
-            contentType: f.contentType,
-            cacheControl: f.cacheControl,
-            upsert: true,
-          })
-
-        if (uploadError) {
-          throw new AppError('PHOTO_UPLOAD_FAILED', {
-            cause: uploadError,
-            logContext: { photoId, path: f.path },
-          })
-        }
-      }
-
-      // Step: delete original (separate from upload step so an interrupted
-      // run that already uploaded variants still converges on the next call —
-      // status stays at 'processing' and the next attempt re-claims it.)
-      await supabase.storage.from(STORAGE.bucket).remove([photo.storage_path])
-
-      // Step: finalize photos row
-      const { error: finalErr } = await supabase
-        .from('photos')
-        .update({
-          status: 'processed',
-          variants: result.variantsJsonb,
-          storage_path: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', photoId)
-
-      if (finalErr) {
-        throw new AppError('SYSTEM_DATABASE_ERROR', {
-          cause: finalErr,
-          logContext: { photoId },
-        })
-      }
-
-      // Run moderation synchronously so the status is resolved before the
-      // client refreshes the profile. If the synchronous call fails (OpenAI
-      // timeout, network error, etc.), fall back to the Inngest async path.
-      let moderationStatus: string = 'queued'
-      let moderationReason: string | null = null
-      try {
-        const decision = await moderatePhoto(photoId)
-        moderationStatus = decision.status
-        moderationReason = decision.reason ?? null
-      } catch (err) {
-        void captureSentryException(err, {
-          flow: 'moderation.sync',
-          severity: 'warning',
-          tags: { step: 'sync_fallback_to_inngest' },
-          extra: { photoId },
-        })
-        await inngest.send({ name: 'photo/moderate', data: { photoId } })
-      }
-
-      return NextResponse.json({ success: true, photoId, moderationStatus, moderationReason })
+      return NextResponse.json({ success: true, photoId, accepted: true }, { status: 202 })
     } catch (error) {
       return handleRouteError(error)
     }

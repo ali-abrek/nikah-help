@@ -16,6 +16,8 @@ import {
 import { callReorderProfilePhotos } from '@/lib/supabase/rpc'
 import { captureSentryException } from '@/lib/sentry/capture'
 
+export const runtime = 'nodejs'
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
 const MIME_TO_EXT: Record<string, string> = {

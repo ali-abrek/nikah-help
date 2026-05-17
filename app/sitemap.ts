@@ -21,6 +21,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .from('profiles')
       .select('id, gender, city, country, updated_at')
       .eq('is_published', true)
+      .eq('private_mode', false)
       .is('deletion_status', null),
     supabase
       .from('user_suspensions')

@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { STORAGE, FORMATS } from '@/lib/image-processing/photo-variants'
-import type { PublicVariant, ImageFormat } from '@/lib/image-processing/photo-variants'
+import {
+  STORAGE,
+  FORMATS,
+  resolveServeVariant,
+  type PublicVariant,
+  type ImageFormat,
+} from '@/lib/image-processing/photo-variants'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { handleRouteError } from '@/lib/errors/handler'
 import { AppError } from '@/lib/errors/app-error'
+import { callPhotoStreamContext } from '@/lib/supabase/rpc'
 
 export const runtime = 'nodejs'
 
@@ -42,43 +48,43 @@ export async function GET(
 
     const supabase = createAdminClient()
 
-    const { data: photo, error: photoError } = await supabase
-      .from('photos')
-      .select('id, profile_id, variants, moderation_status')
-      .eq('id', parsed.photoId)
-      .eq('moderation_status', 'approved')
-      .single()
+    const { data, error: rpcError } = await callPhotoStreamContext(supabase, {
+      p_photo_id: parsed.photoId,
+      p_viewer_id: null as unknown as string,
+    })
 
-    if (photoError || !photo) throw new AppError('NOT_FOUND')
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('is_published, deletion_status')
-      .eq('id', photo.profile_id)
-      .single()
-
-    if (!profile || !profile.is_published || profile.deletion_status) {
-      throw new AppError('NOT_FOUND')
+    const ctx = Array.isArray(data) ? data[0] : null
+    if (rpcError || !ctx || !ctx.can_view) {
+      throw new AppError('NOT_FOUND', {
+        cause: rpcError ? new Error(rpcError.message) : undefined,
+        logContext: { photoId: parsed.photoId, seo: true },
+      })
     }
 
-    const variants = (photo.variants as Record<string, { avif: string; webp: string }> | null) ?? {}
-    const path = variants[parsed.variant]?.[parsed.fmt]
-    if (!path) throw new AppError('NOT_FOUND')
+    const showFull = Boolean(ctx.show_full)
+    const variant = resolveServeVariant(parsed.variant, showFull)
 
-    const { data: file, error: downloadError } = await supabase.storage
-      .from(STORAGE.bucket)
-      .download(path)
+    const variants = ctx.variants
+    const path = variants?.[variant.jsonbKey]?.[parsed.fmt] as string | undefined
+    if (!path) {
+      throw new AppError('NOT_FOUND', {
+        logContext: { photoId: parsed.photoId, variant: variant.jsonbKey, format: parsed.fmt },
+      })
+    }
 
-    if (downloadError || !file) {
+    const { data: file, error } = await supabase.storage.from(STORAGE.bucket).download(path)
+
+    if (error || !file) {
       throw new AppError('PHOTO_DOWNLOAD_FAILED', {
-        cause: downloadError ?? undefined,
+        cause: error ?? undefined,
+        logContext: { photoId: parsed.photoId, path },
       })
     }
 
     return new NextResponse(file, {
       headers: {
         'Content-Type': `image/${parsed.fmt}`,
-        'Cache-Control': 'public, max-age=86400, immutable',
+        'Cache-Control': variant.cacheControl,
         'Content-Disposition': 'inline; filename="photo"',
         'X-Content-Type-Options': 'nosniff',
       },

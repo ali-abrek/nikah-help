@@ -73,6 +73,21 @@ export const DEFAULT_FILTERS_FEMALE: FeedFiltersFemale = {}
 
 // ── Persisted filter preferences (stored as JSONB on profiles) ──────
 
+export const filterPreferencesSchema = z.object({
+  locMode: z.enum(['place', 'radius']).optional(),
+  country: z.string().max(100).optional(),
+  city: z.string().max(200).optional(),
+  radiusKm: z.number().int().min(RADIUS_RANGE.min).max(RADIUS_RANGE.max).optional(),
+  ageMin: z.number().int().min(18).max(120).optional(),
+  ageMax: z.number().int().min(18).max(120).optional(),
+  marital: z.string().nullable().optional(),
+  children: z.enum(['any', 'none', 'has']).optional(),
+  polygamy: z.enum(['any', 'mono', 'open']).optional(),
+  hijab: z.string().nullable().optional(),
+  income: z.string().nullable().optional(),
+  housing: z.string().nullable().optional(),
+})
+
 export interface FilterPreferences {
   locMode?: 'place' | 'radius'
   country?: string

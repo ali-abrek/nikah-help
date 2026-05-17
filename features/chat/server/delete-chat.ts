@@ -1,6 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { AppError } from '@/lib/errors/app-error'
-import { inngest } from '@/lib/inngest/client'
+import { inngest, chatDeleteEvent } from '@/lib/inngest/client'
 
 export async function deleteChat(chatId: string, userId: string) {
   const supabase = createAdminClient()
@@ -57,10 +57,7 @@ export async function deleteChat(chatId: string, userId: string) {
 
   // Trigger Inngest with pre-collected paths so media cleanup can proceed even
   // though messages are already gone.
-  await inngest.send({
-    name: 'chat/delete',
-    data: { chatId, matchId: chat.match_id, mediaPaths },
-  })
+  await inngest.send(chatDeleteEvent.create({ chatId, matchId: chat.match_id, mediaPaths }))
 
   // Notify the other user
   await supabase.from('notifications').insert({

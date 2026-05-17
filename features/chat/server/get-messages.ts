@@ -22,8 +22,20 @@ export interface MessageRow {
   } | null
 }
 
-export async function getMessages(chatId: string): Promise<MessageRow[]> {
+export async function getMessages(chatId: string, userId: string): Promise<MessageRow[]> {
   const supabase = createAdminClient()
+
+  // Verify the caller is a participant of this chat.
+  const { data: chat } = await supabase
+    .from('chats')
+    .select('id, matches!inner ( user_a, user_b )')
+    .eq('id', chatId)
+    .single()
+
+  if (!chat) return []
+
+  const m = chat.matches as unknown as { user_a: string; user_b: string }
+  if (m.user_a !== userId && m.user_b !== userId) return []
 
   const { data } = await supabase
     .from('messages')

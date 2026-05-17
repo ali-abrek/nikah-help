@@ -4,6 +4,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { hashBlockedEmail } from '@/lib/crypto/email-hash'
 import { captureSentryException } from '@/lib/sentry/capture'
 
+export const runtime = 'nodejs'
+
 // Strict allowlist of post-login destinations. Anything else falls through
 // to /feed so a crafted `?next=…` parameter can't be used for misdirection
 // or to land an authenticated user on an unintended internal route.

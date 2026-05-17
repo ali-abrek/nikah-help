@@ -8,6 +8,8 @@ import { ACTION_MODERATE } from '@/lib/ratelimit/presets'
 import { AppError } from '@/lib/errors/app-error'
 import { handleRouteError } from '@/lib/errors/handler'
 
+export const runtime = 'nodejs'
+
 type RouteCtx = { params: Promise<{ messageId: string }> }
 
 const patchHandler = async (request: NextRequest, ctx: RouteCtx) => {

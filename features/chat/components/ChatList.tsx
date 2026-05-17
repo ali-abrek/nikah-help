@@ -15,7 +15,7 @@ interface ChatPreview {
   other_user: {
     id: string
     name: string | null
-    photo_url: string | null
+    photo_id: string | null
   }
   last_message: {
     type: string
@@ -75,7 +75,11 @@ export function ChatList({ chats, userId }: ChatListProps) {
               className="flex items-center gap-3 border-b border-[var(--divider)] px-5 py-3"
             >
               <Avatar
-                src={c.other_user.photo_url ?? null}
+                src={
+                  c.other_user.photo_id
+                    ? `/api/photos/stream?photoId=${c.other_user.photo_id}&variant=avatar&fmt=webp`
+                    : null
+                }
                 alt={c.other_user.name ?? ''}
                 size={52}
               />

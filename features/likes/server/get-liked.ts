@@ -1,10 +1,16 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { LikeProfile } from './get-liked-by'
 
-export async function getLikedProfiles(userId: string): Promise<LikeProfile[]> {
-  const supabase = createAdminClient()
+const DEFAULT_LIMIT = 20
 
-  const { data } = await supabase
+export async function getLikedProfiles(
+  userId: string,
+  opts?: { cursor?: string; limit?: number },
+): Promise<{ data: LikeProfile[]; nextCursor: string | null }> {
+  const supabase = createAdminClient()
+  const limit = opts?.limit ?? DEFAULT_LIMIT
+
+  let query = supabase
     .from('likes')
     .select(
       `
@@ -18,10 +24,21 @@ export async function getLikedProfiles(userId: string): Promise<LikeProfile[]> {
     )
     .eq('from_user_id', userId)
     .order('created_at', { ascending: false })
+    .limit(limit + 1)
 
-  if (!data) return []
+  if (opts?.cursor) {
+    query = query.lt('created_at', opts.cursor)
+  }
 
-  return data.map((row: Record<string, unknown>) => {
+  const { data: rows } = await query
+
+  if (!rows?.length) return { data: [], nextCursor: null }
+
+  const hasMore = rows.length > limit
+  const page = hasMore ? rows.slice(0, limit) : rows
+  const nextCursor = hasMore ? (page.at(-1)!.created_at as string) : null
+
+  const data = page.map((row: Record<string, unknown>) => {
     const profile = (row.profiles as Record<string, unknown>) ?? {}
     const photos = (profile.photos as Array<Record<string, unknown>>) ?? []
     const firstPhoto = photos[0]
@@ -40,6 +57,8 @@ export async function getLikedProfiles(userId: string): Promise<LikeProfile[]> {
       liked_at: row.created_at as string,
     }
   })
+
+  return { data, nextCursor }
 }
 
 function calcAge(birthDate: string): number {

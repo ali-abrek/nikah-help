@@ -12,18 +12,35 @@ export interface MatchProfile {
   matched_at: string | null
 }
 
-export async function getMatches(userId: string): Promise<MatchProfile[]> {
-  const supabase = createAdminClient()
+const DEFAULT_LIMIT = 20
 
-  const { data: matches } = await supabase
+export async function getMatches(
+  userId: string,
+  opts?: { cursor?: string; limit?: number },
+): Promise<{ data: MatchProfile[]; nextCursor: string | null }> {
+  const supabase = createAdminClient()
+  const limit = opts?.limit ?? DEFAULT_LIMIT
+
+  let query = supabase
     .from('matches')
     .select('id, user_a, user_b, created_at')
     .or(`user_a.eq.${userId},user_b.eq.${userId}`)
     .order('created_at', { ascending: false })
+    .limit(limit + 1)
 
-  if (!matches?.length) return []
+  if (opts?.cursor) {
+    query = query.lt('created_at', opts.cursor)
+  }
 
-  const otherUserIds = matches.map((m) => (m.user_a === userId ? m.user_b : m.user_a))
+  const { data: rows } = await query
+
+  if (!rows?.length) return { data: [], nextCursor: null }
+
+  const hasMore = rows.length > limit
+  const page = hasMore ? rows.slice(0, limit) : rows
+  const nextCursor = hasMore ? (page.at(-1)!.created_at as string) : null
+
+  const otherUserIds = page.map((m) => (m.user_a === userId ? m.user_b : m.user_a))
 
   const { data: profiles } = await supabase
     .from('profiles')
@@ -39,7 +56,7 @@ export async function getMatches(userId: string): Promise<MatchProfile[]> {
     (profiles ?? []).map((p: Record<string, unknown>) => [p.id as string, p]),
   )
 
-  return matches.map((m) => {
+  const data = page.map((m) => {
     const otherId = m.user_a === userId ? m.user_b : m.user_a
     const profile = profileMap.get(otherId) ?? {}
     const photos = (profile.photos as Array<Record<string, unknown>>) ?? []
@@ -60,6 +77,8 @@ export async function getMatches(userId: string): Promise<MatchProfile[]> {
       matched_at: m.created_at,
     }
   })
+
+  return { data, nextCursor }
 }
 
 function calcAgeFromDate(birthDate: string): number {

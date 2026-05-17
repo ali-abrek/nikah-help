@@ -1,6 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Database } from '@/types/database.types'
-import { inngest } from '@/lib/inngest/client'
+import { inngest, profileRegenerateBioEvent } from '@/lib/inngest/client'
 import { BIO_FIELDS_SQL, hashBioFields } from '@/lib/profile/bio-fields'
 
 /**
@@ -41,8 +41,5 @@ export async function maybeRegenerateBio(
 
   // The Inngest worker reserves the daily quota slot before calling OpenAI;
   // this Server Action just queues the event.
-  await inngest.send({
-    name: 'profile/regenerate-bio',
-    data: { userId },
-  })
+  await inngest.send(profileRegenerateBioEvent.create({ userId }))
 }
