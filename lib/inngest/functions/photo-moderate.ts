@@ -152,7 +152,7 @@ export const photoModerateFn = inngest.createFunction(
       try {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         response = await (getOpenAI().chat.completions as any).create({
-          model: 'gpt-4o',
+          model: 'gpt-4o-mini',
           messages: [
             {
               role: 'system',
