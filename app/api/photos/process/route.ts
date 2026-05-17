@@ -156,8 +156,10 @@ export const POST = withAuth(
       // Run moderation synchronously so the status is resolved before the
       // client refreshes the profile. If the synchronous call fails (OpenAI
       // timeout, network error, etc.), fall back to the Inngest async path.
+      let moderationStatus: string = 'queued'
       try {
-        await moderatePhoto(photoId)
+        const decision = await moderatePhoto(photoId)
+        moderationStatus = decision.status
       } catch (err) {
         void captureSentryException(err, {
           flow: 'moderation.sync',
@@ -168,7 +170,7 @@ export const POST = withAuth(
         await inngest.send({ name: 'photo/moderate', data: { photoId } })
       }
 
-      return NextResponse.json({ success: true, photoId })
+      return NextResponse.json({ success: true, photoId, moderationStatus })
     } catch (error) {
       return handleRouteError(error)
     }

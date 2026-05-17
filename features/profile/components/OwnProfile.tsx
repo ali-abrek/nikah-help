@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
@@ -19,6 +19,12 @@ interface OwnProfileProps {
   profile: ProfileDetailData
 }
 
+type PendingUpload = {
+  tempId: string
+  previewUrl: string
+  position: number
+}
+
 function calcAge(birthDate: string | null): number | null {
   if (!birthDate) return null
   const b = new Date(birthDate)
@@ -35,18 +41,33 @@ export function OwnProfile({ profile }: OwnProfileProps) {
   const router = useRouter()
   const toast = useToast()
   const [photoIdx, setPhotoIdx] = useState(0)
-  const [photos, setPhotos] = useState(profile.photos)
+  // Photos added in this session (real server IDs, not yet or already in profile.photos).
+  const [localAddedPhotos, setLocalAddedPhotos] = useState<ProfilePhotoData[]>([])
+  // Photo IDs deleted in this session — optimistic hide before route refresh.
+  const [deletedPhotoIds, setDeletedPhotoIds] = useState<Set<string>>(new Set())
+  const [pendingUploads, setPendingUploads] = useState<PendingUpload[]>([])
   const [published, setPublished] = useState(!!profile.is_published)
   const [privateMode, setPrivateMode] = useState(false)
   const [showOff, setShowOff] = useState(false)
   const [showDel, setShowDel] = useState(false)
   const [photoPendingDel, setPhotoPendingDel] = useState<string | null>(null)
   const [deletingPhoto, setDeletingPhoto] = useState(false)
-  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   // Local blob previews keyed by photoId — used while the server is still
   // processing variants. Without this, PhotoStream 404s for queued photos.
   const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  // Derived photo list: server data is the source of truth for moderation status
+  // updates (profile.photos changes on router.refresh()); locally-added photos
+  // are shown until they appear in the server data.
+  const photos = useMemo(() => {
+    const serverIdSet = new Set(profile.photos.map((p) => p.id))
+    const fromServer = profile.photos.filter((p) => !deletedPhotoIds.has(p.id))
+    const localOnly = localAddedPhotos.filter(
+      (p) => !serverIdSet.has(p.id) && !deletedPhotoIds.has(p.id),
+    )
+    return [...fromServer, ...localOnly]
+  }, [profile.photos, localAddedPhotos, deletedPhotoIds])
 
   useEffect(() => {
     return () => {
@@ -57,6 +78,17 @@ export function OwnProfile({ profile }: OwnProfileProps) {
     // delete handler.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // When there are still-queued photos (Inngest async fallback), poll for updates.
+  // router.refresh() causes RSC to re-render with fresh data; photos then
+  // re-derives from the updated profile.photos prop — no setState needed.
+  useEffect(() => {
+    const hasQueued = photos.some((p) => p.moderation_status === 'queued')
+    if (!hasQueued) return
+    const tid = setTimeout(() => router.refresh(), 5_000)
+    return () => clearTimeout(tid)
+  }, [photos, router])
+
   const [pending, startTransition] = useTransition()
   const age = calcAge(profile.birth_date)
   const photo = photos[photoIdx]
@@ -90,7 +122,6 @@ export function OwnProfile({ profile }: OwnProfileProps) {
   }
 
   const handleAddPhotoClick = () => {
-    if (uploadingPhoto) return
     fileInputRef.current?.click()
   }
 
@@ -100,7 +131,6 @@ export function OwnProfile({ profile }: OwnProfileProps) {
     if (selected.length === 0) return
 
     const MAX_PHOTOS = 6
-    const MIN_SHORT_SIDE_PX = 1000
     const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024
     const validTypes = [
       'image/jpeg',
@@ -111,100 +141,102 @@ export function OwnProfile({ profile }: OwnProfileProps) {
       'image/heif',
     ]
 
-    const remainingSlots = MAX_PHOTOS - photos.length
-    if (selected.length > remainingSlots) {
+    // Remaining slots must account for both confirmed photos and uploading ones.
+    const remainingSlots = MAX_PHOTOS - photos.length - pendingUploads.length
+    if (remainingSlots <= 0) {
       toast.show(t('ph_err_max_count', { n: MAX_PHOTOS }))
       return
     }
 
-    // Best-effort browser-side decode; HEIC on Chromium returns null and we
-    // fall through to server-side sharp validation.
-    const readShortSide = async (file: File): Promise<number | null> => {
-      if (typeof createImageBitmap === 'function') {
-        try {
-          const bitmap = await createImageBitmap(file)
-          const side = Math.min(bitmap.width, bitmap.height)
-          bitmap.close?.()
-          return side
-        } catch {
-          return null
-        }
+    // Validate files synchronously (type + size). Server validates dimensions.
+    type ValidFile = { file: File; tempId: string; previewUrl: string; position: number }
+    const validFiles: ValidFile[] = []
+    let nextPosition = photos.length + pendingUploads.length + 1
+
+    for (const file of selected.slice(0, remainingSlots)) {
+      if (!validTypes.includes(file.type)) {
+        toast.show(t('ph_err_format'))
+        continue
       }
-      return null
+      if (file.size > MAX_FILE_SIZE_BYTES) {
+        toast.show(t('ph_err_too_large'))
+        continue
+      }
+      validFiles.push({
+        file,
+        tempId: `pending-${crypto.randomUUID()}`,
+        previewUrl: URL.createObjectURL(file),
+        position: nextPosition++,
+      })
     }
 
-    setUploadingPhoto(true)
-    try {
-      let basePosition = photos.length + 1
-      for (const file of selected) {
-        if (!validTypes.includes(file.type)) {
-          toast.show(t('ph_err_format'))
-          continue
-        }
-        if (file.size > MAX_FILE_SIZE_BYTES) {
-          toast.show(t('ph_err_too_large'))
-          continue
-        }
-        const shortSide = await readShortSide(file)
-        if (shortSide !== null && shortSide < MIN_SHORT_SIDE_PX) {
-          toast.show(t('ph_err_too_small'))
-          continue
-        }
+    if (validFiles.length === 0) return
 
-        const position = basePosition++
-        const previewUrl = URL.createObjectURL(file)
+    // Show a spinner slot for every file immediately, before any network call.
+    setPendingUploads((prev) => [
+      ...prev,
+      ...validFiles.map(({ tempId, previewUrl, position }) => ({ tempId, previewUrl, position })),
+    ])
 
-        const res = await fetch('/api/photos/upload-url', {
+    for (const { file, tempId, previewUrl, position } of validFiles) {
+      try {
+        const urlRes = await fetch('/api/photos/upload-url', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ mimeType: file.type, filename: file.name, position }),
         })
-        if (!res.ok) {
-          toast.show(t('own_photo_add_error'))
-          URL.revokeObjectURL(previewUrl)
-          continue
-        }
+        if (!urlRes.ok) throw new Error('upload-url failed')
 
-        const { photoId, signedUrl } = (await res.json()) as {
+        const { photoId, signedUrl } = (await urlRes.json()) as {
           photoId: string
           signedUrl: string
         }
 
-        const uploadRes = await fetch(signedUrl, {
+        const storageRes = await fetch(signedUrl, {
           method: 'PUT',
           body: file,
           headers: { 'Content-Type': file.type },
         })
-        if (!uploadRes.ok) {
-          toast.show(t('own_photo_add_error'))
-          URL.revokeObjectURL(previewUrl)
-          continue
-        }
+        if (!storageRes.ok) throw new Error('storage upload failed')
 
         const markResult = await markPhotoUploaded(photoId)
-        if (!markResult.success) {
-          toast.show(t('own_photo_add_error'))
-          URL.revokeObjectURL(previewUrl)
-          continue
-        }
+        if (!markResult.success) throw new Error('markPhotoUploaded failed')
 
-        await fetch('/api/photos/process', {
+        // Process generates variants + runs moderation synchronously.
+        const processRes = await fetch('/api/photos/process', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ photoId }),
-        }).catch(() => {})
+        }).catch(() => null)
 
-        const newPhoto: ProfilePhotoData = {
-          id: photoId,
-          position,
-          variants: null,
-          moderation_status: 'queued',
+        let moderationStatus: ProfilePhotoData['moderation_status'] = 'queued'
+        if (processRes?.ok) {
+          const body = (await processRes.json().catch(() => null)) as {
+            moderationStatus?: string
+          } | null
+          if (body?.moderationStatus) {
+            moderationStatus = body.moderationStatus as ProfilePhotoData['moderation_status']
+          }
         }
-        setLocalPreviews((prev) => ({ ...prev, [photoId]: previewUrl }))
-        setPhotos((prev) => [...prev, newPhoto])
+
+        // Remove this spinner slot.
+        setPendingUploads((prev) => prev.filter((p) => p.tempId !== tempId))
+
+        if (moderationStatus === 'rejected') {
+          // Auto-rejected: server already cleaned up Storage + DB row.
+          URL.revokeObjectURL(previewUrl)
+        } else {
+          setLocalPreviews((prev) => ({ ...prev, [photoId]: previewUrl }))
+          setLocalAddedPhotos((prev) => [
+            ...prev,
+            { id: photoId, position, variants: null, moderation_status: moderationStatus },
+          ])
+        }
+      } catch {
+        setPendingUploads((prev) => prev.filter((p) => p.tempId !== tempId))
+        URL.revokeObjectURL(previewUrl)
+        toast.show(t('own_photo_add_error'))
       }
-    } finally {
-      setUploadingPhoto(false)
     }
   }
 
@@ -216,11 +248,9 @@ export function OwnProfile({ profile }: OwnProfileProps) {
     if (!('success' in result) || !result.success) {
       toast.show(t('own_photo_del_error'))
     } else {
-      setPhotos((prev) => {
-        const next = prev.filter((p) => p.id !== photoPendingDel)
-        setPhotoIdx((idx) => Math.min(idx, Math.max(0, next.length - 1)))
-        return next
-      })
+      const nextLength = photos.length - 1
+      setDeletedPhotoIds((prev) => new Set([...prev, photoPendingDel]))
+      setPhotoIdx((idx) => Math.min(idx, Math.max(0, nextLength - 1)))
       setLocalPreviews((prev) => {
         const url = prev[photoPendingDel]
         if (url) URL.revokeObjectURL(url)
@@ -410,15 +440,32 @@ export function OwnProfile({ profile }: OwnProfileProps) {
                 </button>
               </div>
             ))}
-            {photos.length < 6 && (
+            {/* One spinner slot per uploading file, each with its own preview. */}
+            {pendingUploads.map((p) => (
+              <div
+                key={p.tempId}
+                className="relative aspect-[4/5] overflow-hidden rounded-xl bg-[var(--surface-2)]"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element -- object URL preview during upload */}
+                <img
+                  src={p.previewUrl}
+                  alt=""
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                  <Spinner size={24} />
+                </div>
+              </div>
+            ))}
+            {/* Always show an empty slot so the user can add more photos while others upload. */}
+            {photos.length + pendingUploads.length < 6 && (
               <button
                 type="button"
                 onClick={handleAddPhotoClick}
-                disabled={uploadingPhoto}
                 aria-label={t('own_photo_add')}
-                className="grid aspect-[4/5] place-items-center rounded-xl border-[1.5px] border-dashed border-[var(--divider-strong)] bg-[var(--surface-2)] text-[var(--ink-3)] transition-colors hover:border-[var(--primary)] hover:text-[var(--primary)] disabled:opacity-60 disabled:hover:border-[var(--divider-strong)] disabled:hover:text-[var(--ink-3)]"
+                className="grid aspect-[4/5] place-items-center rounded-xl border-[1.5px] border-dashed border-[var(--divider-strong)] bg-[var(--surface-2)] text-[var(--ink-3)] transition-colors hover:border-[var(--primary)] hover:text-[var(--primary)]"
               >
-                {uploadingPhoto ? <Spinner size={22} /> : <Icon name="plus" size={22} />}
+                <Icon name="plus" size={22} />
               </button>
             )}
           </div>
