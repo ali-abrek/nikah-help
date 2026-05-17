@@ -54,9 +54,7 @@ export default async function FeedPage() {
           <Link href="/onboarding" className="text-[var(--primary)] underline">
             регистрацию
           </Link>{' '}
-          для доступа к ленте, либо{' '}
-          <CancelRegistrationButton />{' '}
-          начатую вами ранее регистрацию.
+          для доступа к ленте, либо <CancelRegistrationButton /> начатую вами ранее регистрацию.
         </p>
       </div>
     )

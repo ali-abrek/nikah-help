@@ -73,11 +73,7 @@ export function useFeed({ viewerGender, filters, initialData }: UseFeedParams) {
 
 // ── Guest feed (no auth) ────────────────────────────────────────────
 
-async function fetchGuestFeedPage({
-  pageParam,
-}: {
-  pageParam?: string
-}): Promise<FeedPage> {
+async function fetchGuestFeedPage({ pageParam }: { pageParam?: string }): Promise<FeedPage> {
   const params = new URLSearchParams()
   if (pageParam) params.set('cursor', pageParam)
 
@@ -92,8 +88,7 @@ async function fetchGuestFeedPage({
 export function useGuestFeed({ initialData }: { initialData?: FeedPage }) {
   return useInfiniteQuery({
     queryKey: ['feed', 'guest'],
-    queryFn: ({ pageParam }) =>
-      fetchGuestFeedPage({ pageParam: pageParam as string | undefined }),
+    queryFn: ({ pageParam }) => fetchGuestFeedPage({ pageParam: pageParam as string | undefined }),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     initialData: initialData ? { pages: [initialData], pageParams: [undefined] } : undefined,
