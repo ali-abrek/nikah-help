@@ -56,10 +56,7 @@ export async function getChats(userId: string): Promise<ChatPreview[]> {
       : Promise.resolve({ data: [] as Array<Record<string, unknown>>, error: null }),
   ])
 
-  const profileMap = new Map<
-    string,
-    { id: string; name: string | null; photo_id: string | null }
-  >()
+  const profileMap = new Map<string, { id: string; name: string | null; photo_id: string | null }>()
   for (const p of profilesResult.data ?? []) {
     const photos = p.photos as Array<{ id: string }> | null
     profileMap.set(p.id, {
@@ -69,10 +66,13 @@ export async function getChats(userId: string): Promise<ChatPreview[]> {
     })
   }
 
-  const previewMap = new Map<string, {
-    last_message: ChatPreview['last_message']
-    unread_count: number
-  }>()
+  const previewMap = new Map<
+    string,
+    {
+      last_message: ChatPreview['last_message']
+      unread_count: number
+    }
+  >()
   for (const row of previewsResult.data ?? []) {
     const r = row as {
       chat_id: string
@@ -83,15 +83,14 @@ export async function getChats(userId: string): Promise<ChatPreview[]> {
       unread_count: number
     }
     previewMap.set(r.chat_id, {
-      last_message:
-        r.last_message_type
-          ? {
-              type: r.last_message_type,
-              content: r.last_message_content ?? '',
-              sender_id: r.last_message_sender_id ?? '',
-              created_at: r.last_message_created_at ?? new Date().toISOString(),
-            }
-          : null,
+      last_message: r.last_message_type
+        ? {
+            type: r.last_message_type,
+            content: r.last_message_content ?? '',
+            sender_id: r.last_message_sender_id ?? '',
+            created_at: r.last_message_created_at ?? new Date().toISOString(),
+          }
+        : null,
       unread_count: r.unread_count,
     })
   }

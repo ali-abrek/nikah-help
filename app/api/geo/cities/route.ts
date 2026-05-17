@@ -23,8 +23,7 @@ export const GET = withRateLimit(async (request: NextRequest) => {
 
     const supabase = await createServerSupabase()
 
-    const select =
-      'id, name, alt_names_ru, admin1_name, country_code, population, location'
+    const select = 'id, name, alt_names_ru, admin1_name, country_code, population, location'
 
     type CityRow = {
       id: number

@@ -200,12 +200,14 @@ Be strict with nudity and suggestive content — the application requires modest
         await insertNotificationDirect(payload, ctx.profileId, dedupeKey)
 
         try {
-          await inngest.send(notificationSendEvent.create({
-            type: 'photo_auto_rejected',
-            payload: payload as unknown,
-            userId: ctx.profileId,
-            dedupeKey,
-          }))
+          await inngest.send(
+            notificationSendEvent.create({
+              type: 'photo_auto_rejected',
+              payload: payload as unknown,
+              userId: ctx.profileId,
+              dedupeKey,
+            }),
+          )
         } catch (err) {
           void captureSentryException(err, {
             flow: 'moderation.vision',

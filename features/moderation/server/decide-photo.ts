@@ -67,12 +67,14 @@ export async function decidePhoto({
     })
 
     try {
-      await inngest.send(notificationSendEvent.create({
-        type: 'photo_rejected',
-        payload: payload as unknown,
-        userId: updated.profile_id,
-        dedupeKey: `photo_rejected:${updated.id}`,
-      }))
+      await inngest.send(
+        notificationSendEvent.create({
+          type: 'photo_rejected',
+          payload: payload as unknown,
+          userId: updated.profile_id,
+          dedupeKey: `photo_rejected:${updated.id}`,
+        }),
+      )
     } catch (err) {
       // The DB state is already authoritative — log and continue rather than
       // failing the moderator's action over a transient queue hiccup.

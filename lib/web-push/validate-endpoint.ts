@@ -14,9 +14,7 @@ export function validatePushEndpoint(endpoint: string): boolean {
     if (ALLOWED_PUSH_ORIGINS.includes(url.origin)) return true
 
     for (const pattern of ALLOWED_WILDCARD_ORIGINS) {
-      const regex = new RegExp(
-        '^' + pattern.replace(/\./g, '\\.').replace(/\*/g, '[^.]+') + '$',
-      )
+      const regex = new RegExp('^' + pattern.replace(/\./g, '\\.').replace(/\*/g, '[^.]+') + '$')
       if (regex.test(url.origin)) return true
     }
 

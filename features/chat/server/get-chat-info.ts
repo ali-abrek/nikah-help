@@ -37,8 +37,7 @@ export async function getChatInfo(chatId: string, userId: string): Promise<ChatI
     .eq('id', otherId)
     .single()
 
-  const photos =
-    (profile?.photos as Array<{ id: string }>) ?? []
+  const photos = (profile?.photos as Array<{ id: string }>) ?? []
   const photoId = photos[0]?.id ?? null
 
   return {

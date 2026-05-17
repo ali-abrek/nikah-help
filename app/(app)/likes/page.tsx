@@ -22,10 +22,6 @@ export default async function LikesPage() {
   ])
 
   return (
-    <LikesTabs
-      incoming={incomingRes.data}
-      outgoing={outgoingRes.data}
-      matches={matchesRes.data}
-    />
+    <LikesTabs incoming={incomingRes.data} outgoing={outgoingRes.data} matches={matchesRes.data} />
   )
 }

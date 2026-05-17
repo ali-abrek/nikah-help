@@ -46,10 +46,12 @@ export async function revokeLike({ fromUserId, toUserId }: RevokeLikeParams): Pr
 
   // 4. If match existed, trigger Inngest for cascading cleanup
   if (match) {
-    await inngest.send(likeRevokeEvent.create({
-      matchId: match.id,
-      userId: fromUserId,
-      otherUserId: toUserId,
-    }))
+    await inngest.send(
+      likeRevokeEvent.create({
+        matchId: match.id,
+        userId: fromUserId,
+        otherUserId: toUserId,
+      }),
+    )
   }
 }
