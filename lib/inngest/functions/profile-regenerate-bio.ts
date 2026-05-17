@@ -78,10 +78,7 @@ export const profileRegenerateBioFn = inngest.createFunction(
       if (e instanceof AppError && e.code === 'BIO_RATE_LIMITED') {
         await step.run('mark-rate-limited', async () => {
           const supabase = await createServerSupabase()
-          await supabase
-            .from('profiles')
-            .update({ ai_bio_status: 'rate_limited' })
-            .eq('id', userId)
+          await supabase.from('profiles').update({ ai_bio_status: 'rate_limited' }).eq('id', userId)
         })
         return { success: false, userId, rateLimited: true }
       }
