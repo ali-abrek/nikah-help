@@ -49,11 +49,16 @@ export function NotificationItem({ notification, onMarkAsRead }: NotificationIte
   // key (placeholder behaviour shared with the rest of the app).
   const title =
     notification.type === 'photo_rejected' || notification.type === 'photo_auto_rejected'
-      ? t(notification.type === 'photo_rejected' ? 'notif_photo_rejected_title' : 'notif_photo_auto_rejected_title')
+      ? t(
+          notification.type === 'photo_rejected'
+            ? 'notif_photo_rejected_title'
+            : 'notif_photo_auto_rejected_title',
+        )
       : notification.title_key
 
   const showPhotoThumb =
-    (notification.type === 'photo_rejected' || notification.type === 'photo_auto_rejected') && !!photoId
+    (notification.type === 'photo_rejected' || notification.type === 'photo_auto_rejected') &&
+    !!photoId
 
   const inner = (
     <div
@@ -91,10 +96,10 @@ export function NotificationItem({ notification, onMarkAsRead }: NotificationIte
         {notification.body_key &&
           notification.type !== 'photo_rejected' &&
           notification.type !== 'photo_auto_rejected' && (
-          <div className="mt-0.5 line-clamp-2 text-[13px] text-[var(--ink-2)]">
-            {notification.body_key}
-          </div>
-        )}
+            <div className="mt-0.5 line-clamp-2 text-[13px] text-[var(--ink-2)]">
+              {notification.body_key}
+            </div>
+          )}
         <div className="mt-1 text-xs text-[var(--ink-3)]">
           {formatRelativeTime(notification.created_at)}
         </div>

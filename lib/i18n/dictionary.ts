@@ -559,8 +559,7 @@ const EN: Record<keyof typeof RU, string> = {
   mod_queue_reject: 'Reject',
   mod_queue_decided: 'Decision recorded',
   mod_queue_error: 'Failed to record decision',
-  ph_err_too_small:
-    'Your photo was rejected — the shorter side must be at least 1000 px',
+  ph_err_too_small: 'Your photo was rejected — the shorter side must be at least 1000 px',
   ph_err_format: 'Unsupported format. Allowed: JPEG, PNG, WebP, AVIF, HEIC',
   ph_err_max_count: 'You can upload no more than {n} photos',
   ph_err_too_large: 'File too large (maximum 10 MB)',

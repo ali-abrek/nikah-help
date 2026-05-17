@@ -21,11 +21,7 @@ export default async function ModerationPage() {
 
   // Non-staff users are redirected to /feed — the route's existence is not leaked
   // since redirect() returns a 307 and doesn't render the page.
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', userId)
-    .single()
+  const { data: profile } = await supabase.from('profiles').select('role').eq('id', userId).single()
   const role = profile?.role ?? null
   if (role !== 'moderator' && role !== 'admin') redirect('/feed')
 
