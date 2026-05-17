@@ -5,28 +5,21 @@ import { STORAGE } from '@/lib/image-processing/photo-variants'
 import { NonRetriableError } from 'inngest'
 import { captureSentryException } from '@/lib/sentry/capture'
 import { createNotification } from '@/lib/notifications/factory'
-
-interface ModerationScores {
-  explicit_nudity_score: number
-  suggestive_score: number
-  violence_score: number
-  hate_symbols_score: number
-  face_count: number
-  detected_gender: string
-  reason: string
-}
+import {
+  evaluateModeration,
+  cleanupRejectedPhoto,
+} from '@/lib/image-processing/moderate-photo'
+import type { ModerationScores, ModerationDecision } from '@/lib/image-processing/moderate-photo'
 
 async function loadPhotoContext(photoId: string): Promise<{
   buffer: Buffer
   contentType: string
   profileGender: 'male' | 'female' | null
   profileId: string
+  userId: string
 }> {
   const supabase = createAdminClient()
 
-  // Pull the profile gender alongside the cover so we can enforce mismatch
-  // in the same step (spec docs/06-image-processing.md:609 — gender mismatch
-  // is a reject criterion). Joining via the FK avoids a second roundtrip.
   const { data: photo, error: fetchError } = await supabase
     .from('photos')
     .select('profile_id, variants, profiles!inner(gender)')
@@ -52,8 +45,6 @@ async function loadPhotoContext(photoId: string): Promise<{
 
   const buffer = Buffer.from(await file.arrayBuffer())
 
-  // Supabase returns the joined relation as either an object or array depending
-  // on the FK cardinality interpretation; normalise.
   const joined = (photo as unknown as { profiles: { gender: string } | { gender: string }[] })
     .profiles
   const profileGender = (Array.isArray(joined) ? joined[0]?.gender : joined?.gender) as
@@ -66,80 +57,8 @@ async function loadPhotoContext(photoId: string): Promise<{
     contentType: 'image/webp',
     profileGender: profileGender ?? null,
     profileId: (photo as unknown as { profile_id: string }).profile_id,
+    userId: (photo as unknown as { profile_id: string }).profile_id,
   }
-}
-
-interface ModerationDecision {
-  status: 'approved' | 'rejected' | 'manual_review'
-  reason?: string
-}
-
-// Thresholds tuned for a Muslim matrimonial app: stricter than a general
-// social platform, with a manual-review band that traps borderline cases
-// (modest sportswear, traditional dress, medical contexts) instead of
-// auto-rejecting them.
-const REJECT = {
-  explicit_nudity: 65,
-  suggestive: 70,
-  violence: 75,
-  hate_symbols: 65,
-} as const
-
-const REVIEW = {
-  explicit_nudity: 45,
-  suggestive: 50,
-  violence: 55,
-  hate_symbols: 40,
-} as const
-
-function evaluateModeration(
-  scores: ModerationScores,
-  profileGender: 'male' | 'female' | null,
-): ModerationDecision {
-  // Hard rejects — high confidence of disallowed content.
-  if (scores.explicit_nudity_score >= REJECT.explicit_nudity) {
-    return { status: 'rejected', reason: 'explicit_nudity' }
-  }
-  if (scores.suggestive_score >= REJECT.suggestive) {
-    return { status: 'rejected', reason: 'suggestive_content' }
-  }
-  if (scores.violence_score >= REJECT.violence) {
-    return { status: 'rejected', reason: 'violence' }
-  }
-  if (scores.hate_symbols_score >= REJECT.hate_symbols) {
-    return { status: 'rejected', reason: 'hate_symbols' }
-  }
-  if (scores.face_count !== 1) {
-    return { status: 'rejected', reason: 'face_count_invalid' }
-  }
-
-  // Gender mismatch — the depicted person must match the profile's declared
-  // gender. 'uncertain' falls through to manual_review rather than auto-reject.
-  if (profileGender && scores.detected_gender === 'male' && profileGender !== 'male') {
-    return { status: 'rejected', reason: 'gender_mismatch' }
-  }
-  if (profileGender && scores.detected_gender === 'female' && profileGender !== 'female') {
-    return { status: 'rejected', reason: 'gender_mismatch' }
-  }
-
-  // Borderline band — send to human queue rather than risk a false positive.
-  if (
-    scores.explicit_nudity_score >= REVIEW.explicit_nudity ||
-    scores.suggestive_score >= REVIEW.suggestive
-  ) {
-    return { status: 'manual_review', reason: 'borderline_nudity' }
-  }
-  if (scores.violence_score >= REVIEW.violence) {
-    return { status: 'manual_review', reason: 'potential_violence' }
-  }
-  if (scores.hate_symbols_score >= REVIEW.hate_symbols) {
-    return { status: 'manual_review', reason: 'potential_hate_symbols' }
-  }
-  if (profileGender && scores.detected_gender === 'uncertain') {
-    return { status: 'manual_review', reason: 'gender_uncertain' }
-  }
-
-  return { status: 'approved' }
 }
 
 async function updateModerationStatus(
@@ -159,6 +78,10 @@ async function updateModerationStatus(
       updated_at: new Date().toISOString(),
     })
     .eq('id', photoId)
+    // Idempotency: only act on photos that haven't been moderated yet.
+    // If the synchronous path in /api/photos/process already handled this,
+    // the status won't be 'queued' and we skip.
+    .eq('moderation_status', 'queued')
 
   if (error) throw error
 }
@@ -289,6 +212,8 @@ Be strict with nudity and suggestive content — the application requires modest
           })
         }
       })
+
+      await step.run('cleanup-rejected', () => cleanupRejectedPhoto(photoId, ctx.userId))
     }
 
     return { photoId, decision, scores: result }

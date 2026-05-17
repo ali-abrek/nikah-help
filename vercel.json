@@ -3,7 +3,8 @@
     "app/api/photos/process/route.ts": { "maxDuration": 30 },
     "app/api/cron/expire-suspensions/route.ts": { "maxDuration": 60 },
     "app/api/cron/subscription-renewal/route.ts": { "maxDuration": 60 },
-    "app/api/cron/inactive-account-warn/route.ts": { "maxDuration": 60 }
+    "app/api/cron/inactive-account-warn/route.ts": { "maxDuration": 60 },
+    "app/api/webhooks/inngest/route.ts": { "maxDuration": 60 }
   },
   "crons": [
     { "path": "/api/cron/subscription-renewal", "schedule": "0 9 * * *" },

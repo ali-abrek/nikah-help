@@ -10,6 +10,8 @@ import { withAuth } from '@/lib/api/with-auth'
 import { withRateLimit } from '@/lib/ratelimit/with-rate-limit'
 import { PHOTO_UPLOAD } from '@/lib/ratelimit/presets'
 import { inngest } from '@/lib/inngest/client'
+import { moderatePhoto } from '@/lib/image-processing/moderate-photo'
+import { captureSentryException } from '@/lib/sentry/capture'
 
 export const runtime = 'nodejs'
 export const maxDuration = 30
@@ -151,7 +153,20 @@ export const POST = withAuth(
         })
       }
 
-      await inngest.send({ name: 'photo/moderate', data: { photoId } })
+      // Run moderation synchronously so the status is resolved before the
+      // client refreshes the profile. If the synchronous call fails (OpenAI
+      // timeout, network error, etc.), fall back to the Inngest async path.
+      try {
+        await moderatePhoto(photoId)
+      } catch (err) {
+        void captureSentryException(err, {
+          flow: 'moderation.sync',
+          severity: 'warning',
+          tags: { step: 'sync_fallback_to_inngest' },
+          extra: { photoId },
+        })
+        await inngest.send({ name: 'photo/moderate', data: { photoId } })
+      }
 
       return NextResponse.json({ success: true, photoId })
     } catch (error) {

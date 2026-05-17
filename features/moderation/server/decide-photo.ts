@@ -3,6 +3,7 @@ import { AppError } from '@/lib/errors/app-error'
 import { inngest } from '@/lib/inngest/client'
 import { createNotification } from '@/lib/notifications/factory'
 import { captureSentryException } from '@/lib/sentry/capture'
+import { cleanupManualRejectedVariants } from '@/lib/image-processing/moderate-photo'
 
 export type ModerationDecisionInput = 'approve' | 'reject'
 
@@ -83,6 +84,19 @@ export async function decidePhoto({
         severity: 'error',
         tags: { step: 'notify_user' },
         extra: { photoId, logContext: { moderatorId } },
+      })
+    }
+
+    // Delete all variant files from Storage except the avatar thumbnail,
+    // which is kept for rejection notifications in the user's message center.
+    try {
+      await cleanupManualRejectedVariants(updated.id, updated.profile_id)
+    } catch (err) {
+      void captureSentryException(err, {
+        flow: 'moderation.action',
+        severity: 'warning',
+        tags: { step: 'cleanup_variants' },
+        extra: { photoId: updated.id, logContext: { moderatorId } },
       })
     }
   }

@@ -289,8 +289,7 @@ export function OwnProfile({ profile }: OwnProfileProps) {
               ))}
             </div>
           )}
-          {(photo?.moderation_status === 'pending' ||
-            photo?.moderation_status === 'queued' ||
+          {(photo?.moderation_status === 'queued' ||
             photo?.moderation_status === 'manual_review') && (
             <span className="absolute bottom-3 left-3 rounded-lg bg-black/60 px-2.5 py-1 text-[11px] text-white backdrop-blur-md">
               {t('mod_pending')}
@@ -389,8 +388,7 @@ export function OwnProfile({ profile }: OwnProfileProps) {
                       {t('ob_avatar')}
                     </span>
                   )}
-                  {(p.moderation_status === 'pending' ||
-                    p.moderation_status === 'queued' ||
+                  {(p.moderation_status === 'queued' ||
                     p.moderation_status === 'manual_review') && (
                     <span className="absolute bottom-1 left-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-center text-[9.5px] text-white">
                       {t('mod_pending')}

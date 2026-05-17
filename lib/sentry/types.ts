@@ -14,6 +14,8 @@ export type FlowTag =
   | 'payments.rebill'
   | 'moderation.vision'
   | 'moderation.action'
+  | 'moderation.sync'
+  | 'moderation.cleanup'
   | 'image.upload'
   | 'image.process'
   | 'image.process.upload_variant'
