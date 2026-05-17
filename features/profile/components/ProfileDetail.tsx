@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Header, IconBtn, StickyActions } from '@/components/ui/header'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
@@ -29,9 +30,10 @@ function calcAge(birthDate: string | null): number | null {
 interface ProfileDetailProps {
   profile: ProfileDetailData
   isOwnProfile: boolean
+  isGuest?: boolean
 }
 
-export function ProfileDetail({ profile, isOwnProfile }: ProfileDetailProps) {
+export function ProfileDetail({ profile, isOwnProfile, isGuest = false }: ProfileDetailProps) {
   const { t, lang } = useLang()
   const router = useRouter()
   const toast = useToast()
@@ -124,6 +126,8 @@ export function ProfileDetail({ profile, isOwnProfile }: ProfileDetailProps) {
 
   const photo = photos[photoIdx]
   const showFull = isOwnProfile || matched
+  const guestUrl = (photoId: string, variant: string) =>
+    `/api/photos/guest/stream?photoId=${photoId}&variant=${variant}&fmt=webp`
 
   return (
     <div className="flex h-full flex-col bg-[var(--bg)]">
@@ -150,12 +154,20 @@ export function ProfileDetail({ profile, isOwnProfile }: ProfileDetailProps) {
           onClick={() => setFullscreen(true)}
         >
           {photo ? (
-            <PhotoStream
-              photoId={photo.id}
-              variant={showFull ? 'full' : 'cover'}
-              alt={`${profile.name ?? ''} ${photoIdx + 1}`}
-              className="absolute inset-0 h-full w-full object-cover"
-            />
+            isGuest ? (
+              <img
+                src={guestUrl(photo.id, showFull ? 'full' : 'cover')}
+                alt={`${profile.name ?? ''} ${photoIdx + 1}`}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            ) : (
+              <PhotoStream
+                photoId={photo.id}
+                variant={showFull ? 'full' : 'cover'}
+                alt={`${profile.name ?? ''} ${photoIdx + 1}`}
+                className="absolute inset-0 h-full w-full object-cover"
+              />
+            )
           ) : (
             <div className="absolute inset-0 grid place-items-center bg-[var(--surface-2)] text-[var(--ink-3)]">
               <Icon name="user" size={48} />
@@ -248,17 +260,25 @@ export function ProfileDetail({ profile, isOwnProfile }: ProfileDetailProps) {
                     }`}
                   >
                     <div className="relative aspect-[4/5]">
-                      <PhotoStream
-                        photoId={p.id}
-                        variant={showFull ? 'full' : 'cover'}
-                        alt={`${profile.name ?? ''} ${i + 2}`}
-                        className="absolute inset-0 h-full w-full object-cover"
-                      />
+                      {isGuest ? (
+                        <img
+                          src={guestUrl(p.id, showFull ? 'full' : 'cover')}
+                          alt={`${profile.name ?? ''} ${i + 2}`}
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
+                      ) : (
+                        <PhotoStream
+                          photoId={p.id}
+                          variant={showFull ? 'full' : 'cover'}
+                          alt={`${profile.name ?? ''} ${i + 2}`}
+                          className="absolute inset-0 h-full w-full object-cover"
+                        />
+                      )}
                     </div>
                   </button>
                 ))}
               </div>
-              {!showFull && (
+              {!showFull && !isGuest && (
                 <div className="mt-2.5 flex gap-1.5 text-xs text-[var(--ink-3)]">
                   <Icon name="lock" size={14} />
                   <span>
@@ -273,7 +293,13 @@ export function ProfileDetail({ profile, isOwnProfile }: ProfileDetailProps) {
 
       {!isOwnProfile && (
         <StickyActions>
-          {matched ? (
+          {isGuest ? (
+            <Link href="/auth">
+              <Button kind="primary" size="lg" full icon="heart">
+                {t('prof_like')}
+              </Button>
+            </Link>
+          ) : matched ? (
             <Button kind="primary" size="lg" full icon="chat" onClick={openChat}>
               {t('prof_message')}
             </Button>
@@ -305,12 +331,20 @@ export function ProfileDetail({ profile, isOwnProfile }: ProfileDetailProps) {
           onClick={() => setFullscreen(false)}
         >
           {photo && (
-            <PhotoStream
-              photoId={photo.id}
-              variant={showFull ? 'full' : 'cover'}
-              alt={profile.name ?? ''}
-              className="pointer-events-none max-h-full max-w-full object-contain"
-            />
+            isGuest ? (
+              <img
+                src={guestUrl(photo.id, showFull ? 'full' : 'cover')}
+                alt={profile.name ?? ''}
+                className="pointer-events-none max-h-full max-w-full object-contain"
+              />
+            ) : (
+              <PhotoStream
+                photoId={photo.id}
+                variant={showFull ? 'full' : 'cover'}
+                alt={profile.name ?? ''}
+                className="pointer-events-none max-h-full max-w-full object-contain"
+              />
+            )
           )}
           <button
             type="button"

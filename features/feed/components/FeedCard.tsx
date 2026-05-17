@@ -24,6 +24,7 @@ function calcAge(birthDate: string | null | undefined): number | null {
 interface FeedCardProps {
   profile: FeedProfile
   trailing?: ReactNode
+  isGuest?: boolean
 }
 
 /**
@@ -31,7 +32,7 @@ interface FeedCardProps {
  * and city pinned to the bottom-left, plus an optional trailing slot
  * (used for the like-attempt button on the guest variant).
  */
-export function FeedCard({ profile, trailing }: FeedCardProps) {
+export function FeedCard({ profile, trailing, isGuest = false }: FeedCardProps) {
   const { lang } = useLang()
   const age = calcAge(profile.birth_date)
 
@@ -42,12 +43,20 @@ export function FeedCard({ profile, trailing }: FeedCardProps) {
     >
       <div className="relative aspect-[4/5]">
         {profile.cover_photo_url ? (
-          <PhotoStream
-            photoId={profile.id}
-            variant="cover"
-            alt={profile.name}
-            className="absolute inset-0 h-full w-full object-cover"
-          />
+          isGuest ? (
+            <img
+              src={`/api/photos/guest/stream?photoId=${profile.id}&variant=cover&fmt=webp`}
+              alt={profile.name}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          ) : (
+            <PhotoStream
+              photoId={profile.id}
+              variant="cover"
+              alt={profile.name}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
+          )
         ) : (
           <div className="absolute inset-0 grid place-items-center bg-[var(--surface-2)] text-[var(--ink-3)]">
             <Icon name="user" size={48} />

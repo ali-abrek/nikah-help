@@ -14,7 +14,6 @@ const PROTECTED_PATHS = [
   '/dashboard',
   '/onboarding',
   '/chats',
-  '/profile',
   '/likes',
   '/notifications',
   '/settings',

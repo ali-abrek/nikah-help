@@ -41,7 +41,7 @@ export function GuestFeedClient({ initialData }: GuestFeedClientProps) {
     <>
       <div className="grid gap-3.5">
         {profiles.map((profile) => (
-          <FeedCard key={profile.id} profile={profile} />
+          <FeedCard key={profile.id} profile={profile} isGuest />
         ))}
       </div>
       <div ref={ref} className="h-10" />

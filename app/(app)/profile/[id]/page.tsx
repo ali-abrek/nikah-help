@@ -1,4 +1,4 @@
-import { notFound, redirect, permanentRedirect } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import type { Metadata } from 'next'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getProfile } from '@/features/profile/server/get-profile'
@@ -96,7 +96,6 @@ export default async function ProfileDetailPage({ params }: Props) {
   const supabase = await createServerSupabase()
   const { data } = await supabase.auth.getClaims()
   const viewerId = data?.claims ? getUserId(data.claims as Record<string, unknown>) : null
-  if (!viewerId) redirect('/auth')
 
   const profile = await getProfile(supabase, uuid, viewerId)
   if (!profile) notFound()
@@ -108,6 +107,8 @@ export default async function ProfileDetailPage({ params }: Props) {
     permanentRedirect(`/profile/${expectedParam}`)
   }
 
+  const isGuest = !viewerId
+
   if (viewerId === uuid) return <OwnProfile profile={profile} />
-  return <ProfileDetail profile={profile} isOwnProfile={false} />
+  return <ProfileDetail profile={profile} isOwnProfile={false} isGuest={isGuest} />
 }

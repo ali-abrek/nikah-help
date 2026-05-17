@@ -27,6 +27,7 @@ export interface ProfileDetailData {
   is_published: boolean | null
   deletion_status: string | null
   last_seen_at: string | null
+  private_mode: boolean | null
   photos: ProfilePhotoData[]
   viewer_has_liked: boolean
   viewer_is_match: boolean
@@ -43,7 +44,7 @@ export interface ProfilePhotoData {
 export async function getProfile(
   supabase: SupabaseClient<Database>,
   profileId: string,
-  viewerId: string,
+  viewerId: string | null,
 ): Promise<ProfileDetailData | null> {
   const { data: profile, error } = await supabase
     .from('profiles')
@@ -52,7 +53,8 @@ export async function getProfile(
       id, name, gender, birth_date, country, city, nationality,
       height, weight, marital_status, children_count, education,
       income_level, housing, willing_to_relocate, polygyny_attitude,
-      hijab_attitude, about_self, ai_bio, meta_description, is_published, deletion_status, last_seen_at
+      hijab_attitude, about_self, ai_bio, meta_description, is_published,
+      deletion_status, last_seen_at, private_mode
     `,
     )
     .eq('id', profileId)
@@ -72,39 +74,57 @@ export async function getProfile(
         .maybeSingle()
     : Promise.resolve({ data: null })
 
-  // Run photo, like, match, and block checks in parallel
-  const [photosRes, likeRes, matchRes, blockRes, countryRes] = await Promise.all([
-    isOwnProfile
+  // Photos: own profile sees all non-rejected; others see only approved
+  const photosPromise = isOwnProfile
+    ? supabase
+        .from('photos')
+        .select('id, position, variants, moderation_status')
+        .eq('profile_id', profileId)
+        .neq('moderation_status', 'rejected')
+        .order('position', { ascending: true })
+    : supabase
+        .from('photos')
+        .select('id, position, variants, moderation_status')
+        .eq('profile_id', profileId)
+        .eq('moderation_status', 'approved')
+        .order('position', { ascending: true })
+
+  // Interaction state: only for authenticated viewers
+  const likePromise =
+    viewerId
       ? supabase
-          .from('photos')
-          .select('id, position, variants, moderation_status')
-          .eq('profile_id', profileId)
-          .neq('moderation_status', 'rejected')
-          .order('position', { ascending: true })
-      : supabase
-          .from('photos')
-          .select('id, position, variants, moderation_status')
-          .eq('profile_id', profileId)
-          .eq('moderation_status', 'approved')
-          .order('position', { ascending: true }),
-    supabase
-      .from('likes')
-      .select('id')
-      .eq('from_user_id', viewerId)
-      .eq('to_user_id', profileId)
-      .maybeSingle(),
-    supabase
-      .from('matches')
-      .select('id')
-      .or(`user_a.eq.${viewerId},user_b.eq.${viewerId}`)
-      .or(`user_a.eq.${profileId},user_b.eq.${profileId}`)
-      .maybeSingle(),
-    supabase
-      .from('blocks')
-      .select('id')
-      .eq('blocker_id', viewerId)
-      .eq('blocked_id', profileId)
-      .maybeSingle(),
+          .from('likes')
+          .select('id')
+          .eq('from_user_id', viewerId)
+          .eq('to_user_id', profileId)
+          .maybeSingle()
+      : Promise.resolve({ data: null })
+
+  const matchPromise =
+    viewerId
+      ? supabase
+          .from('matches')
+          .select('id')
+          .or(`user_a.eq.${viewerId},user_b.eq.${viewerId}`)
+          .or(`user_a.eq.${profileId},user_b.eq.${profileId}`)
+          .maybeSingle()
+      : Promise.resolve({ data: null })
+
+  const blockPromise =
+    viewerId
+      ? supabase
+          .from('blocks')
+          .select('id')
+          .eq('blocker_id', viewerId)
+          .eq('blocked_id', profileId)
+          .maybeSingle()
+      : Promise.resolve({ data: null })
+
+  const [photosRes, likeRes, matchRes, blockRes, countryRes] = await Promise.all([
+    photosPromise,
+    likePromise,
+    matchPromise,
+    blockPromise,
     countryNamesPromise,
   ])
 
@@ -113,6 +133,7 @@ export async function getProfile(
 
   return {
     ...profile,
+    private_mode: profile.private_mode ?? null,
     country_name_en: countryRow?.name_en ?? null,
     country_name_ru: countryRow?.name_ru ?? countryRow?.name_en ?? null,
     photos: (photosRes.data ?? []) as ProfilePhotoData[],
