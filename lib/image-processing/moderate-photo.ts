@@ -1,6 +1,11 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getOpenAI } from '@/lib/openai/client'
-import { STORAGE, PHOTO_VARIANTS, FORMATS, buildStoragePath } from '@/lib/image-processing/photo-variants'
+import {
+  STORAGE,
+  PHOTO_VARIANTS,
+  FORMATS,
+  buildStoragePath,
+} from '@/lib/image-processing/photo-variants'
 import { inngest } from '@/lib/inngest/client'
 import { createNotification } from '@/lib/notifications/factory'
 import { captureSentryException } from '@/lib/sentry/capture'

@@ -5,10 +5,7 @@ import { STORAGE } from '@/lib/image-processing/photo-variants'
 import { NonRetriableError } from 'inngest'
 import { captureSentryException } from '@/lib/sentry/capture'
 import { createNotification } from '@/lib/notifications/factory'
-import {
-  evaluateModeration,
-  cleanupRejectedPhoto,
-} from '@/lib/image-processing/moderate-photo'
+import { evaluateModeration, cleanupRejectedPhoto } from '@/lib/image-processing/moderate-photo'
 import type { ModerationScores, ModerationDecision } from '@/lib/image-processing/moderate-photo'
 
 async function loadPhotoContext(photoId: string): Promise<{
