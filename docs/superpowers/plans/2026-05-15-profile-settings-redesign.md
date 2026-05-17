@@ -12,33 +12,34 @@
 
 ## File Map
 
-| Action | Path |
-|--------|------|
-| Modify | `lib/i18n/dictionary.ts` |
-| Modify | `components/ui/header.tsx` |
-| Modify | `features/chat/components/ChatList.tsx` |
-| Modify | `features/likes/components/LikesTabs.tsx` |
-| Modify | `features/notifications/components/NotificationList.tsx` |
-| Modify | `features/feed/components/FiltersScreen.tsx` |
-| Modify | `app/settings/page.tsx` |
-| Modify | `features/settings/components/SettingsScreen.tsx` |
-| Modify | `features/profile/components/OwnProfile.tsx` |
-| Modify | `features/profile/components/onboarding-step1.tsx` |
-| Modify | `features/profile/components/onboarding-step3.tsx` |
-| Modify | `features/profile/components/onboarding-wizard.tsx` |
-| Modify | `app/(app)/onboarding/page.tsx` |
-| Modify | `app/(app)/feed/filters/page.tsx` |
-| Modify | `features/feed/schemas.ts` |
-| Create | `features/feed/actions.ts` |
+| Action | Path                                                            |
+| ------ | --------------------------------------------------------------- |
+| Modify | `lib/i18n/dictionary.ts`                                        |
+| Modify | `components/ui/header.tsx`                                      |
+| Modify | `features/chat/components/ChatList.tsx`                         |
+| Modify | `features/likes/components/LikesTabs.tsx`                       |
+| Modify | `features/notifications/components/NotificationList.tsx`        |
+| Modify | `features/feed/components/FiltersScreen.tsx`                    |
+| Modify | `app/settings/page.tsx`                                         |
+| Modify | `features/settings/components/SettingsScreen.tsx`               |
+| Modify | `features/profile/components/OwnProfile.tsx`                    |
+| Modify | `features/profile/components/onboarding-step1.tsx`              |
+| Modify | `features/profile/components/onboarding-step3.tsx`              |
+| Modify | `features/profile/components/onboarding-wizard.tsx`             |
+| Modify | `app/(app)/onboarding/page.tsx`                                 |
+| Modify | `app/(app)/feed/filters/page.tsx`                               |
+| Modify | `features/feed/schemas.ts`                                      |
+| Create | `features/feed/actions.ts`                                      |
 | Create | `supabase/migrations/20260515000000_add_filter_preferences.sql` |
-| Delete | `app/(app)/profile/edit/page.tsx` |
-| Delete | `features/profile/components/ProfileEditForm.tsx` |
+| Delete | `app/(app)/profile/edit/page.tsx`                               |
+| Delete | `features/profile/components/ProfileEditForm.tsx`               |
 
 ---
 
 ## Task 1: i18n keys for new strings
 
 **Files:**
+
 - Modify: `lib/i18n/dictionary.ts`
 
 - [ ] **Step 1: Add RU keys after `own_free_likes_left` (line 181)**
@@ -85,6 +86,7 @@ git commit -m "feat: add i18n keys for profile edit and photo deletion"
 ## Task 2: Header typography — H1, uppercase, left-aligned
 
 **Files:**
+
 - Modify: `components/ui/header.tsx`
 - Modify: `features/profile/components/OwnProfile.tsx`
 - Modify: `features/feed/components/FiltersScreen.tsx`
@@ -92,6 +94,7 @@ git commit -m "feat: add i18n keys for profile edit and photo deletion"
 - [ ] **Step 1: Update `BigHeader` h1 — add `uppercase`**
 
 In `components/ui/header.tsx`, find BigHeader (line ~70). Change:
+
 ```tsx
 // Before
 <h1 className="m-0 text-[28px] font-semibold leading-[1.1] tracking-[-0.5px] text-[var(--ink)]">
@@ -103,6 +106,7 @@ In `components/ui/header.tsx`, find BigHeader (line ~70). Change:
 - [ ] **Step 2: Update `Header` title — change `<div>` to `<h1>`, add `uppercase`**
 
 In the same file, inside `Header` (line ~57). Change:
+
 ```tsx
 // Before
 <div className="truncate text-base font-semibold tracking-[-0.2px] text-[var(--ink)]">
@@ -118,6 +122,7 @@ In the same file, inside `Header` (line ~57). Change:
 - [ ] **Step 3: Update OwnProfile custom header — left-align h1, add `uppercase`**
 
 In `features/profile/components/OwnProfile.tsx` (line 86). Change:
+
 ```tsx
 // Before
 <h1 className="m-0 flex-1 text-center text-[18px] font-semibold text-[var(--ink)]">
@@ -129,6 +134,7 @@ In `features/profile/components/OwnProfile.tsx` (line 86). Change:
 - [ ] **Step 4: Remove `centerTitle` from FiltersScreen Header**
 
 In `features/feed/components/FiltersScreen.tsx` (line 138). Change:
+
 ```tsx
 // Before
 <Header title={t('filters_title')} leading="back" onLeading={close} centerTitle hairline />
@@ -159,6 +165,7 @@ git commit -m "feat: all page headers as uppercase H1, left-aligned"
 Pattern from `FeedHeader`: `<Link href="/settings"><IconBtn icon="gear" /></Link>`
 
 **Files:**
+
 - Modify: `features/chat/components/ChatList.tsx`
 - Modify: `features/likes/components/LikesTabs.tsx`
 - Modify: `features/notifications/components/NotificationList.tsx`
@@ -167,6 +174,7 @@ Pattern from `FeedHeader`: `<Link href="/settings"><IconBtn icon="gear" /></Link
 - [ ] **Step 1: Update ChatList.tsx**
 
 Add imports at the top:
+
 ```tsx
 import Link from 'next/link'
 // Change existing import:
@@ -176,6 +184,7 @@ import { BigHeader, IconBtn } from '@/components/ui/header'
 ```
 
 Update BigHeader call (currently line ~51):
+
 ```tsx
 // Before
 <BigHeader title={t('chats_title')} />
@@ -194,6 +203,7 @@ Update BigHeader call (currently line ~51):
 - [ ] **Step 2: Update LikesTabs.tsx**
 
 Add imports:
+
 ```tsx
 import Link from 'next/link'
 // Change existing import:
@@ -203,6 +213,7 @@ import { BigHeader, IconBtn } from '@/components/ui/header'
 ```
 
 Update BigHeader call (currently line ~40):
+
 ```tsx
 // Before
 <BigHeader title={t('likes_title')} />
@@ -221,12 +232,14 @@ Update BigHeader call (currently line ~40):
 - [ ] **Step 3: Update NotificationList.tsx**
 
 Add imports (at top of file):
+
 ```tsx
 import Link from 'next/link'
 import { IconBtn } from '@/components/ui/header'
 ```
 
 In the custom sticky header, add gear link between the h1 and the "mark all" button:
+
 ```tsx
 // Before (custom header block):
 <div className="sticky top-0 z-10 flex min-h-[56px] items-center justify-between gap-2 border-b border-[var(--divider)] bg-[var(--bg)] px-5 py-3">
@@ -261,6 +274,7 @@ In the custom sticky header, add gear link between the h1 and the "mark all" but
 - [ ] **Step 4: Update FiltersScreen.tsx — add gear as `trailing` prop to Header**
 
 Add imports (at top):
+
 ```tsx
 import Link from 'next/link'
 // Change existing import:
@@ -270,6 +284,7 @@ import { Header, IconBtn, StickyActions } from '@/components/ui/header'
 ```
 
 Update Header call (already changed `centerTitle` in Task 2 Step 4):
+
 ```tsx
 // Before (after Task 2)
 <Header title={t('filters_title')} leading="back" onLeading={close} hairline />
@@ -308,12 +323,14 @@ git commit -m "feat: settings gear icon on Chats, Likes, Notifications, Filters 
 ## Task 4: Profile block as first item in Settings
 
 **Files:**
+
 - Modify: `app/settings/page.tsx`
 - Modify: `features/settings/components/SettingsScreen.tsx`
 
 - [ ] **Step 1: Pass `userId` from settings page to `SettingsScreen`**
 
 In `app/settings/page.tsx`, update the return:
+
 ```tsx
 // Before
 return (
@@ -333,6 +350,7 @@ return (
 - [ ] **Step 2: Add `userId` prop and profile group to `SettingsScreen`**
 
 In `features/settings/components/SettingsScreen.tsx`, update the interface:
+
 ```tsx
 // Before
 interface SettingsScreenProps {
@@ -353,6 +371,7 @@ interface SettingsScreenProps {
 ```
 
 Update the function signature:
+
 ```tsx
 // Before
 export function SettingsScreen({
@@ -373,18 +392,21 @@ export function SettingsScreen({
 ```
 
 Add the profile group **before** the language/theme group (before the first `<SettingsGroup>` at line ~57):
+
 ```tsx
 // Insert BEFORE the existing first SettingsGroup (language/theme):
-{isAuthed && (
-  <SettingsGroup>
-    <SettingsRow
-      icon="user"
-      label={t('own_title')}
-      onClick={() => router.push('/profile')}
-      last
-    />
-  </SettingsGroup>
-)}
+{
+  isAuthed && (
+    <SettingsGroup>
+      <SettingsRow
+        icon="user"
+        label={t('own_title')}
+        onClick={() => router.push('/profile')}
+        last
+      />
+    </SettingsGroup>
+  )
+}
 ```
 
 - [ ] **Step 3: Run typecheck**
@@ -405,6 +427,7 @@ git commit -m "feat: profile block as first item in settings"
 ## Task 5: Remove fullscreen photo viewer from OwnProfile
 
 **Files:**
+
 - Modify: `features/profile/components/OwnProfile.tsx`
 
 - [ ] **Step 1: Remove `fullscreen` state declaration**
@@ -433,31 +456,34 @@ Also change the closing tag from `</button>` to `</div>` at the end of that bloc
 - [ ] **Step 3: Remove fullscreen modal block (~lines 276-298)**
 
 Delete the entire block:
+
 ```tsx
 // Remove entirely:
-{fullscreen && photo && (
-  <div
-    className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95"
-    onClick={() => setFullscreen(false)}
-  >
-    <PhotoStream
-      photoId={photo.id}
-      variant="full"
-      alt={profile.name ?? ''}
-      className="pointer-events-none max-h-full max-w-full object-contain"
-    />
-    <button
-      type="button"
-      onClick={(e) => {
-        e.stopPropagation()
-        setFullscreen(false)
-      }}
-      className="fixed right-5 top-5 grid h-10 w-10 place-items-center rounded-full bg-white/20 text-white"
+{
+  fullscreen && photo && (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95"
+      onClick={() => setFullscreen(false)}
     >
-      <Icon name="close" size={20} />
-    </button>
-  </div>
-)}
+      <PhotoStream
+        photoId={photo.id}
+        variant="full"
+        alt={profile.name ?? ''}
+        className="pointer-events-none max-h-full max-w-full object-contain"
+      />
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation()
+          setFullscreen(false)
+        }}
+        className="fixed right-5 top-5 grid h-10 w-10 place-items-center rounded-full bg-white/20 text-white"
+      >
+        <Icon name="close" size={20} />
+      </button>
+    </div>
+  )
+}
 ```
 
 - [ ] **Step 4: Run typecheck**
@@ -480,6 +506,7 @@ git commit -m "feat: remove fullscreen photo viewer from own profile"
 ## Task 6: Edit & Delete full-width buttons on OwnProfile + delete /profile/edit
 
 **Files:**
+
 - Modify: `features/profile/components/OwnProfile.tsx`
 - Delete: `app/(app)/profile/edit/page.tsx`
 - Delete: `features/profile/components/ProfileEditForm.tsx`
@@ -487,6 +514,7 @@ git commit -m "feat: remove fullscreen photo viewer from own profile"
 - [ ] **Step 1: Replace bare delete button with two full-width buttons**
 
 In `OwnProfile.tsx`, replace the current delete button block (~lines 266-273):
+
 ```tsx
 // Before:
 <button
@@ -552,11 +580,13 @@ git commit -m "feat: edit and delete full-width buttons on own profile, remove /
 ## Task 7: Photo deletion with confirmation in OwnProfile grid
 
 **Files:**
+
 - Modify: `features/profile/components/OwnProfile.tsx`
 
 - [ ] **Step 1: Add import for `deletePhotoAction`**
 
 At the top of `OwnProfile.tsx`, add to imports:
+
 ```tsx
 import { deletePhotoAction } from '../actions'
 ```
@@ -564,6 +594,7 @@ import { deletePhotoAction } from '../actions'
 - [ ] **Step 2: Add photo deletion state**
 
 After the existing state declarations (around line 40), add:
+
 ```tsx
 const [showPhotoDelModal, setShowPhotoDelModal] = useState(false)
 const [photoToDeleteId, setPhotoToDeleteId] = useState<string | null>(null)
@@ -573,6 +604,7 @@ const [photoDeletingId, setPhotoDeletingId] = useState<string | null>(null)
 - [ ] **Step 3: Add photo deletion handlers**
 
 After `confirmUnpublish`, add:
+
 ```tsx
 const confirmPhotoDelete = () => {
   if (!photoToDeleteId) return
@@ -592,53 +624,17 @@ const confirmPhotoDelete = () => {
 - [ ] **Step 4: Wrap each photo thumbnail in a `<div>` and add × delete button**
 
 In the photo grid section (~lines 191-234), change the map to wrap each item:
+
 ```tsx
 // Before:
-{photos.map((p, i) => (
-  <button
-    key={p.id}
-    type="button"
-    onClick={() => setPhotoIdx(i)}
-    className={`relative aspect-[4/5] overflow-hidden rounded-xl ${
-      photoIdx === i
-        ? 'outline outline-2 outline-offset-2 outline-[var(--primary)]'
-        : ''
-    }`}
-  >
-    <PhotoStream
-      photoId={p.id}
-      variant="cover"
-      alt={`photo ${i}`}
-      className="absolute inset-0 h-full w-full object-cover"
-    />
-    {i === 0 && (
-      <span className="absolute left-1.5 top-1.5 rounded-md bg-[var(--primary)] px-1.5 py-0.5 text-[10px] text-white">
-        {t('ob_avatar')}
-      </span>
-    )}
-    {p.moderation_status === 'pending' && (
-      <span className="absolute bottom-1 left-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-center text-[9.5px] text-white">
-        {t('mod_pending')}
-      </span>
-    )}
-    {p.moderation_status === 'rejected' && (
-      <span className="absolute bottom-1 left-1 right-1 rounded bg-[var(--danger)] px-1.5 py-0.5 text-center text-[9.5px] text-white">
-        {t('mod_rejected')}
-      </span>
-    )}
-  </button>
-))}
-
-// After:
-{photos.map((p, i) => (
-  <div key={p.id} className="relative">
+{
+  photos.map((p, i) => (
     <button
+      key={p.id}
       type="button"
       onClick={() => setPhotoIdx(i)}
-      className={`relative aspect-[4/5] w-full overflow-hidden rounded-xl ${
-        photoIdx === i
-          ? 'outline outline-2 outline-offset-2 outline-[var(--primary)]'
-          : ''
+      className={`relative aspect-[4/5] overflow-hidden rounded-xl ${
+        photoIdx === i ? 'outline outline-2 outline-offset-2 outline-[var(--primary)]' : ''
       }`}
     >
       <PhotoStream
@@ -663,32 +659,81 @@ In the photo grid section (~lines 191-234), change the map to wrap each item:
         </span>
       )}
     </button>
-    <button
-      type="button"
-      onClick={() => {
-        setPhotoToDeleteId(p.id)
-        setShowPhotoDelModal(true)
-      }}
-      className="absolute right-1.5 top-1.5 z-10 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-white"
-      aria-label={t('own_photo_del_title')}
-      disabled={photoDeletingId === p.id}
-    >
-      {photoDeletingId === p.id ? (
-        <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-        </svg>
-      ) : (
-        <Icon name="close" size={12} />
-      )}
-    </button>
-  </div>
-))}
+  ))
+}
+
+// After:
+{
+  photos.map((p, i) => (
+    <div key={p.id} className="relative">
+      <button
+        type="button"
+        onClick={() => setPhotoIdx(i)}
+        className={`relative aspect-[4/5] w-full overflow-hidden rounded-xl ${
+          photoIdx === i ? 'outline outline-2 outline-offset-2 outline-[var(--primary)]' : ''
+        }`}
+      >
+        <PhotoStream
+          photoId={p.id}
+          variant="cover"
+          alt={`photo ${i}`}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+        {i === 0 && (
+          <span className="absolute left-1.5 top-1.5 rounded-md bg-[var(--primary)] px-1.5 py-0.5 text-[10px] text-white">
+            {t('ob_avatar')}
+          </span>
+        )}
+        {p.moderation_status === 'pending' && (
+          <span className="absolute bottom-1 left-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-center text-[9.5px] text-white">
+            {t('mod_pending')}
+          </span>
+        )}
+        {p.moderation_status === 'rejected' && (
+          <span className="absolute bottom-1 left-1 right-1 rounded bg-[var(--danger)] px-1.5 py-0.5 text-center text-[9.5px] text-white">
+            {t('mod_rejected')}
+          </span>
+        )}
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          setPhotoToDeleteId(p.id)
+          setShowPhotoDelModal(true)
+        }}
+        className="absolute right-1.5 top-1.5 z-10 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-white"
+        aria-label={t('own_photo_del_title')}
+        disabled={photoDeletingId === p.id}
+      >
+        {photoDeletingId === p.id ? (
+          <svg className="h-3 w-3 animate-spin" fill="none" viewBox="0 0 24 24">
+            <circle
+              className="opacity-25"
+              cx="12"
+              cy="12"
+              r="10"
+              stroke="currentColor"
+              strokeWidth="4"
+            />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+            />
+          </svg>
+        ) : (
+          <Icon name="close" size={12} />
+        )}
+      </button>
+    </div>
+  ))
+}
 ```
 
 - [ ] **Step 5: Add photo deletion confirmation Modal**
 
 After the existing `showDel` Modal block (near bottom of the file), add:
+
 ```tsx
 <Modal
   open={showPhotoDelModal}
@@ -720,6 +765,7 @@ git commit -m "feat: photo deletion with confirmation in own profile grid"
 ## Task 8: DB migration — `filter_preferences` column
 
 **Files:**
+
 - Create: `supabase/migrations/20260515000000_add_filter_preferences.sql`
 
 - [ ] **Step 1: Create migration file**
@@ -732,6 +778,7 @@ ALTER TABLE profiles ADD COLUMN filter_preferences jsonb DEFAULT NULL;
 - [ ] **Step 2: Apply migration to Supabase**
 
 Use the Supabase MCP tool `apply_migration` with the SQL above, or via CLI:
+
 ```bash
 cd nikah-help && supabase db push
 ```
@@ -756,12 +803,14 @@ git commit -m "feat: add filter_preferences jsonb column to profiles"
 ## Task 9: `FilterPreferences` type + `saveFilterPreferencesAction`
 
 **Files:**
+
 - Modify: `features/feed/schemas.ts`
 - Create: `features/feed/actions.ts`
 
 - [ ] **Step 1: Add `FilterPreferences` interface to `features/feed/schemas.ts`**
 
 Append at the end of the file:
+
 ```typescript
 export interface FilterPreferences {
   locMode?: 'place' | 'radius'
@@ -821,6 +870,7 @@ grep -n "^export type Json" nikah-help/types/database.types.ts
 Expected: one line like `export type Json = string | number | boolean | null | ...`
 
 If not exported, change `import type { Json }` to define it inline:
+
 ```typescript
 type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 ```
@@ -843,6 +893,7 @@ git commit -m "feat: FilterPreferences type and saveFilterPreferencesAction"
 ## Task 10: Persist filter settings in FiltersScreen
 
 **Files:**
+
 - Modify: `app/(app)/feed/filters/page.tsx`
 - Modify: `features/feed/components/FiltersScreen.tsx`
 
@@ -873,6 +924,7 @@ const initialFilters = (profileData?.filter_preferences as FilterPreferences | n
 ```
 
 Update the return to pass `initialFilters`:
+
 ```tsx
 // Before:
 return (
@@ -892,6 +944,7 @@ return (
 - [ ] **Step 2: Add imports to FiltersScreen.tsx**
 
 At the top of `features/feed/components/FiltersScreen.tsx`:
+
 ```typescript
 import { saveFilterPreferencesAction } from '../actions'
 import type { FilterPreferences } from '../schemas'
@@ -1032,6 +1085,7 @@ git commit -m "feat: persist filter preferences in Supabase across sessions"
 ## Task 11: Onboarding page — fetch profile for pre-fill
 
 **Files:**
+
 - Modify: `app/(app)/onboarding/page.tsx`
 
 - [ ] **Step 1: Replace the onboarding page with full-profile-fetching version**
@@ -1154,6 +1208,7 @@ Skip commit until Task 13 resolves the errors.
 ## Task 12: OnboardingStep1 — fix city clear-on-mount bug
 
 **Files:**
+
 - Modify: `features/profile/components/onboarding-step1.tsx`
 
 The `useEffect` that clears `city` when `country` changes fires on initial render too, which would wipe the pre-filled city. Fix: skip the first render.
@@ -1171,6 +1226,7 @@ import { useEffect, useRef } from 'react'
 - [ ] **Step 2: Add skip-first-render guard to the useEffect**
 
 Inside `OnboardingStep1`, after the form setup:
+
 ```tsx
 const isFirstRender = useRef(true)
 
@@ -1201,6 +1257,7 @@ cd nikah-help && pnpm typecheck 2>&1 | head -20
 ## Task 13: OnboardingStep3 — pre-fill existing photos + deletion confirmation
 
 **Files:**
+
 - Modify: `features/profile/components/onboarding-step3.tsx`
 
 - [ ] **Step 1: Update imports**
@@ -1315,12 +1372,14 @@ const filledCount = slots.filter((s) => s.preview || s.isExisting).length
 - [ ] **Step 6: Add deletion confirmation state and handlers**
 
 After `const [error, setError] = useState<string | null>(null)`, add:
+
 ```tsx
 const [delConfirmPos, setDelConfirmPos] = useState<number | null>(null)
 const [deleting, setDeleting] = useState(false)
 ```
 
 Replace the existing `handleRemove`:
+
 ```tsx
 // Remove:
 const handleRemove = (position: number) => {
@@ -1359,6 +1418,7 @@ const confirmRemove = async () => {
 - [ ] **Step 7: Update filled slot rendering to handle `isExisting`**
 
 In the slot map (around line 162), replace the filled-slot block:
+
 ```tsx
 // Before (filled slot):
 {slot.preview ? (
@@ -1406,6 +1466,7 @@ In the slot map (around line 162), replace the filled-slot block:
 - [ ] **Step 8: Add deletion confirmation Modal**
 
 At the end of the returned JSX (before the closing `</div>`), add:
+
 ```tsx
 <Modal
   open={delConfirmPos !== null}
@@ -1430,6 +1491,7 @@ cd nikah-help && pnpm typecheck 2>&1 | head -20
 ## Task 14: OnboardingWizard — edit mode props and redirect
 
 **Files:**
+
 - Modify: `features/profile/components/onboarding-wizard.tsx`
 
 - [ ] **Step 1: Add new props to the wizard**
@@ -1484,16 +1546,20 @@ const [step2Data, setStep2Data] = useState<Partial<
 
 ```tsx
 // Before:
-{step === 3 && <OnboardingStep3 isPending={isPending} onComplete={() => setStep(4)} />}
+{
+  step === 3 && <OnboardingStep3 isPending={isPending} onComplete={() => setStep(4)} />
+}
 
 // After:
-{step === 3 && (
-  <OnboardingStep3
-    isPending={isPending}
-    onComplete={() => setStep(4)}
-    initialPhotos={initialPhotos}
-  />
-)}
+{
+  step === 3 && (
+    <OnboardingStep3
+      isPending={isPending}
+      onComplete={() => setStep(4)}
+      initialPhotos={initialPhotos}
+    />
+  )
+}
 ```
 
 - [ ] **Step 4: Redirect to `/profile` in edit mode after step 4**

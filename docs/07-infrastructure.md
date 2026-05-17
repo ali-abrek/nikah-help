@@ -470,7 +470,7 @@ Every page-level `<h1>` (the title shown in the sticky header) MUST:
 - Use the canonical class string:
 
   ```tsx
-  className="m-0 flex-1 text-[22px] font-bold uppercase tracking-[0.5px] text-[var(--ink)]"
+  className = 'm-0 flex-1 text-[22px] font-bold uppercase tracking-[0.5px] text-[var(--ink)]'
   ```
 
 Reference implementation: `features/notifications/components/NotificationList.tsx`.
