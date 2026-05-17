@@ -41,6 +41,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   const profiles = (profilesRes.data ?? []).filter((p) => !suspendedIds.has(p.id))
 
+  // Canonical URL format: /profile/{uuid}-{slug}
+  // The page handler issues a 308 permanent redirect from /profile/{uuid} to this form.
+  // Sitemap must only list canonical URLs — never bare UUIDs — to avoid duplicate indexing.
   const profilePages: MetadataRoute.Sitemap = profiles.map((p) => ({
     url: `${siteUrl}/profile/${p.id}-${generateSeoSlug({ gender: p.gender, city: p.city, country: p.country })}`,
     lastModified: p.updated_at ? new Date(p.updated_at) : undefined,

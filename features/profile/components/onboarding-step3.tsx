@@ -1,9 +1,21 @@
 'use client'
 
 import { useRef, useState } from 'react'
-import { markPhotoUploaded, deletePhotoAction } from '../actions'
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from '@dnd-kit/core'
+import { SortableContext, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable'
+import { markPhotoUploaded, deletePhotoAction, reorderPhotosAction } from '../actions'
 import { Photo as PhotoStream } from '@/features/photos/components/Photo'
 import { useLang } from '@/lib/i18n/use-lang'
+import { rejectionToastKey } from '../lib/rejection-reason'
+import { SortablePhoto } from './SortablePhoto'
 
 const MAX_PHOTOS = 6
 const MIN_SHORT_SIDE_PX = 1000
@@ -25,10 +37,11 @@ export type WizardPhoto = {
   isExisting: boolean
 }
 
-async function uploadFile(
-  file: File,
-  position: number,
-): Promise<{ photoId: string; path: string } | { error: string }> {
+type UploadResult =
+  | { photoId: string; path: string; moderationStatus: string; moderationReason: string | null }
+  | { error: string }
+
+async function uploadFile(file: File, position: number): Promise<UploadResult> {
   const res = await fetch('/api/photos/upload-url', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -62,13 +75,27 @@ async function uploadFile(
     return { error: result.error?.message ?? 'Ошибка сохранения' }
   }
 
-  await fetch('/api/photos/process', {
+  // Await processing so we know whether moderation auto-rejected the photo
+  // before letting the wizard advance. Without this the user sees the photo
+  // briefly then it vanishes after server-side cleanup.
+  const procRes = await fetch('/api/photos/process', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ photoId }),
-  }).catch(() => {})
+  }).catch(() => null)
 
-  return { photoId, path }
+  let moderationStatus = 'queued'
+  let moderationReason: string | null = null
+  if (procRes?.ok) {
+    const body = (await procRes.json().catch(() => null)) as {
+      moderationStatus?: string
+      moderationReason?: string | null
+    } | null
+    moderationStatus = body?.moderationStatus ?? 'queued'
+    moderationReason = body?.moderationReason ?? null
+  }
+
+  return { photoId, path, moderationStatus, moderationReason }
 }
 
 // Best-effort client check: returns the short side in px, or null if the
@@ -159,7 +186,9 @@ export function OnboardingStep3({ photos, setPhotos }: Props) {
 
       const position = basePosition++
       const tempId = `__pending_${position}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`
-      const preview = URL.createObjectURL(file)
+      // shortSide === null means browser can't decode this format (HEIC on Chrome/Firefox).
+      // Skip the object URL in that case — the slot shows a gray placeholder instead.
+      const preview = shortSide !== null ? URL.createObjectURL(file) : null
 
       setPhotos((prev) => [
         ...prev,
@@ -178,8 +207,17 @@ export function OnboardingStep3({ photos, setPhotos }: Props) {
 
       if ('error' in result) {
         setPhotos((prev) => prev.filter((p) => p.id !== tempId))
-        URL.revokeObjectURL(preview)
+        if (preview) URL.revokeObjectURL(preview)
         errors.push(result.error)
+        continue
+      }
+
+      // Auto-rejected by moderation — server has cleaned up the DB row,
+      // remove the local placeholder and surface the rejection reason.
+      if (result.moderationStatus === 'rejected') {
+        setPhotos((prev) => prev.filter((p) => p.id !== tempId))
+        if (preview) URL.revokeObjectURL(preview)
+        errors.push(t(rejectionToastKey(result.moderationReason)))
         continue
       }
 
@@ -200,6 +238,39 @@ export function OnboardingStep3({ photos, setPhotos }: Props) {
     setPendingDelPhotoId(photoId)
   }
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  )
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    // Reorder is a DB op against real photo IDs. If any photo is still
+    // uploading (temp id), abort — the user will retry once spinners clear.
+    if (photos.some((p) => p.uploading)) return
+
+    const currentIds = photos.map((p) => p.id)
+    const oldIndex = currentIds.indexOf(String(active.id))
+    const newIndex = currentIds.indexOf(String(over.id))
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const previousPhotos = photos
+    const nextIds = arrayMove(currentIds, oldIndex, newIndex)
+    const reordered = nextIds.map((id, i) => {
+      const found = previousPhotos.find((p) => p.id === id)!
+      return { ...found, position: i + 1 }
+    })
+    setPhotos(reordered)
+
+    const result = await reorderPhotosAction(nextIds)
+    if (!('success' in result) || !result.success) {
+      setPhotos(previousPhotos)
+      setError(t('own_photo_reorder_error'))
+    }
+  }
+
   const confirmDelete = async () => {
     if (!pendingDelPhotoId) return
     const photoId = pendingDelPhotoId
@@ -216,7 +287,12 @@ export function OnboardingStep3({ photos, setPhotos }: Props) {
           .map((p, i) => ({ ...p, position: i + 1 })),
       )
     } else {
-      setError(t('own_photo_del_error'))
+      const code = 'error' in result ? result.error?.code : undefined
+      setError(
+        code === 'PHOTO_ONLY_APPROVED_DELETED'
+          ? t('own_photo_del_last_error')
+          : t('own_photo_del_error'),
+      )
     }
   }
 
@@ -227,73 +303,83 @@ export function OnboardingStep3({ photos, setPhotos }: Props) {
         4:5.
       </p>
 
-      <div className="grid grid-cols-3 gap-3">
-        {photos.map((photo) => (
-          <div key={photo.id}>
-            <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
-              {photo.localPreview ? (
-                // eslint-disable-next-line @next/next/no-img-element -- object URL preview
-                <img
-                  src={photo.localPreview}
-                  alt={`Фото ${photo.position}`}
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                <PhotoStream
-                  photoId={photo.id}
-                  variant="cover"
-                  alt={`Фото ${photo.position}`}
-                  className="h-full w-full object-cover"
-                />
-              )}
-              {photo.position === 1 && (
-                <span className="absolute left-2 top-2 rounded-md bg-emerald-600 px-1.5 py-0.5 text-xs font-medium text-white">
-                  Аватар
-                </span>
-              )}
-              {photo.uploading ? (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                  <svg className="h-6 w-6 animate-spin text-white" fill="none" viewBox="0 0 24 24">
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={photos.map((p) => p.id)} strategy={rectSortingStrategy}>
+          <div className="grid grid-cols-3 gap-3">
+            {photos.map((photo, idx) => (
+              <SortablePhoto key={photo.id} id={photo.id} disabled={photo.uploading}>
+                <div className="relative aspect-[4/5] overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-700">
+                  {photo.localPreview ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- object URL preview
+                    <img
+                      src={photo.localPreview}
+                      alt={`Фото ${idx + 1}`}
+                      className="h-full w-full object-cover"
                     />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                  ) : photo.uploading ? (
+                    <div className="h-full w-full bg-[var(--surface-2)]" />
+                  ) : (
+                    <PhotoStream
+                      photoId={photo.id}
+                      variant="cover"
+                      alt={`Фото ${idx + 1}`}
+                      className="h-full w-full object-cover"
                     />
-                  </svg>
+                  )}
+                  {idx === 0 && (
+                    <span className="absolute left-2 top-2 rounded-md bg-emerald-600 px-1.5 py-0.5 text-xs font-medium text-white">
+                      Аватар
+                    </span>
+                  )}
+                  {photo.uploading ? (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                      <svg
+                        className="h-6 w-6 animate-spin text-white"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                        />
+                      </svg>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveRequest(photo.id)}
+                      className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+                    >
+                      ×
+                    </button>
+                  )}
                 </div>
-              ) : (
+              </SortablePhoto>
+            ))}
+
+            {hasAddSlot && (
+              <div>
                 <button
                   type="button"
-                  onClick={() => handleRemoveRequest(photo.id)}
-                  className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70"
+                  onClick={handleAddClick}
+                  className="flex aspect-[4/5] w-full items-center justify-center rounded-xl border-2 border-dashed border-zinc-300 text-zinc-400 transition-colors hover:border-emerald-400 hover:text-emerald-500 dark:border-zinc-700 dark:hover:border-emerald-500"
                 >
-                  ×
+                  <span className="text-3xl">+</span>
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
-        ))}
-
-        {hasAddSlot && (
-          <div>
-            <button
-              type="button"
-              onClick={handleAddClick}
-              className="flex aspect-[4/5] w-full items-center justify-center rounded-xl border-2 border-dashed border-zinc-300 text-zinc-400 transition-colors hover:border-emerald-400 hover:text-emerald-500 dark:border-zinc-700 dark:hover:border-emerald-500"
-            >
-              <span className="text-3xl">+</span>
-            </button>
-          </div>
-        )}
-      </div>
+        </SortableContext>
+      </DndContext>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 

@@ -13,7 +13,6 @@ validateSiteUrl()
 const PROTECTED_PATHS = [
   '/dashboard',
   '/onboarding',
-  '/feed',
   '/chats',
   '/profile',
   '/likes',

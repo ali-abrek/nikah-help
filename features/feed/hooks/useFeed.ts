@@ -70,3 +70,33 @@ export function useFeed({ viewerGender, filters, initialData }: UseFeedParams) {
     staleTime: 30_000,
   })
 }
+
+// ── Guest feed (no auth) ────────────────────────────────────────────
+
+async function fetchGuestFeedPage({
+  pageParam,
+}: {
+  pageParam?: string
+}): Promise<FeedPage> {
+  const params = new URLSearchParams()
+  if (pageParam) params.set('cursor', pageParam)
+
+  const res = await fetch(`/api/feed/guest?${params.toString()}`)
+  if (!res.ok) {
+    const err = await res.json().catch(() => null)
+    throw new Error(err?.message ?? 'Failed to fetch feed')
+  }
+  return res.json()
+}
+
+export function useGuestFeed({ initialData }: { initialData?: FeedPage }) {
+  return useInfiniteQuery({
+    queryKey: ['feed', 'guest'],
+    queryFn: ({ pageParam }) =>
+      fetchGuestFeedPage({ pageParam: pageParam as string | undefined }),
+    initialPageParam: undefined as string | undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    initialData: initialData ? { pages: [initialData], pageParams: [undefined] } : undefined,
+    staleTime: 30_000,
+  })
+}

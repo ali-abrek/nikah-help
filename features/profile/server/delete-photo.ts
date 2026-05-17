@@ -35,31 +35,21 @@ export async function deletePhoto(
     })
   }
 
-  // 2. Block deleting the only approved photo while profile is published.
-  if (photo.position === 1 && photo.moderation_status === 'approved') {
-    const { data: nextApproved } = await supabase
+  // 2. Block deleting the last approved photo — the user must always retain
+  //    at least one approved photo. Rejected/queued/manual_review photos do
+  //    not count as a fallback because they cannot be displayed publicly.
+  if (photo.moderation_status === 'approved') {
+    const { count: approvedCount } = await supabase
       .from('photos')
-      .select('id')
+      .select('id', { count: 'exact', head: true })
       .eq('profile_id', userId)
       .eq('moderation_status', 'approved')
-      .neq('id', photoId)
-      .order('position', { ascending: true })
-      .limit(1)
-      .maybeSingle()
 
-    if (!nextApproved) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('is_published')
-        .eq('id', userId)
-        .single()
-
-      if (profile?.is_published) {
-        throw new AppError('PHOTO_ONLY_APPROVED_DELETED', {
-          message: 'Cannot delete the only approved photo while profile is published',
-          logContext: { photoId, userId },
-        })
-      }
+    if ((approvedCount ?? 0) <= 1) {
+      throw new AppError('PHOTO_ONLY_APPROVED_DELETED', {
+        message: 'Cannot delete the last approved photo',
+        logContext: { photoId, userId, approvedCount: approvedCount ?? 0 },
+      })
     }
   }
 

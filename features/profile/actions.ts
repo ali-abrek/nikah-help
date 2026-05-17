@@ -1,7 +1,9 @@
 'use server'
 
 import { headers } from 'next/headers'
+import { redirect } from 'next/navigation'
 import { createServerSupabase } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { AppError } from '@/lib/errors/app-error'
 import { validationError } from '@/lib/errors/validation'
 import { handleActionError } from '@/lib/errors/action'
@@ -291,6 +293,41 @@ export async function deletePhotoAction(photoId: string) {
   } catch (e) {
     return handleActionError(e)
   }
+}
+
+export async function cancelRegistrationAction() {
+  const supabase = await createServerSupabase()
+  const userId = await resolveUserId(supabase)
+
+  if (!userId) {
+    redirect('/feed')
+  }
+
+  try {
+    // Clear session cookies first so the browser is anonymous after the redirect.
+    await supabase.auth.signOut()
+
+    // Delete the auth user via admin client — cascades to profiles, photos,
+    // notifications, and all related rows via ON DELETE CASCADE FK constraints.
+    const adminClient = createAdminClient()
+    const { error } = await adminClient.auth.admin.deleteUser(userId)
+    if (error) {
+      void captureSentryException(error, {
+        flow: 'auth.cancel_registration',
+        severity: 'error',
+        tags: { step: 'delete_user' },
+        extra: { logContext: { userId } },
+      })
+    }
+  } catch (err) {
+    void captureSentryException(err, {
+      flow: 'auth.cancel_registration',
+      severity: 'error',
+      tags: { step: 'cancel_registration' },
+    })
+  }
+
+  redirect('/feed')
 }
 
 export async function reorderPhotosAction(orderedPhotoIds: string[]) {

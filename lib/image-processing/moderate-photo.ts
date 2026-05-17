@@ -217,6 +217,45 @@ Be strict with nudity and suggestive content — the application requires modest
   return JSON.parse(content) as ModerationScores
 }
 
+// ── Direct in-app notification insert ──────────────────────────────
+
+/**
+ * Insert a notification row directly via the admin client, idempotent on the
+ * (user_id, dedupe_key) partial unique index. This is the primary path for
+ * in-app notification delivery — it guarantees the user sees the entry in
+ * the Notification Center even if the Inngest event for push/email channels
+ * is dropped. The Inngest dispatcher uses the same dedupe key and will skip
+ * the insert when this path has already run.
+ */
+export async function insertNotificationDirect(
+  payload: ReturnType<typeof createNotification>,
+  userId: string,
+  dedupeKey: string,
+): Promise<void> {
+  const supabase = createAdminClient()
+  const row = {
+    user_id: userId,
+    type: payload.payload.type,
+    title_key: payload.title_key,
+    body_key: payload.body_key,
+    payload: payload.payload,
+    entity_id: payload.payload.entity_id ?? null,
+    dedupe_key: dedupeKey,
+  }
+  const { error } = await supabase
+    .from('notifications')
+    .upsert(row, { onConflict: 'user_id,dedupe_key', ignoreDuplicates: true })
+
+  if (error) {
+    void captureSentryException(error, {
+      flow: 'moderation.vision',
+      severity: 'error',
+      tags: { step: 'insert_notification_direct' },
+      extra: { logContext: { userId, dedupeKey } },
+    })
+  }
+}
+
 // ── Storage cleanup ────────────────────────────────────────────────
 
 /** Delete ALL variant files + original from Storage, then delete the DB row. */
@@ -351,16 +390,18 @@ export async function moderatePhoto(photoId: string): Promise<ModerationDecision
       entityId: photoId,
       entityType: 'photo',
     })
+    const dedupeKey = `photo_auto_rejected:${photoId}`
+
+    // Insert the notification row directly so the user always sees it in the
+    // Notification Center, even if Inngest is unavailable or the event is
+    // dropped. The Inngest event below handles push/email channels; its
+    // dispatcher will skip the insert thanks to the dedupe_key.
+    await insertNotificationDirect(payload, ctx.profileId, dedupeKey)
 
     try {
       await inngest.send({
         name: 'notification/send',
-        data: {
-          type: 'photo_auto_rejected',
-          payload,
-          userId: ctx.profileId,
-          dedupeKey: `photo_auto_rejected:${photoId}`,
-        },
+        data: { type: 'photo_auto_rejected', payload, userId: ctx.profileId, dedupeKey },
       })
     } catch (err) {
       void captureSentryException(err, {

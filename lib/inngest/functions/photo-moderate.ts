@@ -5,7 +5,11 @@ import { STORAGE } from '@/lib/image-processing/photo-variants'
 import { NonRetriableError } from 'inngest'
 import { captureSentryException } from '@/lib/sentry/capture'
 import { createNotification } from '@/lib/notifications/factory'
-import { evaluateModeration, cleanupRejectedPhoto } from '@/lib/image-processing/moderate-photo'
+import {
+  evaluateModeration,
+  cleanupRejectedPhoto,
+  insertNotificationDirect,
+} from '@/lib/image-processing/moderate-photo'
 import type { ModerationScores, ModerationDecision } from '@/lib/image-processing/moderate-photo'
 
 async function loadPhotoContext(photoId: string): Promise<{
@@ -189,16 +193,16 @@ Be strict with nudity and suggestive content — the application requires modest
           entityId: photoId,
           entityType: 'photo',
         })
+        const dedupeKey = `photo_auto_rejected:${photoId}`
+
+        // Direct insert guarantees in-app delivery; Inngest send only handles
+        // push/email channels and is dedupe-safe via the same key.
+        await insertNotificationDirect(payload, ctx.profileId, dedupeKey)
 
         try {
           await inngest.send({
             name: 'notification/send',
-            data: {
-              type: 'photo_auto_rejected',
-              payload,
-              userId: ctx.profileId,
-              dedupeKey: `photo_auto_rejected:${photoId}`,
-            },
+            data: { type: 'photo_auto_rejected', payload, userId: ctx.profileId, dedupeKey },
           })
         } catch (err) {
           void captureSentryException(err, {

@@ -1,11 +1,13 @@
 import Link from 'next/link'
 import { createServerSupabase } from '@/lib/supabase/server'
 import { getUserId } from '@/lib/auth/claims'
-import { queryFeed } from '@/features/feed/server/query-feed'
+import { queryFeed, queryGuestFeed } from '@/features/feed/server/query-feed'
 import { FeedClient } from '@/features/feed/components/FeedClient'
 import { FeedHeader } from '@/features/feed/components/FeedHeader'
-import { EmptyState } from '@/components/ui/empty-state'
+import { GuestFeedBanner } from '@/features/feed/components/GuestFeedBanner'
+import { GuestFeedClient } from '@/features/feed/components/GuestFeedClient'
 import { buildGenericTitle } from '@/lib/seo'
+import { CancelRegistrationButton } from '@/features/profile/components/CancelRegistrationButton'
 
 export const metadata = { title: buildGenericTitle('Лента', 'ru') }
 
@@ -14,12 +16,28 @@ export default async function FeedPage() {
   const { data } = await supabase.auth.getClaims()
 
   if (!data?.claims) {
-    return <EmptyState icon="user" title="Требуется авторизация" />
+    const initialData = await queryGuestFeed({ supabase, limit: 12 })
+    return (
+      <>
+        <GuestFeedBanner />
+        <div className="px-5 pb-24 pt-3.5">
+          <GuestFeedClient initialData={initialData} />
+        </div>
+      </>
+    )
   }
 
   const userId = getUserId(data.claims as Record<string, unknown>)
   if (!userId) {
-    return <EmptyState icon="user" title="Требуется авторизация" />
+    const initialData = await queryGuestFeed({ supabase, limit: 12 })
+    return (
+      <>
+        <GuestFeedBanner />
+        <div className="px-5 pb-24 pt-3.5">
+          <GuestFeedClient initialData={initialData} />
+        </div>
+      </>
+    )
   }
 
   const { data: viewer } = await supabase
@@ -36,7 +54,9 @@ export default async function FeedPage() {
           <Link href="/onboarding" className="text-[var(--primary)] underline">
             регистрацию
           </Link>{' '}
-          для доступа к ленте.
+          для доступа к ленте, либо{' '}
+          <CancelRegistrationButton />{' '}
+          начатую вами ранее регистрацию.
         </p>
       </div>
     )

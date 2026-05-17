@@ -209,6 +209,67 @@ interface FeedProfileRaw {
   }[]
 }
 
+// ── Guest feed (no auth) ─────────────────────────────────────────────
+
+export async function queryGuestFeed({
+  supabase,
+  cursor,
+  limit = 20,
+}: {
+  supabase: SupabaseClient<Database>
+  cursor?: string
+  limit?: number
+}): Promise<FeedPage> {
+  let query = supabase
+    .from('profiles')
+    .select(
+      `
+      id,
+      name,
+      gender,
+      birth_date,
+      country,
+      city,
+      ai_bio,
+      marital_status,
+      children_count,
+      created_at,
+      photos!inner(id, variants, position, moderation_status)
+    `,
+      { count: 'exact' },
+    )
+    .eq('is_published', true)
+    .eq('photos.moderation_status', 'approved')
+    .eq('photos.position', 1)
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(limit + 1)
+
+  if (cursor) {
+    const [cAt, cId] = cursor.split('|')
+    if (cAt && cId) {
+      query = query.or(`and(created_at.eq.${cAt},id.lt.${cId}),created_at.lt.${cAt}`)
+    } else if (cAt) {
+      query = query.lt('created_at', cAt)
+    }
+  }
+
+  const { data, error } = await query
+
+  if (error) throw error
+
+  const profiles = (data ?? []) as FeedProfileRaw[]
+  const hasMore = profiles.length > limit
+  const page = hasMore ? profiles.slice(0, limit) : profiles
+
+  return {
+    profiles: page.map((p) => toFeedProfile(p, false, false)),
+    nextCursor: hasMore ? buildCursor(page[page.length - 1]) : null,
+  }
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────
+
 function toFeedProfile(
   raw: FeedProfileRaw,
   viewerHasLiked: boolean,

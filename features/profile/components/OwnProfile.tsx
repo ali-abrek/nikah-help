@@ -3,6 +3,16 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import {
+  DndContext,
+  type DragEndEvent,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from '@dnd-kit/core'
+import { SortableContext, arrayMove, rectSortingStrategy } from '@dnd-kit/sortable'
 import { Icon } from '@/components/ui/icon'
 import { Spinner } from '@/components/ui/spinner'
 import { Modal } from '@/components/ui/modal'
@@ -12,8 +22,14 @@ import { Photo as PhotoStream } from '@/features/photos/components/Photo'
 import { useToast } from '@/components/ui/toast'
 import { useLang } from '@/lib/i18n/use-lang'
 import { localizePlace } from '@/lib/i18n/dictionary'
-import { deletePhotoAction, markPhotoUploaded } from '../actions'
+import { deletePhotoAction, markPhotoUploaded, reorderPhotosAction } from '../actions'
 import type { ProfileDetailData, ProfilePhotoData } from '../server/get-profile'
+
+function hasVariants(photo: ProfilePhotoData): boolean {
+  return !!photo.variants && Object.keys(photo.variants).length > 0
+}
+import { rejectionToastKey } from '../lib/rejection-reason'
+import { SortablePhoto } from './SortablePhoto'
 
 interface OwnProfileProps {
   profile: ProfileDetailData
@@ -21,7 +37,7 @@ interface OwnProfileProps {
 
 type PendingUpload = {
   tempId: string
-  previewUrl: string
+  previewUrl: string | null
   position: number
 }
 
@@ -45,6 +61,9 @@ export function OwnProfile({ profile }: OwnProfileProps) {
   const [localAddedPhotos, setLocalAddedPhotos] = useState<ProfilePhotoData[]>([])
   // Photo IDs deleted in this session — optimistic hide before route refresh.
   const [deletedPhotoIds, setDeletedPhotoIds] = useState<Set<string>>(new Set())
+  // Optimistic photo order from drag-and-drop, applied until the next
+  // router.refresh() pulls server data matching this order.
+  const [photoOrder, setPhotoOrder] = useState<string[] | null>(null)
   const [pendingUploads, setPendingUploads] = useState<PendingUpload[]>([])
   const [published, setPublished] = useState(!!profile.is_published)
   const [privateMode, setPrivateMode] = useState(false)
@@ -66,8 +85,17 @@ export function OwnProfile({ profile }: OwnProfileProps) {
     const localOnly = localAddedPhotos.filter(
       (p) => !serverIdSet.has(p.id) && !deletedPhotoIds.has(p.id),
     )
-    return [...fromServer, ...localOnly]
-  }, [profile.photos, localAddedPhotos, deletedPhotoIds])
+    const merged = [...fromServer, ...localOnly]
+
+    if (photoOrder) {
+      const idx = new Map(photoOrder.map((id, i) => [id, i]))
+      return [...merged].sort(
+        (a, b) =>
+          (idx.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (idx.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+      )
+    }
+    return merged
+  }, [profile.photos, localAddedPhotos, deletedPhotoIds, photoOrder])
 
   useEffect(() => {
     return () => {
@@ -125,6 +153,32 @@ export function OwnProfile({ profile }: OwnProfileProps) {
     fileInputRef.current?.click()
   }
 
+  // Returns an object URL when the browser can render this file format,
+  // null otherwise (e.g. HEIC on Chrome/Firefox). Uses createImageBitmap
+  // when available; falls back to an Image load test.
+  async function getDisplayablePreviewUrl(file: File): Promise<string | null> {
+    const url = URL.createObjectURL(file)
+    if (typeof createImageBitmap === 'function') {
+      try {
+        const bmp = await createImageBitmap(file)
+        bmp.close?.()
+        return url
+      } catch {
+        URL.revokeObjectURL(url)
+        return null
+      }
+    }
+    return new Promise<string | null>((resolve) => {
+      const img = new Image()
+      img.onload = () => resolve(url)
+      img.onerror = () => {
+        URL.revokeObjectURL(url)
+        resolve(null)
+      }
+      img.src = url
+    })
+  }
+
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(e.target.files ?? [])
     if (fileInputRef.current) fileInputRef.current.value = ''
@@ -149,7 +203,7 @@ export function OwnProfile({ profile }: OwnProfileProps) {
     }
 
     // Validate files synchronously (type + size). Server validates dimensions.
-    type ValidFile = { file: File; tempId: string; previewUrl: string; position: number }
+    type ValidFile = { file: File; tempId: string; previewUrl: string | null; position: number }
     const validFiles: ValidFile[] = []
     let nextPosition = photos.length + pendingUploads.length + 1
 
@@ -165,7 +219,7 @@ export function OwnProfile({ profile }: OwnProfileProps) {
       validFiles.push({
         file,
         tempId: `pending-${crypto.randomUUID()}`,
-        previewUrl: URL.createObjectURL(file),
+        previewUrl: await getDisplayablePreviewUrl(file),
         position: nextPosition++,
       })
     }
@@ -210,13 +264,16 @@ export function OwnProfile({ profile }: OwnProfileProps) {
         }).catch(() => null)
 
         let moderationStatus: ProfilePhotoData['moderation_status'] = 'queued'
+        let moderationReason: string | null = null
         if (processRes?.ok) {
           const body = (await processRes.json().catch(() => null)) as {
             moderationStatus?: string
+            moderationReason?: string | null
           } | null
           if (body?.moderationStatus) {
             moderationStatus = body.moderationStatus as ProfilePhotoData['moderation_status']
           }
+          moderationReason = body?.moderationReason ?? null
         }
 
         // Remove this spinner slot.
@@ -224,9 +281,12 @@ export function OwnProfile({ profile }: OwnProfileProps) {
 
         if (moderationStatus === 'rejected') {
           // Auto-rejected: server already cleaned up Storage + DB row.
-          URL.revokeObjectURL(previewUrl)
+          // Surface the reason immediately so the user understands why the
+          // upload disappeared — the in-app notification arrives async.
+          toast.show(t(rejectionToastKey(moderationReason)))
+          if (previewUrl) URL.revokeObjectURL(previewUrl)
         } else {
-          setLocalPreviews((prev) => ({ ...prev, [photoId]: previewUrl }))
+          if (previewUrl) setLocalPreviews((prev) => ({ ...prev, [photoId]: previewUrl }))
           setLocalAddedPhotos((prev) => [
             ...prev,
             { id: photoId, position, variants: null, moderation_status: moderationStatus },
@@ -234,10 +294,38 @@ export function OwnProfile({ profile }: OwnProfileProps) {
         }
       } catch {
         setPendingUploads((prev) => prev.filter((p) => p.tempId !== tempId))
-        URL.revokeObjectURL(previewUrl)
+        if (previewUrl) URL.revokeObjectURL(previewUrl)
         toast.show(t('own_photo_add_error'))
       }
     }
+  }
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
+  )
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+
+    const currentIds = photos.map((p) => p.id)
+    const oldIndex = currentIds.indexOf(String(active.id))
+    const newIndex = currentIds.indexOf(String(over.id))
+    if (oldIndex === -1 || newIndex === -1) return
+
+    const previousOrder = photoOrder
+    const nextOrder = arrayMove(currentIds, oldIndex, newIndex)
+    setPhotoOrder(nextOrder)
+    setPhotoIdx(0)
+
+    const result = await reorderPhotosAction(nextOrder)
+    if (!('success' in result) || !result.success) {
+      setPhotoOrder(previousOrder)
+      toast.show(t('own_photo_reorder_error'))
+      return
+    }
+    router.refresh()
   }
 
   const confirmDeletePhoto = async () => {
@@ -246,7 +334,12 @@ export function OwnProfile({ profile }: OwnProfileProps) {
     const result = await deletePhotoAction(photoPendingDel)
     setDeletingPhoto(false)
     if (!('success' in result) || !result.success) {
-      toast.show(t('own_photo_del_error'))
+      const code = 'error' in result ? result.error?.code : undefined
+      toast.show(
+        code === 'PHOTO_ONLY_APPROVED_DELETED'
+          ? t('own_photo_del_last_error')
+          : t('own_photo_del_error'),
+      )
     } else {
       const nextLength = photos.length - 1
       setDeletedPhotoIds((prev) => new Set([...prev, photoPendingDel]))
@@ -294,13 +387,15 @@ export function OwnProfile({ profile }: OwnProfileProps) {
                 alt={profile.name ?? ''}
                 className="absolute inset-0 h-full w-full object-cover"
               />
-            ) : (
+            ) : hasVariants(photo) ? (
               <PhotoStream
                 photoId={photo.id}
                 variant="full"
                 alt={profile.name ?? ''}
                 className="absolute inset-0 h-full w-full object-cover"
               />
+            ) : (
+              <div className="absolute inset-0 bg-[var(--surface-2)]" />
             )
           ) : (
             <div className="absolute inset-0 grid place-items-center bg-[var(--surface-2)] text-[var(--ink-3)]">
@@ -387,88 +482,109 @@ export function OwnProfile({ profile }: OwnProfileProps) {
           <div className="mb-2.5 text-xs font-semibold uppercase tracking-[0.6px] text-[var(--ink-3)]">
             {t('prof_photos')}
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            {photos.map((p, i) => (
-              <div
-                key={p.id}
-                className={`relative aspect-[4/5] overflow-hidden rounded-xl ${
-                  photoIdx === i
-                    ? 'outline outline-2 outline-offset-2 outline-[var(--primary)]'
-                    : ''
-                }`}
-              >
-                <button type="button" onClick={() => setPhotoIdx(i)} className="absolute inset-0">
-                  {localPreviews[p.id] ? (
-                    // eslint-disable-next-line @next/next/no-img-element -- object URL preview while variants are still processing
-                    <img
-                      src={localPreviews[p.id]}
-                      alt={`photo ${i}`}
-                      className="absolute inset-0 h-full w-full object-cover"
-                    />
-                  ) : (
-                    <PhotoStream
-                      photoId={p.id}
-                      variant="cover"
-                      alt={`photo ${i}`}
-                      className="absolute inset-0 h-full w-full object-cover"
-                    />
-                  )}
-                  {i === 0 && (
-                    <span className="absolute left-1.5 top-1.5 rounded-md bg-[var(--primary)] px-1.5 py-0.5 text-[10px] text-white">
-                      {t('ob_avatar')}
-                    </span>
-                  )}
-                  {(p.moderation_status === 'queued' ||
-                    p.moderation_status === 'manual_review') && (
-                    <span className="absolute bottom-1 left-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-center text-[9.5px] text-white">
-                      {t('mod_pending')}
-                    </span>
-                  )}
-                  {p.moderation_status === 'rejected' && (
-                    <span className="absolute bottom-1 left-1 right-1 rounded bg-[var(--danger)] px-1.5 py-0.5 text-center text-[9.5px] text-white">
-                      {t('mod_rejected')}
-                    </span>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPhotoPendingDel(p.id)}
-                  aria-label={t('own_photo_del_confirm')}
-                  className="absolute right-1 top-1 z-10 grid h-5 w-5 place-items-center rounded-full bg-black/60 text-white"
-                >
-                  <Icon name="close" size={10} />
-                </button>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext items={photos.map((p) => p.id)} strategy={rectSortingStrategy}>
+              <div className="grid grid-cols-3 gap-2">
+                {photos.map((p, i) => {
+                  const dragDisabled =
+                    p.moderation_status === 'queued' || p.moderation_status === 'manual_review'
+                  return (
+                    <SortablePhoto key={p.id} id={p.id} disabled={dragDisabled}>
+                      <div
+                        className={`relative aspect-[4/5] overflow-hidden rounded-xl ${
+                          photoIdx === i
+                            ? 'outline outline-2 outline-offset-2 outline-[var(--primary)]'
+                            : ''
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setPhotoIdx(i)}
+                          className="absolute inset-0"
+                        >
+                          {localPreviews[p.id] ? (
+                            // eslint-disable-next-line @next/next/no-img-element -- object URL preview while variants are still processing
+                            <img
+                              src={localPreviews[p.id]}
+                              alt={`photo ${i}`}
+                              className="absolute inset-0 h-full w-full object-cover"
+                            />
+                          ) : hasVariants(p) ? (
+                            <PhotoStream
+                              photoId={p.id}
+                              variant="cover"
+                              alt={`photo ${i}`}
+                              className="absolute inset-0 h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 bg-[var(--surface-2)]" />
+                          )}
+                          {i === 0 && (
+                            <span className="absolute left-1.5 top-1.5 rounded-md bg-[var(--primary)] px-1.5 py-0.5 text-[10px] text-white">
+                              {t('ob_avatar')}
+                            </span>
+                          )}
+                          {(p.moderation_status === 'queued' ||
+                            p.moderation_status === 'manual_review') && (
+                            <span className="absolute bottom-1 left-1 right-1 rounded bg-black/60 px-1.5 py-0.5 text-center text-[9.5px] text-white">
+                              {t('mod_pending')}
+                            </span>
+                          )}
+                          {p.moderation_status === 'rejected' && (
+                            <span className="absolute bottom-1 left-1 right-1 rounded bg-[var(--danger)] px-1.5 py-0.5 text-center text-[9.5px] text-white">
+                              {t('mod_rejected')}
+                            </span>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPhotoPendingDel(p.id)}
+                          aria-label={t('own_photo_del_confirm')}
+                          className="absolute right-1 top-1 z-10 grid h-5 w-5 place-items-center rounded-full bg-black/60 text-white"
+                        >
+                          <Icon name="close" size={10} />
+                        </button>
+                      </div>
+                    </SortablePhoto>
+                  )
+                })}
+                {/* One spinner slot per uploading file, each with its own preview. */}
+                {pendingUploads.map((p) => (
+                  <div
+                    key={p.tempId}
+                    className="relative aspect-[4/5] overflow-hidden rounded-xl bg-[var(--surface-2)]"
+                  >
+                    {p.previewUrl && (
+                      // eslint-disable-next-line @next/next/no-img-element -- object URL preview during upload
+                      <img
+                        src={p.previewUrl}
+                        alt=""
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                    )}
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                      <Spinner size={24} />
+                    </div>
+                  </div>
+                ))}
+                {/* Always show an empty slot so the user can add more photos while others upload. */}
+                {photos.length + pendingUploads.length < 6 && (
+                  <button
+                    type="button"
+                    onClick={handleAddPhotoClick}
+                    aria-label={t('own_photo_add')}
+                    className="grid aspect-[4/5] place-items-center rounded-xl border-[1.5px] border-dashed border-[var(--divider-strong)] bg-[var(--surface-2)] text-[var(--ink-3)] transition-colors hover:border-[var(--primary)] hover:text-[var(--primary)]"
+                  >
+                    <Icon name="plus" size={22} />
+                  </button>
+                )}
               </div>
-            ))}
-            {/* One spinner slot per uploading file, each with its own preview. */}
-            {pendingUploads.map((p) => (
-              <div
-                key={p.tempId}
-                className="relative aspect-[4/5] overflow-hidden rounded-xl bg-[var(--surface-2)]"
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element -- object URL preview during upload */}
-                <img
-                  src={p.previewUrl}
-                  alt=""
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                  <Spinner size={24} />
-                </div>
-              </div>
-            ))}
-            {/* Always show an empty slot so the user can add more photos while others upload. */}
-            {photos.length + pendingUploads.length < 6 && (
-              <button
-                type="button"
-                onClick={handleAddPhotoClick}
-                aria-label={t('own_photo_add')}
-                className="grid aspect-[4/5] place-items-center rounded-xl border-[1.5px] border-dashed border-[var(--divider-strong)] bg-[var(--surface-2)] text-[var(--ink-3)] transition-colors hover:border-[var(--primary)] hover:text-[var(--primary)]"
-              >
-                <Icon name="plus" size={22} />
-              </button>
-            )}
-          </div>
+            </SortableContext>
+          </DndContext>
           <input
             ref={fileInputRef}
             type="file"

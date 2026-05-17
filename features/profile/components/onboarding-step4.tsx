@@ -192,6 +192,8 @@ export function OnboardingStep4({ isPending, step1Data, step2Data, gender, photo
                       alt={`Фото ${p.position}`}
                       className="h-full w-full object-cover"
                     />
+                  ) : p.uploading ? (
+                    <div className="h-full w-full bg-zinc-100 dark:bg-zinc-800" />
                   ) : (
                     <PhotoStream
                       photoId={p.id}

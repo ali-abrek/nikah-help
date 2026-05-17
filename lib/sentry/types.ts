@@ -8,6 +8,7 @@ export type FlowTag =
   | 'auth.callback'
   | 'auth.session_refresh'
   | 'auth.rbac'
+  | 'auth.cancel_registration'
   | 'realtime.channel'
   | 'payments.init'
   | 'payments.webhook'
