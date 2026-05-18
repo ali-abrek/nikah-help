@@ -1,6 +1,10 @@
 function resolveSiteUrl(): string {
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+  // NEXT_PUBLIC_SITE_URL is the stable production domain (e.g. https://nikahhelp.ru).
+  // VERCEL_URL is a per-deployment URL that changes on every deploy and may
+  // not be allowlisted in Supabase's Redirect URLs — always prefer the explicit
+  // stable URL so magic-link redirects go to the correct domain.
   if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
   return 'http://localhost:3000'
 }
 

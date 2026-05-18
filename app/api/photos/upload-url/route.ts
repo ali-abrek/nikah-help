@@ -161,23 +161,38 @@ export const POST = withAuth(
         .replace('{userId}', userId)
         .replace('{photoId}', photoId)
 
-      // Upsert pending row under the user's session — RLS enforces ownership.
-      // Conflicting pending rows from earlier abandoned attempts get replaced;
-      // `photo/abandon-cleanup` will GC their orphaned originals.
-      const { error: upsertErr } = await supabase.from('photos').upsert(
-        {
-          id: photoId,
-          profile_id: userId,
-          storage_path: path,
-          position,
-          status: 'pending',
-        },
-        { onConflict: 'profile_id, position' },
-      )
+      // PostgreSQL forbids ON CONFLICT with DEFERRABLE constraints (the
+      // (profile_id, position) unique constraint is deferred for reorder).
+      // Replace the old upsert with an explicit delete-then-insert: if a
+      // pending row exists at this slot (checked above), remove it first so
+      // the new row gets a fresh id and storage path. Ownership is already
+      // verified by withAuth + the eq('profile_id', userId) filter.
+      if (existing) {
+        const { error: delErr } = await supabase
+          .from('photos')
+          .delete()
+          .eq('id', existing.id)
+          .eq('profile_id', userId)
 
-      if (upsertErr) {
+        if (delErr) {
+          throw new AppError('SYSTEM_DATABASE_ERROR', {
+            cause: delErr,
+            logContext: { userId, position, existingId: existing.id },
+          })
+        }
+      }
+
+      const { error: insertErr } = await supabase.from('photos').insert({
+        id: photoId,
+        profile_id: userId,
+        storage_path: path,
+        position,
+        status: 'pending',
+      })
+
+      if (insertErr) {
         throw new AppError('SYSTEM_DATABASE_ERROR', {
-          cause: upsertErr,
+          cause: insertErr,
           logContext: { userId, position, photoId },
         })
       }

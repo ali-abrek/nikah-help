@@ -37,7 +37,7 @@ export interface ProfileDetailData {
 export interface ProfilePhotoData {
   id: string
   position: number
-  variants: Record<string, { avif: string; webp: string }> | null
+  has_variants: boolean
   moderation_status: string
 }
 
@@ -74,7 +74,9 @@ export async function getProfile(
         .maybeSingle()
     : Promise.resolve({ data: null })
 
-  // Photos: own profile sees all non-rejected; others see only approved
+  // Photos: own profile sees all non-rejected; others see only approved.
+  // variants contains raw storage paths — strip them before sending to the
+  // client; the stream API resolves paths server-side using admin access.
   const photosPromise = isOwnProfile
     ? supabase
         .from('photos')
@@ -133,7 +135,12 @@ export async function getProfile(
     private_mode: profile.private_mode ?? null,
     country_name_en: countryRow?.name_en ?? null,
     country_name_ru: countryRow?.name_ru ?? countryRow?.name_en ?? null,
-    photos: (photosRes.data ?? []) as ProfilePhotoData[],
+    photos: (photosRes.data ?? []).map((p) => ({
+      id: p.id,
+      position: p.position,
+      has_variants: !!p.variants && Object.keys(p.variants as object).length > 0,
+      moderation_status: p.moderation_status,
+    })) as ProfilePhotoData[],
     viewer_has_liked: !!likeRes.data,
     viewer_is_match: !!matchRes.data,
     viewer_is_blocked: !!blockRes.data,

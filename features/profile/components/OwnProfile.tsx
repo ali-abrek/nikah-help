@@ -26,7 +26,7 @@ import { deletePhotoAction, markPhotoUploaded, reorderPhotosAction } from '../ac
 import type { ProfileDetailData, ProfilePhotoData } from '../server/get-profile'
 
 function hasVariants(photo: ProfilePhotoData): boolean {
-  return !!photo.variants && Object.keys(photo.variants).length > 0
+  return photo.has_variants
 }
 import { rejectionToastKey } from '../lib/rejection-reason'
 import { SortablePhoto } from './SortablePhoto'
@@ -66,7 +66,7 @@ export function OwnProfile({ profile }: OwnProfileProps) {
   const [photoOrder, setPhotoOrder] = useState<string[] | null>(null)
   const [pendingUploads, setPendingUploads] = useState<PendingUpload[]>([])
   const [published, setPublished] = useState(!!profile.is_published)
-  const [privateMode, setPrivateMode] = useState(false)
+  const [privateMode, setPrivateMode] = useState(!!profile.private_mode)
   const [showOff, setShowOff] = useState(false)
   const [showDel, setShowDel] = useState(false)
   const [photoPendingDel, setPhotoPendingDel] = useState<string | null>(null)
@@ -146,6 +146,21 @@ export function OwnProfile({ profile }: OwnProfileProps) {
         body: JSON.stringify({ is_published: false }),
       })
       if (res.ok) setPublished(false)
+    })
+  }
+
+  const handleTogglePrivateMode = (next: boolean) => {
+    setPrivateMode(next)
+    startTransition(async () => {
+      const res = await fetch('/api/profile/toggle-private-mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: next }),
+      })
+      if (!res.ok) {
+        setPrivateMode(!next)
+        toast.show(t('own_photo_add_error'))
+      }
     })
   }
 
@@ -289,7 +304,7 @@ export function OwnProfile({ profile }: OwnProfileProps) {
           if (previewUrl) setLocalPreviews((prev) => ({ ...prev, [photoId]: previewUrl }))
           setLocalAddedPhotos((prev) => [
             ...prev,
-            { id: photoId, position, variants: null, moderation_status: moderationStatus },
+            { id: photoId, position, has_variants: false, moderation_status: moderationStatus },
           ])
         }
       } catch {
@@ -618,7 +633,7 @@ export function OwnProfile({ profile }: OwnProfileProps) {
             <SettingsRow
               label={t('ob_private_mode')}
               sub={privateMode ? t('ob_private_private') : t('ob_private_public')}
-              trailing={<Toggle on={privateMode} onChange={setPrivateMode} />}
+              trailing={<Toggle on={privateMode} onChange={handleTogglePrivateMode} />}
               last
             />
           </div>
