@@ -280,9 +280,7 @@ export function ProfileDetail({ profile, isOwnProfile, isGuest = false }: Profil
       </div>
 
       {!isOwnProfile && (
-        <div
-          className="fixed bottom-0 left-0 right-0 z-50 flex gap-2.5 px-5 pt-3 pb-[calc(12px+var(--safe-bottom))] [background:linear-gradient(to_top,var(--bg)_70%,transparent)]"
-        >
+        <div className="fixed bottom-0 left-0 right-0 z-50 flex gap-2.5 px-5 pt-3 pb-[calc(12px+var(--safe-bottom))] [background:linear-gradient(to_top,var(--bg)_70%,transparent)]">
           {isGuest ? (
             <Link href="/auth" className="block w-full">
               <Button kind="primary" size="lg" full icon="heart">
