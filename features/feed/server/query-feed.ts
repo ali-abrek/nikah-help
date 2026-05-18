@@ -289,6 +289,7 @@ function toFeedProfile(
     ai_bio: raw.ai_bio,
     marital_status: raw.marital_status,
     children_count: raw.children_count,
+    cover_photo_id: photo?.id ?? null,
     cover_photo_url: coverPath,
     created_at: raw.created_at ?? '',
     viewer_has_liked: viewerHasLiked,

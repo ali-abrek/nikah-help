@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Header, IconBtn, StickyActions } from '@/components/ui/header'
+import { Header, IconBtn } from '@/components/ui/header'
 import { Button } from '@/components/ui/button'
 import { Icon } from '@/components/ui/icon'
 import { Modal } from '@/components/ui/modal'
@@ -13,7 +13,7 @@ import { useToast } from '@/components/ui/toast'
 import { Photo as PhotoStream } from '@/features/photos/components/Photo'
 import { useMatch } from '@/features/likes/hooks/MatchProvider'
 import { useLang } from '@/lib/i18n/use-lang'
-import { localizePlace, localizeNationality, type Lang } from '@/lib/i18n/dictionary'
+import { localizePlace, type Lang } from '@/lib/i18n/dictionary'
 import type { ProfileDetailData } from '../server/get-profile'
 
 function calcAge(birthDate: string | null): number | null {
@@ -39,7 +39,6 @@ export function ProfileDetail({ profile, isOwnProfile, isGuest = false }: Profil
   const toast = useToast()
   const { triggerMatch } = useMatch()
   const [photoIdx, setPhotoIdx] = useState(0)
-  const [fullscreen, setFullscreen] = useState(false)
   const [showReport, setShowReport] = useState(false)
   const [showUnlike, setShowUnlike] = useState(false)
   const [liked, setLiked] = useState(profile.viewer_has_liked)
@@ -49,16 +48,14 @@ export function ProfileDetail({ profile, isOwnProfile, isGuest = false }: Profil
   const photos = profile.photos
   const age = calcAge(profile.birth_date)
   const touchStart = useRef<number | null>(null)
-  const fsTouchStart = useRef<number | null>(null)
 
   const goNext = () => setPhotoIdx((i) => Math.min(i + 1, photos.length - 1))
   const goPrev = () => setPhotoIdx((i) => Math.max(i - 1, 0))
 
-  const swipe = (touch: typeof touchStart, end: number, openFs: () => void) => {
+  const swipe = (touch: typeof touchStart, end: number) => {
     if (touch.current === null) return
     const diff = touch.current - end
     if (Math.abs(diff) > 40) (diff > 0 ? goNext : goPrev)()
-    else openFs()
     touch.current = null
   }
 
@@ -143,15 +140,14 @@ export function ProfileDetail({ profile, isOwnProfile, isGuest = false }: Profil
 
       <div className="scroll-area flex-1 overflow-auto pb-[120px]">
         <div
-          className="relative mx-4 aspect-[4/5] cursor-pointer overflow-hidden rounded-[22px]"
+          className="relative mx-4 aspect-[4/5] overflow-hidden rounded-[22px]"
           onTouchStart={(e) => {
             touchStart.current = e.touches[0]?.clientX ?? null
           }}
           onTouchEnd={(e) => {
             const x = e.changedTouches[0]?.clientX ?? 0
-            swipe(touchStart, x, () => setFullscreen(true))
+            swipe(touchStart, x)
           }}
-          onClick={() => setFullscreen(true)}
         >
           {photo ? (
             isGuest ? (
@@ -224,14 +220,6 @@ export function ProfileDetail({ profile, isOwnProfile, isGuest = false }: Profil
                     : 'No children'}
               </Tag>
             )}
-            {profile.nationality && (
-              <Tag>{localizeNationality(profile.nationality, lang, profile.gender)}</Tag>
-            )}
-            {profile.height != null && (
-              <Tag>
-                {profile.height} {lang === 'ru' ? 'см' : 'cm'}
-              </Tag>
-            )}
           </div>
 
           {(profile.ai_bio || profile.about_self) && (
@@ -248,13 +236,13 @@ export function ProfileDetail({ profile, isOwnProfile, isGuest = false }: Profil
                 {t('prof_photos')}
               </div>
               <div className="grid grid-cols-2 gap-2.5">
-                {photos.slice(1).map((p, i) => (
+                {photos.map((p, i) => (
                   <button
                     key={p.id}
                     type="button"
-                    onClick={() => setPhotoIdx(i + 1)}
+                    onClick={() => setPhotoIdx(i)}
                     className={`overflow-hidden rounded-[14px] ${
-                      photoIdx === i + 1
+                      photoIdx === i
                         ? 'outline outline-2 outline-offset-2 outline-[var(--primary)]'
                         : ''
                     }`}
@@ -263,14 +251,14 @@ export function ProfileDetail({ profile, isOwnProfile, isGuest = false }: Profil
                       {isGuest ? (
                         <img
                           src={guestUrl(p.id, showFull ? 'full' : 'cover')}
-                          alt={`${profile.name ?? ''} ${i + 2}`}
+                          alt={`${profile.name ?? ''} ${i + 1}`}
                           className="absolute inset-0 h-full w-full object-cover"
                         />
                       ) : (
                         <PhotoStream
                           photoId={p.id}
                           variant={showFull ? 'full' : 'cover'}
-                          alt={`${profile.name ?? ''} ${i + 2}`}
+                          alt={`${profile.name ?? ''} ${i + 1}`}
                           className="absolute inset-0 h-full w-full object-cover"
                         />
                       )}
@@ -292,9 +280,11 @@ export function ProfileDetail({ profile, isOwnProfile, isGuest = false }: Profil
       </div>
 
       {!isOwnProfile && (
-        <StickyActions>
+        <div
+          className="fixed bottom-0 left-0 right-0 z-50 flex gap-2.5 px-5 pt-3 pb-[calc(12px+var(--safe-bottom))] [background:linear-gradient(to_top,var(--bg)_70%,transparent)]"
+        >
           {isGuest ? (
-            <Link href="/auth">
+            <Link href="/auth" className="block w-full">
               <Button kind="primary" size="lg" full icon="heart">
                 {t('prof_like')}
               </Button>
@@ -314,60 +304,6 @@ export function ProfileDetail({ profile, isOwnProfile, isGuest = false }: Profil
             >
               {t(liked ? 'prof_liked' : 'prof_like')}
             </Button>
-          )}
-        </StickyActions>
-      )}
-
-      {fullscreen && (
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/95"
-          onTouchStart={(e) => {
-            fsTouchStart.current = e.touches[0]?.clientX ?? null
-          }}
-          onTouchEnd={(e) => {
-            const x = e.changedTouches[0]?.clientX ?? 0
-            swipe(fsTouchStart, x, () => setFullscreen(false))
-          }}
-          onClick={() => setFullscreen(false)}
-        >
-          {photo &&
-            (isGuest ? (
-              <img
-                src={guestUrl(photo.id, showFull ? 'full' : 'cover')}
-                alt={profile.name ?? ''}
-                className="pointer-events-none max-h-full max-w-full object-contain"
-              />
-            ) : (
-              <PhotoStream
-                photoId={photo.id}
-                variant={showFull ? 'full' : 'cover'}
-                alt={profile.name ?? ''}
-                className="pointer-events-none max-h-full max-w-full object-contain"
-              />
-            ))}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation()
-              setFullscreen(false)
-            }}
-            className="fixed right-5 top-5 grid h-10 w-10 place-items-center rounded-full bg-white/20 text-white"
-          >
-            <Icon name="close" size={20} />
-          </button>
-          {photos.length > 1 && (
-            <div className="fixed bottom-6 left-0 right-0 flex justify-center gap-1.5">
-              {photos.map((_, i) => (
-                <span
-                  key={i}
-                  className="h-1.5 rounded-full bg-white/40 transition-[width]"
-                  style={{
-                    width: i === photoIdx ? 22 : 6,
-                    background: i === photoIdx ? '#fff' : undefined,
-                  }}
-                />
-              ))}
-            </div>
           )}
         </div>
       )}

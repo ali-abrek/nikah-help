@@ -115,6 +115,7 @@ export interface FeedProfile {
   ai_bio: string | null
   marital_status: string | null
   children_count: number | null
+  cover_photo_id: string | null
   cover_photo_url: string | null
   created_at: string
   viewer_has_liked: boolean

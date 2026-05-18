@@ -42,16 +42,16 @@ export function FeedCard({ profile, trailing, isGuest = false }: FeedCardProps) 
       className="block overflow-hidden rounded-[18px] border border-[var(--divider)] bg-[var(--surface)] shadow-[0_1px_2px_rgba(15,26,31,0.04),0_4px_12px_rgba(15,26,31,0.04)]"
     >
       <div className="relative aspect-[4/5]">
-        {profile.cover_photo_url ? (
+        {profile.cover_photo_id ? (
           isGuest ? (
             <img
-              src={`/api/photos/guest/stream?photoId=${profile.id}&variant=cover&fmt=webp`}
+              src={`/api/photos/guest/stream?photoId=${profile.cover_photo_id}&variant=cover&fmt=webp`}
               alt={profile.name}
               className="absolute inset-0 h-full w-full object-cover"
             />
           ) : (
             <PhotoStream
-              photoId={profile.id}
+              photoId={profile.cover_photo_id}
               variant="cover"
               alt={profile.name}
               className="absolute inset-0 h-full w-full object-cover"
