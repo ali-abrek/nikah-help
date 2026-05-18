@@ -22,7 +22,14 @@ export const PROCESSING = {
 export const UPLOAD = {
   maxFileSize: 10 * 1024 * 1024,
   minShortSide: 1000,
-  acceptedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/heic', 'image/heif'] as const,
+  acceptedMimeTypes: [
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+    'image/avif',
+    'image/heic',
+    'image/heif',
+  ] as const,
   maxPhotosPerProfile: 6,
 } as const
 
