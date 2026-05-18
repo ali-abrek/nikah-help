@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import type { RealtimeChannel } from '@supabase/supabase-js'
+import { createClient } from '@/lib/supabase/client'
 import {
   DndContext,
   type DragEndEvent,
@@ -75,6 +77,8 @@ export function OwnProfile({ profile }: OwnProfileProps) {
   // processing variants. Without this, PhotoStream 404s for queued photos.
   const [localPreviews, setLocalPreviews] = useState<Record<string, string>>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const realtimeChannelRef = useRef<RealtimeChannel | null>(null)
+  const realtimeClientRef = useRef<ReturnType<typeof createClient> | null>(null)
 
   // Derived photo list: server data is the source of truth for moderation status
   // updates (profile.photos changes on router.refresh()); locally-added photos
@@ -116,6 +120,37 @@ export function OwnProfile({ profile }: OwnProfileProps) {
     const tid = setTimeout(() => router.refresh(), 5_000)
     return () => clearTimeout(tid)
   }, [photos, router])
+
+  // Instantly hide a photo when the server inserts a photo_auto_rejected
+  // notification — faster than waiting for the next 5-second poll cycle.
+  useEffect(() => {
+    const supabase = createClient()
+    realtimeClientRef.current = supabase
+    const channel = supabase
+      .channel(`auto-rejection:${profile.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${profile.id}`,
+        },
+        (payload) => {
+          const notif = payload.new as { type?: string; entity_id?: string | null }
+          if (notif.type === 'photo_auto_rejected' && notif.entity_id) {
+            setDeletedPhotoIds((prev) => new Set([...prev, notif.entity_id!]))
+          }
+        },
+      )
+      .subscribe()
+    realtimeChannelRef.current = channel
+    return () => {
+      realtimeClientRef.current?.removeChannel(channel)
+      realtimeChannelRef.current = null
+      realtimeClientRef.current = null
+    }
+  }, [profile.id])
 
   const [pending, startTransition] = useTransition()
   const age = calcAge(profile.birth_date)

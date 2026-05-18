@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
 import { useToast } from '@/components/ui/toast'
@@ -16,9 +16,29 @@ export function ModerationQueue({ initial }: ModerationQueueProps) {
   const { t } = useLang()
   const router = useRouter()
   const toast = useToast()
-  const [items, setItems] = useState(initial)
+  // IDs that were locally decided but not yet removed from the server's
+  // initial list. This lets us optimistically hide an item the moment the
+  // moderator makes a decision, without waiting for router.refresh().
+  const [filteredOut, setFilteredOut] = useState<Set<string>>(new Set())
+
+  // items is derived from the server's initial list, minus locally-decided
+  // photos. When router.refresh() brings a new initial (e.g. after a decision
+  // or the 30-second poll), items auto-updates via useMemo — no useState sync
+  // required.
+  const items = useMemo(
+    () => initial.filter((p) => !filteredOut.has(p.photoId)),
+    [initial, filteredOut],
+  )
+
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  // Poll for new manual_review items every 30 seconds so the moderator
+  // doesn't need to reload the page when photos arrive after it was opened.
+  useEffect(() => {
+    const tid = setInterval(() => router.refresh(), 30_000)
+    return () => clearInterval(tid)
+  }, [router])
 
   const decide = (photoId: string, decision: 'approve' | 'reject') => {
     setPendingId(photoId)
@@ -29,7 +49,7 @@ export function ModerationQueue({ initial }: ModerationQueueProps) {
         toast.show(res.error.message ?? t('mod_queue_error'))
         return
       }
-      setItems((prev) => prev.filter((p) => p.photoId !== photoId))
+      setFilteredOut((prev) => new Set([...prev, photoId]))
       toast.show(t('mod_queue_decided'))
       router.refresh()
     })

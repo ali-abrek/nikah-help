@@ -44,13 +44,13 @@ export default async function ModerationPage() {
             <h1 className="m-0 text-[22px] font-bold uppercase tracking-[0.5px] text-[var(--ink)]">
               Модерация
             </h1>
-            <p className="mt-0.5 text-xs text-[var(--ink-3)]">{queue.length} в ожидании</p>
           </div>
         </div>
 
         <div className="scroll-area flex-1 overflow-auto">
           <div className="border-b border-[var(--divider)] px-5 py-3">
             <h2 className="text-sm font-semibold text-[var(--ink-2)]">Очередь модерации</h2>
+            <p className="mt-1 text-xs text-[var(--ink-3)]">{queue.length} в ожидании</p>
           </div>
           <ModerationQueue initial={queue} />
         </div>
